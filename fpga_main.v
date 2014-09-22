@@ -47,7 +47,7 @@ module fpga_main(
     input XIACKIN,
     output IACKPASS,
 	// Interrupts
-    output [7:1] XIRQ,
+    output [5:0] XIRQ,
 	// Interconnection to CPLD
     input [7:0] C2X,
 	// Parallel lines to other FPGAs
@@ -143,15 +143,34 @@ module fpga_main(
 
 	wire CLK;
 	wire tile0_gtp0_refclk_i;
+	wire tile0_resetdone0_i;
 	wire [1:0] GTPCLKOUT;
 	wire CLKBUFIO;
 	// module addressed bits
 	reg ADS = 0;
 	reg [26:0] CNT = 0;
 	
+	assign VME_GA_i = 5'b11110;
+	wire         VME_BERR_o;
+
+	wire         VME_DTACK_n_o;
+	wire         VME_RETRY_n_o;
+	wire         VME_LWORD_n_i;
+	wire         VME_LWORD_n_o;
+	wire [31:1]  VME_ADDR_i;
+	wire [31:1]  VME_ADDR_o;
+	wire [31:0]  VME_DATA_i;
+	wire [31:0]  VME_DATA_o;
+
+	wire         VME_DTACK_OE_o;
+	wire         VME_DATA_DIR_o;
+	wire         VME_DATA_OE_N_o;
+	wire         VME_ADDR_DIR_o;
+	wire         VME_ADDR_OE_N_o;
+	wire         VME_RETRY_OE_o;
+	wire [7:1]   VME_IRQ_o;
+
 	assign LED = CNT[26:23];
-	assign ADIR = 1'bz;
-	assign DDIR = 1'bz;
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -183,9 +202,6 @@ module fpga_main(
    assign CLKENFP = 1'bz;
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
-	assign XD =  32'hzzzzzzzz;
-	assign XA =  32'hzzzzzzzz;
-	assign XIRQ = 7'hzz;
 
 	assign TP[5:1] = CNT[4:0];
 
@@ -214,7 +230,7 @@ module fpga_main(
         .TILE0_GTPRESET1_IN             (),
         .TILE0_PLLLKDET0_OUT            (),
         .TILE0_PLLLKDET1_OUT            (),
-        .TILE0_RESETDONE0_OUT           (),
+        .TILE0_RESETDONE0_OUT           (tile0_resetdone0_i),
         .TILE0_RESETDONE1_OUT           (),
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
         .TILE0_RXDISPERR0_OUT           (),
@@ -383,6 +399,73 @@ module fpga_main(
       .O(CLK), // 1-bit output: Clock buffer output
       .I(CLKBUFIO)  // 1-bit input: Clock buffer input
    );
+
+/***************************************************************
+								VME
+****************************************************************/
+	assign XBERR         = VME_BERR_o ? 1'b0 : 1'bz;
+	assign XDTACK        = VME_DTACK_OE_o ? VME_DTACK_n_o : 1'bz;
+	assign XDTACKOE      = VME_DTACK_OE_o ? 1'b0 : 1'bz;
+	assign XRETRY        = VME_RETRY_OE_o ? VME_RETRY_n_o : 1'bz;
+	assign XA            = (~VME_ADDR_OE_N_o) ? {VME_ADDR_o, VME_LWORD_n_o} : 32'bZ;
+	assign ADIR          = VME_ADDR_DIR_o;
+	assign VME_ADDR_i    = XA[31:1];
+	assign VME_LWORD_n_i = XA[0];
+	assign XD            = (~VME_DATA_OE_N_o) ? VME_DATA_o : 32'bZ;
+	assign DDIR          = (~VME_DATA_OE_N_o) ? VME_DATA_DIR_o : 1'bz;
+	assign VME_DATA_i    = XD;
+	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
+
+VME64xCore_Top vme
+(
+	.clk_i(CLK),
+	.rst_n_i(~tile0_resetdone0_i),
+
+	.VME_AS_n_i       (XAS),
+	.VME_RST_n_i      (XRESET),
+	.VME_WRITE_n_i    (XWRITE),
+	.VME_AM_i         (XAM),
+	.VME_DS_n_i       (XDS),
+	.VME_GA_i         (VME_GA_i),
+	.VME_BERR_o       (VME_BERR_o),
+
+	.VME_DTACK_n_o    (VME_DTACK_n_o),
+	.VME_RETRY_n_o    (VME_RETRY_n_o),
+	.VME_LWORD_n_i    (VME_LWORD_n_i),
+	.VME_LWORD_n_o    (VME_LWORD_n_o),
+	.VME_ADDR_i       (VME_ADDR_i),
+	.VME_ADDR_o       (VME_ADDR_o),
+	.VME_DATA_i       (VME_DATA_i),
+	.VME_DATA_o       (VME_DATA_o),
+	.VME_IRQ_o        (VME_IRQ_o),
+	.VME_IACKIN_n_i   (1'b1),
+	.VME_IACK_n_i     (1'b1),
+	.VME_IACKOUT_n_o  (),
+
+	.VME_DTACK_OE_o   (VME_DTACK_OE_o),
+	.VME_DATA_DIR_o   (VME_DATA_DIR_o),
+	.VME_DATA_OE_N_o  (VME_DATA_OE_N_o),
+	.VME_ADDR_DIR_o   (VME_ADDR_DIR_o),
+	.VME_ADDR_OE_N_o  (VME_ADDR_OE_N_o),
+	.VME_RETRY_OE_o   (VME_RETRY_OE_o),
+
+	.DAT_i            (32'd0),
+	.DAT_o            (),
+	.ADR_o            (),
+	.CYC_o            (),
+	.ERR_i            (1'b0),
+	.RTY_i            (1'b0),
+	.SEL_o            (),
+	.STB_o            (),
+	.ACK_i            (1'b0),
+	.WE_o             (),
+	.STALL_i          (1'b0),
+
+	.INT_ack_o        (),
+	.IRQ_i            (),
+	.debug            ()
+);
+
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
