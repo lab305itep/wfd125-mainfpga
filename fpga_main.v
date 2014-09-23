@@ -149,8 +149,11 @@ module fpga_main(
 	// module addressed bits
 	reg ADS = 0;
 	reg [26:0] CNT = 0;
+	reg triga = 0;
+	reg trigb = 0;
+	reg trigc = 0;
 	
-	assign VME_GA_i = 5'b11110;
+	assign 		 VME_GA_i = 5'b11110;
 	wire         VME_BERR_o;
 
 	wire         VME_DTACK_n_o;
@@ -170,7 +173,7 @@ module fpga_main(
 	wire         VME_RETRY_OE_o;
 	wire [7:1]   VME_IRQ_o;
 
-	assign LED = CNT[26:23];
+	assign LED[0] = CNT[26];
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -203,7 +206,7 @@ module fpga_main(
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
 
-	assign TP[5:1] = CNT[4:0];
+	assign TP[5:1] = {ADIR, DDIR, XAS, XDS};
 
     //--------------------------- The GTP Wrapper -----------------------------
 
@@ -466,9 +469,31 @@ VME64xCore_Top vme
 	.debug            ()
 );
 
+	ledengine leda
+	(
+		.clk	(CLK),
+		.led  (LED[1]),
+		.trig (triga)
+	);
+	ledengine ledb
+	(
+		.clk	(CLK),
+		.led  (LED[2]),
+		.trig (trigb)
+	);
+	ledengine ledc
+	(
+		.clk	(CLK),
+		.led  (LED[3]),
+		.trig (trigc)
+	);
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
+		triga <= ! XAS;
+		trigb <= ((!XAS) && (XAM == 6'h2F));
+		trigc <= ((!XAS) && ((XAM == 6'h29) || (XAM == 6'h2D)));
+		
 	end;
 
 endmodule
