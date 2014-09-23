@@ -32,10 +32,10 @@ reg [31:0] CNT = 0;
 
 	always @ (posedge clk) begin
 		if (CNT != 0) begin
-			led <= 1;
+			led <= 0;
 			CNT <= CNT - 1;
 		end else begin
-			led <= 0;
+			led <= 1;
 		end
 		if (trig == 1) begin
 			CNT <= MAXCNT;
