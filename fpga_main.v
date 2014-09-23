@@ -26,21 +26,21 @@ module fpga_main(
 	// Address modifier
     input [5:0] XAM,
 	// Geographical addr (useless as now)
-    input [5:0] XGA,
+    input [5:0] XGA,	// active low
 	// Data
     inout [31:0] XD, 
 	// Strobes
-    input XAS,
-    input [1:0] XDS,
-    input XWRITE,
-    input XDTACK,
-    input XDTACKOE,
-    output ADIR,
-    output DDIR,
+    input XAS,			// active low
+    input [1:0] XDS,	// active low
+    input XWRITE,		// 0 = write
+    output XDTACK,	// active low
+    output XDTACKOE,	// active low
+    output ADIR,		// 0 - inward
+    output DDIR,		// 0 - inward
 	// Errors/resets
     input XRESET,
-    input XBERR,
-    input XRETRY,
+    output XBERR,
+    output XRETRY,
     input XRESP,
 	// Interrupt handling
     input XIACK,
@@ -152,8 +152,11 @@ module fpga_main(
 	reg triga = 0;
 	reg trigb = 0;
 	reg trigc = 0;
+	reg once = 1;
 	
-	assign 		 VME_GA_i = 5'b11110;
+	wire [5:0] VME_GA_i;
+	
+	assign 		 VME_GA_i = 6'b111110;
 	wire         VME_BERR_o;
 
 	wire         VME_DTACK_n_o;
@@ -172,6 +175,7 @@ module fpga_main(
 	wire         VME_ADDR_OE_N_o;
 	wire         VME_RETRY_OE_o;
 	wire [7:1]   VME_IRQ_o;
+	wire [7:0]   debug;
 
 	assign LED[0] = CNT[26];
 	assign IACKPASS = 1'bz;
@@ -224,8 +228,8 @@ module fpga_main(
         //TILE0  (X0_Y0)
  
         //---------------------- Loopback and Powerdown Ports ----------------------
-        .TILE0_LOOPBACK0_IN             (1'b0),
-        .TILE0_LOOPBACK1_IN             (1'b0),
+        .TILE0_LOOPBACK0_IN             (),
+        .TILE0_LOOPBACK1_IN             (),
         //------------------------------- PLL Ports --------------------------------
         .TILE0_CLK00_IN                 (tile0_gtp0_refclk_i),
         .TILE0_CLK01_IN                 (tile0_gtp0_refclk_i),
@@ -406,23 +410,27 @@ module fpga_main(
 /***************************************************************
 								VME
 ****************************************************************/
-	assign XBERR         = VME_BERR_o ? 1'b0 : 1'bz;
+	assign XBERR         = ~VME_BERR_o;
 	assign XDTACK        = VME_DTACK_OE_o ? VME_DTACK_n_o : 1'bz;
 	assign XDTACKOE      = VME_DTACK_OE_o ? 1'b0 : 1'bz;
-	assign XRETRY        = VME_RETRY_OE_o ? VME_RETRY_n_o : 1'bz;
-	assign XA            = (~VME_ADDR_OE_N_o) ? {VME_ADDR_o, VME_LWORD_n_o} : 32'bZ;
+	assign XRETRY        = VME_RETRY_n_o;
+	assign XA            = (VME_ADDR_DIR_o) ? {VME_ADDR_o, VME_LWORD_n_o} : 32'bZ;
 	assign ADIR          = VME_ADDR_DIR_o;
 	assign VME_ADDR_i    = XA[31:1];
 	assign VME_LWORD_n_i = XA[0];
-	assign XD            = (~VME_DATA_OE_N_o) ? VME_DATA_o : 32'bZ;
-	assign DDIR          = (~VME_DATA_OE_N_o) ? VME_DATA_DIR_o : 1'bz;
+	assign XD            = (VME_DATA_DIR_o) ? VME_DATA_o : 32'bZ;
+	assign DDIR          = (VME_DATA_DIR_o) ? 1'b1 : 1'bz;
 	assign VME_DATA_i    = XD;
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
 
-VME64xCore_Top vme
-(
+VME64xCore_Top #(
+    .g_clock (8), 	    		// clock period (ns)
+    .g_wb_data_width (32),		// WB data width:
+    .g_wb_addr_width (32)		// WB address width:
+)
+vme (
 	.clk_i(CLK),
-	.rst_n_i(~tile0_resetdone0_i),
+	.rst_n_i(~once),
 
 	.VME_AS_n_i       (XAS),
 	.VME_RST_n_i      (XRESET),
@@ -466,7 +474,7 @@ VME64xCore_Top vme
 
 	.INT_ack_o        (),
 	.IRQ_i            (),
-	.debug            ()
+	.debug            (debug)
 );
 
 	ledengine leda
@@ -490,10 +498,10 @@ VME64xCore_Top vme
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= ! XAS;
-		trigb <= ((!XAS) && (XAM == 6'h2F));
-		trigc <= ((!XAS) && ((XAM == 6'h29) || (XAM == 6'h2D)));
-		
+		triga <= (!XAS) && (XAM == 6'h2F);
+		trigb <= VME_DATA_DIR_o;
+		trigc <= debug[0];
+		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 
 endmodule
