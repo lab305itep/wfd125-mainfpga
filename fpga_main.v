@@ -502,7 +502,7 @@ vme (
 
 	simple_gpio somereg(
 		.clk_i (CLK), 
-		.rst_i (once), 
+		.rst_i (~once), 
 		.cyc_i (WB_CYC), 
 		.stb_i (WB_STB), 
 		.adr_i (WB_ADR[2]), 
@@ -515,7 +515,7 @@ vme (
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= (!XAS) && (XAM == 6'h09);
+		triga <= WB_STB;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 
