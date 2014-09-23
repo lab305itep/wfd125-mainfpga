@@ -176,6 +176,16 @@ module fpga_main(
 	wire         VME_RETRY_OE_o;
 	wire [7:1]   VME_IRQ_o;
 	wire [7:0]   debug;
+	wire			 WB_CYC;
+	wire [31:0]  WB_DAT_O;
+   wire [31:0]  WB_DAT_I;
+   wire [31:0]  WB_ADR;
+	wire [7:0]   TEST_GPIO;
+	wire         WB_WE;
+	wire         WB_STB;
+	wire         WB_RTY = 0;
+	wire         WB_ERR = 0;
+	wire			 WB_ACK;
 
 	assign LED[0] = CNT[26];
 	assign IACKPASS = 1'bz;
@@ -426,7 +436,11 @@ module fpga_main(
 VME64xCore_Top #(
     .g_clock (8), 	    		// clock period (ns)
     .g_wb_data_width (32),		// WB data width:
-    .g_wb_addr_width (32)		// WB address width:
+    .g_wb_addr_width (32),		// WB address width:
+	 .g_BoardID       (125),
+    .g_ManufacturerID (305),
+    .g_RevisionID     (1),
+    .g_ProgramID      (1)
 )
 vme (
 	.clk_i(CLK),
@@ -460,20 +474,20 @@ vme (
 	.VME_ADDR_OE_N_o  (VME_ADDR_OE_N_o),
 	.VME_RETRY_OE_o   (VME_RETRY_OE_o),
 
-	.DAT_i            (32'd0),
-	.DAT_o            (),
-	.ADR_o            (),
-	.CYC_o            (),
-	.ERR_i            (1'b0),
-	.RTY_i            (1'b0),
+	.DAT_i            (WB_DAT_I),
+	.DAT_o            (WB_DAT_O),
+	.ADR_o            (WB_ADR),
+	.CYC_o            (WB_CYC),
+	.ERR_i            (WB_ERR),
+	.RTY_i            (WB_RTY),
 	.SEL_o            (),
-	.STB_o            (),
-	.ACK_i            (1'b0),
-	.WE_o             (),
+	.STB_o            (WB_STB),
+	.ACK_i            (WB_ACK),
+	.WE_o             (WB_WE),
 	.STALL_i          (1'b0),
 
 	.INT_ack_o        (),
-	.IRQ_i            (),
+	.IRQ_i            (1'b0),
 	.debug            (debug)
 );
 
@@ -483,24 +497,25 @@ vme (
 		.led  (LED[1]),
 		.trig (triga)
 	);
-	ledengine ledb
-	(
-		.clk	(CLK),
-		.led  (LED[2]),
-		.trig (trigb)
-	);
-	ledengine ledc
-	(
-		.clk	(CLK),
-		.led  (LED[3]),
-		.trig (trigc)
+
+	assign LED[3:2] = TEST_GPIO[1:0];
+
+	simple_gpio somereg(
+		.clk_i (CLK), 
+		.rst_i (once), 
+		.cyc_i (WB_CYC), 
+		.stb_i (WB_STB), 
+		.adr_i (WB_ADR[2]), 
+		.we_i  (WB_WE), 
+		.dat_i (WB_DAT_O), 
+		.dat_o (WB_DAT_I), 
+		.ack_o (WB_ACK),
+		.gpio (TEST_GPIO)
 	);
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= (!XAS) && (XAM == 6'h2F);
-		trigb <= VME_DATA_DIR_o;
-		trigc <= debug[0];
+		triga <= (!XAS) && (XAM == 6'h09);
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 
