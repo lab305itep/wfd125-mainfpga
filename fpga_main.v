@@ -138,8 +138,7 @@ module fpga_main(
     output [5:1] TP
     );
 
-// Current number of active registers
-    localparam NREGS = 16;
+`include "wb_intercon.vh"
 
 	wire CLK;
 	wire tile0_gtp0_refclk_i;
@@ -176,16 +175,8 @@ module fpga_main(
 	wire         VME_RETRY_OE_o;
 	wire [7:1]   VME_IRQ_o;
 	wire [7:0]   debug;
-	wire			 WB_CYC;
-	wire [31:0]  WB_DAT_O;
-   wire [31:0]  WB_DAT_I;
-   wire [31:0]  WB_ADR;
+	
 	wire [7:0]   TEST_GPIO;
-	wire         WB_WE;
-	wire         WB_STB;
-	wire         WB_RTY = 0;
-	wire         WB_ERR = 0;
-	wire			 WB_ACK;
 
 	assign LED[0] = CNT[26];
 	assign IACKPASS = 1'bz;
@@ -432,6 +423,8 @@ module fpga_main(
 	assign DDIR          = (VME_DATA_DIR_o) ? 1'b1 : 1'bz;
 	assign VME_DATA_i    = XD;
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
+	assign wb_clk = CLK;
+	assign wb_rst = ~once;
 
 VME64xCore_Top #(
     .g_clock (8), 	    		// clock period (ns)
@@ -474,16 +467,16 @@ vme (
 	.VME_ADDR_OE_N_o  (VME_ADDR_OE_N_o),
 	.VME_RETRY_OE_o   (VME_RETRY_OE_o),
 
-	.DAT_i            (WB_DAT_I),
-	.DAT_o            (WB_DAT_O),
-	.ADR_o            (WB_ADR),
-	.CYC_o            (WB_CYC),
-	.ERR_i            (WB_ERR),
-	.RTY_i            (WB_RTY),
-	.SEL_o            (),
-	.STB_o            (WB_STB),
-	.ACK_i            (WB_ACK),
-	.WE_o             (WB_WE),
+	.DAT_i            (wb_s2m_VME64xCore_Top_dat),
+	.DAT_o            (wb_m2s_VME64xCore_Top_dat),
+	.ADR_o            (wb_m2s_VME64xCore_Top_adr),
+	.CYC_o            (wb_m2s_VME64xCore_Top_cyc),
+	.ERR_i            (wb_s2m_VME64xCore_Top_err),
+	.RTY_i            (wb_s2m_VME64xCore_Top_rty),
+	.SEL_o            (wb_m2s_VME64xCore_Top_sel),
+	.STB_o            (wb_m2s_VME64xCore_Top_stb),
+	.ACK_i            (wb_s2m_VME64xCore_Top_ack),
+	.WE_o             (wb_m2s_VME64xCore_Top_we),
 	.STALL_i          (1'b0),
 
 	.INT_ack_o        (),
@@ -503,19 +496,19 @@ vme (
 	simple_gpio somereg(
 		.clk_i (CLK), 
 		.rst_i (~once), 
-		.cyc_i (WB_CYC), 
-		.stb_i (WB_STB), 
-		.adr_i (WB_ADR[2]), 
-		.we_i  (WB_WE), 
-		.dat_i (WB_DAT_O), 
-		.dat_o (WB_DAT_I), 
-		.ack_o (WB_ACK),
+		.cyc_i (wb_m2s_simple_gpio_cyc), 
+		.stb_i (wb_m2s_simple_gpio_stb), 
+		.adr_i (wb_m2s_simple_gpio_adr[0]), 
+		.we_i  (wb_m2s_simple_gpio_we), 
+		.dat_i (wb_m2s_simple_gpio_dat), 
+		.dat_o (wb_s2m_simple_gpio_dat), 
+		.ack_o (wb_s2m_simple_gpio_ack),
 		.gpio (TEST_GPIO)
 	);
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= WB_STB;
+		triga <= wb_m2s_simple_gpio_stb;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 
