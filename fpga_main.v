@@ -138,6 +138,8 @@ module fpga_main(
     output [5:1] TP
     );
 
+	wire			 wb_clk;
+	wire         wb_rst;
 `include "wb_intercon.vh"
 
 	wire CLK;
@@ -175,6 +177,7 @@ module fpga_main(
 	wire         VME_RETRY_OE_o;
 	wire [7:1]   VME_IRQ_o;
 	wire [7:0]   debug;
+	wire [1:0]   dummy_vme_addr;
 	
 	wire [7:0]   TEST_GPIO;
 
@@ -425,6 +428,7 @@ module fpga_main(
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
 	assign wb_clk = CLK;
 	assign wb_rst = ~once;
+	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
 VME64xCore_Top #(
     .g_clock (8), 	    		// clock period (ns)
@@ -469,7 +473,7 @@ vme (
 
 	.DAT_i            (wb_s2m_VME64xCore_Top_dat),
 	.DAT_o            (wb_m2s_VME64xCore_Top_dat),
-	.ADR_o            (wb_m2s_VME64xCore_Top_adr),
+	.ADR_o            ({dummy_vme_addr, wb_m2s_VME64xCore_Top_adr[31:2]}),
 	.CYC_o            (wb_m2s_VME64xCore_Top_cyc),
 	.ERR_i            (wb_s2m_VME64xCore_Top_err),
 	.RTY_i            (wb_s2m_VME64xCore_Top_rty),
@@ -490,25 +494,35 @@ vme (
 		.led  (LED[1]),
 		.trig (triga)
 	);
+	ledengine ledb
+	(
+		.clk	(CLK),
+		.led  (LED[2]),
+		.trig (trigb)
+	);
 
-	assign LED[3:2] = TEST_GPIO[1:0];
+	assign LED[3] = TEST_GPIO[0];
 
+	assign wb_s2m_simple_gpio_rty = 0;
+	assign wb_s2m_simple_gpio_err = 0;
+	
 	simple_gpio somereg(
 		.clk_i (CLK), 
 		.rst_i (~once), 
 		.cyc_i (wb_m2s_simple_gpio_cyc), 
 		.stb_i (wb_m2s_simple_gpio_stb), 
-		.adr_i (wb_m2s_simple_gpio_adr[0]), 
+		.adr_i (wb_m2s_simple_gpio_adr[4]), 
 		.we_i  (wb_m2s_simple_gpio_we), 
 		.dat_i (wb_m2s_simple_gpio_dat), 
 		.dat_o (wb_s2m_simple_gpio_dat), 
 		.ack_o (wb_s2m_simple_gpio_ack),
-		.gpio (TEST_GPIO)
+		.gpio  (TEST_GPIO)
 	);
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= wb_m2s_simple_gpio_stb;
+		triga <= wb_m2s_simple_gpio_stb && wb_m2s_simple_gpio_cyc && wb_m2s_simple_gpio_adr[4];
+		trigb <= wb_s2m_simple_gpio_ack;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 

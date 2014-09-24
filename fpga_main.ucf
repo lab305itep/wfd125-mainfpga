@@ -1,5 +1,4 @@
 # Pinouts for main wfd125 fpga
-
 # VME interface
 # Address
 NET "XA<0>" LOC = Y5;
@@ -307,3 +306,10 @@ NET "TP<2>" LOC = T19;
 NET "TP<3>" LOC = U19;
 NET "TP<4>" LOC = V19;
 NET "TP<5>" LOC = T17;
+#Created by Constraints Editor (xc6slx45t-fgg484-2) - 2014/09/24
+NET "GTPCLKOUT<0>" TNM_NET = GTPCLKOUT<0>;
+TIMESPEC TS_GTPCLKOUT_0_ = PERIOD "GTPCLKOUT<0>" 8 ns HIGH 50%;
+NET "RCLK<0>" TNM_NET = RCLK<0>;
+TIMESPEC TS_RCLK_0_ = PERIOD "RCLK<0>" 8 ns HIGH 50%;
+NET "RCLK<1>" TNM_NET = RCLK<1>;
+TIMESPEC TS_RCLK_1_ = PERIOD "RCLK<1>" 8 ns HIGH 50%;

@@ -43,8 +43,8 @@ wire        wb_s2m_resize_simple_gpio_rty;
 
 wb_mux
   #(.num_slaves (1),
-    .MATCH_ADDR ({32'h00090000}),
-    .MATCH_MASK ({32'hfffffffe}))
+    .MATCH_ADDR ({32'h00010000}),
+    .MATCH_MASK ({32'hfffff000}))
  wb_mux_VME64xCore_Top
    (.wb_clk_i  (wb_clk_i),
     .wb_rst_i  (wb_rst_i),
