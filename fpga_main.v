@@ -69,7 +69,7 @@ module fpga_main(
     output [1:0] TX3,
 	// Serial interfaces
 	// Clock Buffer I2C
-    output CBUFSCL,
+    inout CBUFSCL,
     inout CBUFSDA,
 	// DAC SPI
     output BDACC,
@@ -181,7 +181,7 @@ module fpga_main(
 	
 	wire [7:0]   TEST_GPIO;
 
-	assign LED[0] = CNT[26];
+	assign LED[0] = (TEST_GPIO[0]) ? CNT[26] : CNT[24] ;
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -203,8 +203,6 @@ module fpga_main(
    assign PHYMDIO = 1'bz;
    assign PHYMDC  = 1'bz;
    assign PHYRST  = 1'bz;
-   assign CBUFSCL = 1'bz;
-   assign CBUFSDA = 1'bz;
    assign BDACC = 1'bz;
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
@@ -500,8 +498,12 @@ vme (
 		.led  (LED[2]),
 		.trig (trigb)
 	);
-
-	assign LED[3] = TEST_GPIO[0];
+	ledengine ledc
+	(
+		.clk	(CLK),
+		.led  (LED[3]),
+		.trig (trigc)
+	);
 
 	assign wb_s2m_simple_gpio_rty = 0;
 	assign wb_s2m_simple_gpio_err = 0;
@@ -519,10 +521,37 @@ vme (
 		.gpio  (TEST_GPIO)
 	);
 
+	assign wb_s2m_i2c_ms_cbuf_err = 0;
+	assign wb_s2m_i2c_ms_cbuf_rty = 0;
+
+  i2c_master_slave i2c_ms_cbuf (
+		.wb_clk_i  (CLK), 
+		.wb_rst_i  (once),		// active high 
+		.arst_i    (1'b0), 		// active high
+		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[6:4]), 
+		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat), 
+		.wb_dat_o  (wb_s2m_i2c_ms_cbuf_dat),
+		.wb_we_i   (wb_m2s_i2c_ms_cbuf_we),
+		.wb_stb_i  (wb_m2s_i2c_ms_cbuf_stb),
+		.wb_cyc_i  (wb_m2s_i2c_ms_cbuf_cyc), 
+		.wb_ack_o  (wb_s2m_i2c_ms_cbuf_ack), 
+		.wb_inta_o (),
+		.scl_pad_i (CBUFSCL), 
+		.scl_pad_o (CBUFSCL_o), 
+		.scl_padoen_o (CBUFSCL_en), 
+		.sda_pad_i (CBUFSDA), 
+		.sda_pad_o (CBUFSDA_o), 
+		.sda_padoen_o (CBUFSDA_en)
+	);
+
+   assign CBUFSCL = (CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
+   assign CBUFSDA = (CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= wb_m2s_simple_gpio_stb && wb_m2s_simple_gpio_cyc && wb_m2s_simple_gpio_adr[4];
-		trigb <= wb_s2m_simple_gpio_ack;
+		triga <= wb_m2s_i2c_ms_cbuf_stb && wb_m2s_i2c_ms_cbuf_cyc;
+		trigb <= wb_s2m_i2c_ms_cbuf_ack;
+		trigc <= CBUFSCL_en;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 

@@ -24,6 +24,18 @@ wire  [7:0] wb_s2m_simple_gpio_dat;
 wire        wb_s2m_simple_gpio_ack;
 wire        wb_s2m_simple_gpio_err;
 wire        wb_s2m_simple_gpio_rty;
+wire [31:0] wb_m2s_i2c_ms_cbuf_adr;
+wire  [7:0] wb_m2s_i2c_ms_cbuf_dat;
+wire  [3:0] wb_m2s_i2c_ms_cbuf_sel;
+wire        wb_m2s_i2c_ms_cbuf_we;
+wire        wb_m2s_i2c_ms_cbuf_cyc;
+wire        wb_m2s_i2c_ms_cbuf_stb;
+wire  [2:0] wb_m2s_i2c_ms_cbuf_cti;
+wire  [1:0] wb_m2s_i2c_ms_cbuf_bte;
+wire  [7:0] wb_s2m_i2c_ms_cbuf_dat;
+wire        wb_s2m_i2c_ms_cbuf_ack;
+wire        wb_s2m_i2c_ms_cbuf_err;
+wire        wb_s2m_i2c_ms_cbuf_rty;
 
 wb_intercon wb_intercon0
    (.wb_clk_i                (wb_clk),
@@ -51,5 +63,17 @@ wb_intercon wb_intercon0
     .wb_simple_gpio_dat_i    (wb_s2m_simple_gpio_dat),
     .wb_simple_gpio_ack_i    (wb_s2m_simple_gpio_ack),
     .wb_simple_gpio_err_i    (wb_s2m_simple_gpio_err),
-    .wb_simple_gpio_rty_i    (wb_s2m_simple_gpio_rty));
+    .wb_simple_gpio_rty_i    (wb_s2m_simple_gpio_rty),
+    .wb_i2c_ms_cbuf_adr_o    (wb_m2s_i2c_ms_cbuf_adr),
+    .wb_i2c_ms_cbuf_dat_o    (wb_m2s_i2c_ms_cbuf_dat),
+    .wb_i2c_ms_cbuf_sel_o    (wb_m2s_i2c_ms_cbuf_sel),
+    .wb_i2c_ms_cbuf_we_o     (wb_m2s_i2c_ms_cbuf_we),
+    .wb_i2c_ms_cbuf_cyc_o    (wb_m2s_i2c_ms_cbuf_cyc),
+    .wb_i2c_ms_cbuf_stb_o    (wb_m2s_i2c_ms_cbuf_stb),
+    .wb_i2c_ms_cbuf_cti_o    (wb_m2s_i2c_ms_cbuf_cti),
+    .wb_i2c_ms_cbuf_bte_o    (wb_m2s_i2c_ms_cbuf_bte),
+    .wb_i2c_ms_cbuf_dat_i    (wb_s2m_i2c_ms_cbuf_dat),
+    .wb_i2c_ms_cbuf_ack_i    (wb_s2m_i2c_ms_cbuf_ack),
+    .wb_i2c_ms_cbuf_err_i    (wb_s2m_i2c_ms_cbuf_err),
+    .wb_i2c_ms_cbuf_rty_i    (wb_s2m_i2c_ms_cbuf_rty));
 
