@@ -143,13 +143,15 @@ module fpga_main(
 `include "wb_intercon.vh"
 
 	wire CLK;
+	wire CLK125;
+	wire CLK625;
 	wire tile0_gtp0_refclk_i;
 	wire tile0_resetdone0_i;
 	wire [1:0] GTPCLKOUT;
 	wire CLKBUFIO;
 	// module addressed bits
 	reg ADS = 0;
-	reg [26:0] CNT = 0;
+	reg [31:0] CNT = 0;
 	reg triga = 0;
 	reg trigb = 0;
 	reg trigc = 0;
@@ -178,10 +180,20 @@ module fpga_main(
 	wire [7:1]   VME_IRQ_o;
 	wire [7:0]   debug;
 	wire [1:0]   dummy_vme_addr;
+	wire         CBUFSDA_o;
+	wire			 CBUFSCL_o;
+	wire         CBUFSDA_en;
+	wire			 CBUFSCL_en;
 	
-	wire [7:0]   TEST_GPIO;
+	wire [31:0]  REG_INPUT;
+	wire [31:0]  REG_OUTPUT;
+	
+	wire [31:0]  GTP_DAT_A;
+	wire			 GTP_VLD_A;
 
-	assign LED[0] = (TEST_GPIO[0]) ? CNT[26] : CNT[24] ;
+	assign LED[0] = (REG_OUTPUT[0]) ? CNT[26] : CNT[23];
+	assign LED[2] = ~REG_OUTPUT[8];
+	assign LED[3] = ~REG_INPUT[8];
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -212,7 +224,7 @@ module fpga_main(
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
 
-	assign TP[5:1] = {ADIR, DDIR, XAS, XDS};
+	assign TP[5:1] = {CBUFSDA_o, CBUFSCL_o, CBUFSDA_en, CBUFSCL_en, 1'b0};
 
     //--------------------------- The GTP Wrapper -----------------------------
 
@@ -230,7 +242,7 @@ module fpga_main(
         //TILE0  (X0_Y0)
  
         //---------------------- Loopback and Powerdown Ports ----------------------
-        .TILE0_LOOPBACK0_IN             (),
+        .TILE0_LOOPBACK0_IN             (3'b001),
         .TILE0_LOOPBACK1_IN             (),
         //------------------------------- PLL Ports --------------------------------
         .TILE0_CLK00_IN                 (tile0_gtp0_refclk_i),
@@ -252,7 +264,7 @@ module fpga_main(
         .TILE0_RXENPCOMMAALIGN0_IN      (),
         .TILE0_RXENPCOMMAALIGN1_IN      (),
         //----------------- Receive Ports - RX Data Path interface -----------------
-        .TILE0_RXDATA0_OUT              (),
+        .TILE0_RXDATA0_OUT              (GTP_DAT_A),
         .TILE0_RXDATA1_OUT              (),
         .TILE0_RXUSRCLK0_IN             (),
         .TILE0_RXUSRCLK1_IN             (),
@@ -274,7 +286,7 @@ module fpga_main(
         //------------ Receive Ports - RX Pipe Control for PCI Express -------------
         .TILE0_PHYSTATUS0_OUT           (),
         .TILE0_PHYSTATUS1_OUT           (),
-        .TILE0_RXVALID0_OUT             (),
+        .TILE0_RXVALID0_OUT             (GTP_VLD_A),
         .TILE0_RXVALID1_OUT             (),
         //-------------------------- TX/RX Datapath Ports --------------------------
         .TILE0_GTPCLKOUT0_OUT           (GTPCLKOUT),
@@ -283,7 +295,7 @@ module fpga_main(
         .TILE0_TXCHARISK0_IN            (),
         .TILE0_TXCHARISK1_IN            (),
         //---------------- Transmit Ports - TX Data Path interface -----------------
-        .TILE0_TXDATA0_IN               (),
+        .TILE0_TXDATA0_IN               (CNT),
         .TILE0_TXDATA1_IN               (),
         .TILE0_TXUSRCLK0_IN             (),
         .TILE0_TXUSRCLK1_IN             (),
@@ -374,8 +386,6 @@ module fpga_main(
         .TILE1_TXP1_OUT                 (TX3[0]),
         .TILE1_TXPREEMPHASIS0_IN        (),
         .TILE1_TXPREEMPHASIS1_IN        ()
-
-
     );
 
     //---------------------Dedicated GTP Reference Clock Inputs ---------------
@@ -405,9 +415,50 @@ module fpga_main(
    );
 
    BUFG BUFG_inst (
-      .O(CLK), // 1-bit output: Clock buffer output
+      .O(CLK125), // 1-bit output: Clock buffer output
       .I(CLKBUFIO)  // 1-bit input: Clock buffer input
    );
+
+  DCM_SP #(
+      .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
+                                            // (1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,9,10,11,12,13,14,15,16).
+      .CLKFX_DIVIDE(5),                     // Divide value on CLKFX outputs - D - (1-32)
+      .CLKFX_MULTIPLY(4),                   // Multiply value on CLKFX outputs - M - (2-32)
+      .CLKIN_DIVIDE_BY_2("FALSE"),          // CLKIN divide by two (TRUE/FALSE)
+      .CLKIN_PERIOD(8.0),                  // Input clock period specified in nS
+      .CLKOUT_PHASE_SHIFT("NONE"),          // Output phase shift (NONE, FIXED, VARIABLE)
+      .CLK_FEEDBACK("1X"),                  // Feedback source (NONE, 1X, 2X)
+      .DESKEW_ADJUST("SYSTEM_SYNCHRONOUS"), // SYSTEM_SYNCHRNOUS or SOURCE_SYNCHRONOUS
+      .DFS_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
+      .DLL_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
+      .DSS_MODE("NONE"),                    // Unsupported - Do not change value
+      .DUTY_CYCLE_CORRECTION("TRUE"),       // Unsupported - Do not change value
+      .FACTORY_JF(16'hc080),                // Unsupported - Do not change value
+      .PHASE_SHIFT(0),                      // Amount of fixed phase shift (-255 to 255)
+      .STARTUP_WAIT("FALSE")                // Delay config DONE until DCM_SP LOCKED (TRUE/FALSE)
+   )
+   DCM_SP_inst (
+      .CLK0(CLKFB),         // 1-bit output: 0 degree clock output
+      .CLK180(),     // 1-bit output: 180 degree clock output
+      .CLK270(),     // 1-bit output: 270 degree clock output
+      .CLK2X(),       // 1-bit output: 2X clock frequency clock output
+      .CLK2X180(), // 1-bit output: 2X clock frequency, 180 degree clock output
+      .CLK90(),       // 1-bit output: 90 degree clock output
+      .CLKDV(),       // 1-bit output: Divided clock output
+      .CLKFX(CLK),       // 1-bit output: Digital Frequency Synthesizer output (DFS)
+      .CLKFX180(), // 1-bit output: 180 degree CLKFX output
+      .LOCKED(),     // 1-bit output: DCM_SP Lock Output
+      .PSDONE(),     // 1-bit output: Phase shift done output
+      .STATUS(),     // 8-bit output: DCM_SP status output
+      .CLKFB(CLKFB),       // 1-bit input: Clock feedback input
+      .CLKIN(CLK125),       // 1-bit input: Clock input
+      .DSSEN(1'b0),       // 1-bit input: Unsupported, specify to GND.
+      .PSCLK(1'b0),       // 1-bit input: Phase shift clock input
+      .PSEN(1'b0),         // 1-bit input: Phase shift enable
+      .PSINCDEC(1'b0), // 1-bit input: Phase shift increment/decrement input
+      .RST(1'b0)            // 1-bit input: Active high reset input
+   );
+
 
 /***************************************************************
 								VME
@@ -492,7 +543,7 @@ vme (
 		.led  (LED[1]),
 		.trig (triga)
 	);
-	ledengine ledb
+/*	ledengine ledb
 	(
 		.clk	(CLK),
 		.led  (LED[2]),
@@ -504,21 +555,21 @@ vme (
 		.led  (LED[3]),
 		.trig (trigc)
 	);
-
+*/
 	assign wb_s2m_simple_gpio_rty = 0;
 	assign wb_s2m_simple_gpio_err = 0;
 	
-	simple_gpio somereg(
-		.clk_i (CLK), 
-		.rst_i (~once), 
-		.cyc_i (wb_m2s_simple_gpio_cyc), 
-		.stb_i (wb_m2s_simple_gpio_stb), 
-		.adr_i (wb_m2s_simple_gpio_adr[4]), 
-		.we_i  (wb_m2s_simple_gpio_we), 
-		.dat_i (wb_m2s_simple_gpio_dat), 
-		.dat_o (wb_s2m_simple_gpio_dat), 
-		.ack_o (wb_s2m_simple_gpio_ack),
-		.gpio  (TEST_GPIO)
+	inoutreg somereg(
+		.wb_clk (CLK), 
+		.wb_cyc (wb_m2s_simple_gpio_cyc), 
+		.wb_stb (wb_m2s_simple_gpio_stb), 
+		.wb_adr (wb_m2s_simple_gpio_adr[2]), 
+		.wb_we  (wb_m2s_simple_gpio_we), 
+		.wb_dat_i (wb_m2s_simple_gpio_dat), 
+		.wb_dat_o (wb_s2m_simple_gpio_dat), 
+		.wb_ack (wb_s2m_simple_gpio_ack),
+		.reg_o   (REG_OUTPUT),
+		.reg_i	(REG_INPUT)
 	);
 
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
@@ -538,20 +589,39 @@ vme (
 		.wb_inta_o (),
 		.scl_pad_i (CBUFSCL), 
 		.scl_pad_o (CBUFSCL_o), 
-		.scl_padoen_o (CBUFSCL_en), 
+		.scl_padoen_o (CBUFSCL_en), 	// active low ?
 		.sda_pad_i (CBUFSDA), 
 		.sda_pad_o (CBUFSDA_o), 
-		.sda_padoen_o (CBUFSDA_en)
+		.sda_padoen_o (CBUFSDA_en)		// active low ?
 	);
 
-   assign CBUFSCL = (CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
-   assign CBUFSDA = (CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+   assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
+   assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+
+myblkram mymem(
+    .wb_adr		(wb_m2s_mymem_adr[10:2]),
+    .wb_stb		(wb_m2s_mymem_stb),
+    .wb_cyc		(wb_m2s_mymem_cyc),
+    .wb_ack		(wb_s2m_mymem_ack),
+    .wb_dat_o	(wb_s2m_mymem_dat),
+    .wb_dat_i	(wb_m2s_mymem_dat),
+    .wb_we		(wb_m2s_mymem_we),
+    .wb_clk		(CLK),
+	 .wb_rst		(once),
+	 .wb_sel		(wb_m2s_mymem_sel),
+    .gtp_clk	(CLK125),
+    .gtp_dat	(GTP_DAT_A),
+    .gtp_vld	(GTP_VLD_A),
+    .cntrl_run (REG_OUTPUT[8]),
+    .cntrl_ready (REG_INPUT[8])
+    );
+
+	assign wb_s2m_mymem_err = 0;
+	assign wb_s2m_mymem_rty = 0;	
 
 	always @(posedge CLK) begin
 		CNT <= CNT + 1;
-		triga <= wb_m2s_i2c_ms_cbuf_stb && wb_m2s_i2c_ms_cbuf_cyc;
-		trigb <= wb_s2m_i2c_ms_cbuf_ack;
-		trigc <= CBUFSCL_en;
+		triga <= GTP_VLD_A;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 

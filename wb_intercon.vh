@@ -13,14 +13,14 @@ wire        wb_s2m_VME64xCore_Top_ack;
 wire        wb_s2m_VME64xCore_Top_err;
 wire        wb_s2m_VME64xCore_Top_rty;
 wire [31:0] wb_m2s_simple_gpio_adr;
-wire  [7:0] wb_m2s_simple_gpio_dat;
+wire [31:0] wb_m2s_simple_gpio_dat;
 wire  [3:0] wb_m2s_simple_gpio_sel;
 wire        wb_m2s_simple_gpio_we;
 wire        wb_m2s_simple_gpio_cyc;
 wire        wb_m2s_simple_gpio_stb;
 wire  [2:0] wb_m2s_simple_gpio_cti;
 wire  [1:0] wb_m2s_simple_gpio_bte;
-wire  [7:0] wb_s2m_simple_gpio_dat;
+wire [31:0] wb_s2m_simple_gpio_dat;
 wire        wb_s2m_simple_gpio_ack;
 wire        wb_s2m_simple_gpio_err;
 wire        wb_s2m_simple_gpio_rty;
@@ -36,6 +36,18 @@ wire  [7:0] wb_s2m_i2c_ms_cbuf_dat;
 wire        wb_s2m_i2c_ms_cbuf_ack;
 wire        wb_s2m_i2c_ms_cbuf_err;
 wire        wb_s2m_i2c_ms_cbuf_rty;
+wire [31:0] wb_m2s_mymem_adr;
+wire [31:0] wb_m2s_mymem_dat;
+wire  [3:0] wb_m2s_mymem_sel;
+wire        wb_m2s_mymem_we;
+wire        wb_m2s_mymem_cyc;
+wire        wb_m2s_mymem_stb;
+wire  [2:0] wb_m2s_mymem_cti;
+wire  [1:0] wb_m2s_mymem_bte;
+wire [31:0] wb_s2m_mymem_dat;
+wire        wb_s2m_mymem_ack;
+wire        wb_s2m_mymem_err;
+wire        wb_s2m_mymem_rty;
 
 wb_intercon wb_intercon0
    (.wb_clk_i                (wb_clk),
@@ -75,5 +87,17 @@ wb_intercon wb_intercon0
     .wb_i2c_ms_cbuf_dat_i    (wb_s2m_i2c_ms_cbuf_dat),
     .wb_i2c_ms_cbuf_ack_i    (wb_s2m_i2c_ms_cbuf_ack),
     .wb_i2c_ms_cbuf_err_i    (wb_s2m_i2c_ms_cbuf_err),
-    .wb_i2c_ms_cbuf_rty_i    (wb_s2m_i2c_ms_cbuf_rty));
+    .wb_i2c_ms_cbuf_rty_i    (wb_s2m_i2c_ms_cbuf_rty),
+    .wb_mymem_adr_o          (wb_m2s_mymem_adr),
+    .wb_mymem_dat_o          (wb_m2s_mymem_dat),
+    .wb_mymem_sel_o          (wb_m2s_mymem_sel),
+    .wb_mymem_we_o           (wb_m2s_mymem_we),
+    .wb_mymem_cyc_o          (wb_m2s_mymem_cyc),
+    .wb_mymem_stb_o          (wb_m2s_mymem_stb),
+    .wb_mymem_cti_o          (wb_m2s_mymem_cti),
+    .wb_mymem_bte_o          (wb_m2s_mymem_bte),
+    .wb_mymem_dat_i          (wb_s2m_mymem_dat),
+    .wb_mymem_ack_i          (wb_s2m_mymem_ack),
+    .wb_mymem_err_i          (wb_s2m_mymem_err),
+    .wb_mymem_rty_i          (wb_s2m_mymem_rty));
 
