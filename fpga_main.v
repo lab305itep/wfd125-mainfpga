@@ -144,7 +144,7 @@ module fpga_main(
 
 	wire CLK;
 	wire CLK125;
-	wire CLK625;
+	wire CLK250;
 	wire tile0_gtp0_refclk_i;
 	wire tile0_resetdone0_i;
 	wire [1:0] GTPCLKOUT;
@@ -152,10 +152,12 @@ module fpga_main(
 	// module addressed bits
 	reg ADS = 0;
 	reg [31:0] CNT = 0;
-	reg triga = 0;
-	reg trigb = 0;
+	wire triga;
+	wire trigb;
 	reg trigc = 0;
 	reg once = 1;
+	reg greset = 1;
+	wire comma;
 	
 	wire [5:0] VME_GA_i;
 	
@@ -188,12 +190,13 @@ module fpga_main(
 	wire [31:0]  REG_INPUT;
 	wire [31:0]  REG_OUTPUT;
 	
-	wire [31:0]  GTP_DAT_A;
-	wire			 GTP_VLD_A;
+	wire [15:0]  GTP_DAT_A;
+	wire         tile0_plllkdet_o;
+	wire [1:0]   rxcomma;
+
+	assign comma = (CNT[7:0] == 8'hBC) ? 1'b1 : 1'b0;
 
 	assign LED[0] = (REG_OUTPUT[0]) ? CNT[26] : CNT[23];
-	assign LED[2] = ~REG_OUTPUT[8];
-	assign LED[3] = ~REG_INPUT[8];
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -227,91 +230,78 @@ module fpga_main(
 	assign TP[5:1] = {CBUFSDA_o, CBUFSCL_o, CBUFSDA_en, CBUFSCL_en, 1'b0};
 
     //--------------------------- The GTP Wrapper -----------------------------
-
-
-    gtp #
+    s6_gtpwizard_v1_11 #
     (
         .WRAPPER_SIM_GTPRESET_SPEEDUP   (0),      // Set this to 1 for simulation
         .WRAPPER_SIMULATION             (0)       // Set this to 1 for simulation
     )
-    gtp_i
+    s6_gtpwizard_v1_11_i
     (
-    
-        //_____________________________________________________________________
         //_____________________________________________________________________
         //TILE0  (X0_Y0)
- 
         //---------------------- Loopback and Powerdown Ports ----------------------
-        .TILE0_LOOPBACK0_IN             (3'b001),
-        .TILE0_LOOPBACK1_IN             (),
+        .TILE0_LOOPBACK0_IN             (REG_OUTPUT[2:0]),
+        .TILE0_LOOPBACK1_IN             (3'b000),
         //------------------------------- PLL Ports --------------------------------
         .TILE0_CLK00_IN                 (tile0_gtp0_refclk_i),
         .TILE0_CLK01_IN                 (tile0_gtp0_refclk_i),
         .TILE0_GTPRESET0_IN             (),
         .TILE0_GTPRESET1_IN             (),
-        .TILE0_PLLLKDET0_OUT            (),
+        .TILE0_PLLLKDET0_OUT            (tile0_plllkdet_o),
         .TILE0_PLLLKDET1_OUT            (),
-        .TILE0_RESETDONE0_OUT           (tile0_resetdone0_i),
+        .TILE0_RESETDONE0_OUT           (),
         .TILE0_RESETDONE1_OUT           (),
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
-        .TILE0_RXDISPERR0_OUT           (),
+        .TILE0_RXCHARISCOMMA0_OUT       ({dummy_0, LED[3]}),
+        .TILE0_RXCHARISCOMMA1_OUT       (),
+        .TILE0_RXCHARISK0_OUT           (),
+        .TILE0_RXCHARISK1_OUT           (),
+        .TILE0_RXDISPERR0_OUT           ({dummy_1, triga}),
         .TILE0_RXDISPERR1_OUT           (),
-        .TILE0_RXNOTINTABLE0_OUT        (),
+        .TILE0_RXNOTINTABLE0_OUT        ({dummy_2, trigb}),
         .TILE0_RXNOTINTABLE1_OUT        (),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE0_RXENMCOMMAALIGN0_IN      (),
-        .TILE0_RXENMCOMMAALIGN1_IN      (),
-        .TILE0_RXENPCOMMAALIGN0_IN      (),
-        .TILE0_RXENPCOMMAALIGN1_IN      (),
+        .TILE0_RXBYTEISALIGNED0_OUT     (REG_INPUT[31]),
+        .TILE0_RXBYTEISALIGNED1_OUT     (),
+        .TILE0_RXCOMMADET0_OUT          (REG_INPUT[30]),
+        .TILE0_RXCOMMADET1_OUT          (),
+        .TILE0_RXENMCOMMAALIGN0_IN      (1'b1),
+        .TILE0_RXENMCOMMAALIGN1_IN      (1'b1),
+        .TILE0_RXENPCOMMAALIGN0_IN      (1'b1),
+        .TILE0_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
         .TILE0_RXDATA0_OUT              (GTP_DAT_A),
         .TILE0_RXDATA1_OUT              (),
-        .TILE0_RXUSRCLK0_IN             (),
-        .TILE0_RXUSRCLK1_IN             (),
-        .TILE0_RXUSRCLK20_IN            (),
-        .TILE0_RXUSRCLK21_IN            (),
+        .TILE0_RXUSRCLK0_IN             (CLK250),
+        .TILE0_RXUSRCLK1_IN             (CLK250),
+        .TILE0_RXUSRCLK20_IN            (CLK125),
+        .TILE0_RXUSRCLK21_IN            (CLK125),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
-        .TILE0_RXEQMIX0_IN              (),
-        .TILE0_RXEQMIX1_IN              (),
         .TILE0_RXN0_IN                  (RX0[1]),
         .TILE0_RXN1_IN                  (RX1[1]),
         .TILE0_RXP0_IN                  (RX0[0]),
         .TILE0_RXP1_IN                  (RX1[0]),
-        //--------- Receive Ports - RX Elastic Buffer and Phase Alignment ----------
-        .TILE0_RXSTATUS0_OUT            (),
-        .TILE0_RXSTATUS1_OUT            (),
         //------------- Receive Ports - RX Loss-of-sync State Machine --------------
         .TILE0_RXLOSSOFSYNC0_OUT        (),
         .TILE0_RXLOSSOFSYNC1_OUT        (),
-        //------------ Receive Ports - RX Pipe Control for PCI Express -------------
-        .TILE0_PHYSTATUS0_OUT           (),
-        .TILE0_PHYSTATUS1_OUT           (),
-        .TILE0_RXVALID0_OUT             (GTP_VLD_A),
-        .TILE0_RXVALID1_OUT             (),
         //-------------------------- TX/RX Datapath Ports --------------------------
         .TILE0_GTPCLKOUT0_OUT           (GTPCLKOUT),
         .TILE0_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
-        .TILE0_TXCHARISK0_IN            (),
+        .TILE0_TXCHARISK0_IN            ({1'b0, comma}),
         .TILE0_TXCHARISK1_IN            (),
         //---------------- Transmit Ports - TX Data Path interface -----------------
-        .TILE0_TXDATA0_IN               (CNT),
+        .TILE0_TXDATA0_IN               (CNT[15:0]),
         .TILE0_TXDATA1_IN               (),
-        .TILE0_TXUSRCLK0_IN             (),
-        .TILE0_TXUSRCLK1_IN             (),
-        .TILE0_TXUSRCLK20_IN            (),
-        .TILE0_TXUSRCLK21_IN            (),
+        .TILE0_TXUSRCLK0_IN             (CLK250),
+        .TILE0_TXUSRCLK1_IN             (CLK250),
+        .TILE0_TXUSRCLK20_IN            (CLK125),
+        .TILE0_TXUSRCLK21_IN            (CLK125),
         //------------- Transmit Ports - TX Driver and OOB signalling --------------
-        .TILE0_TXDIFFCTRL0_IN           (),
-        .TILE0_TXDIFFCTRL1_IN           (),
         .TILE0_TXN0_OUT                 (TX0[1]),
         .TILE0_TXN1_OUT                 (TX1[1]),
         .TILE0_TXP0_OUT                 (TX0[0]),
         .TILE0_TXP1_OUT                 (TX1[0]),
-        .TILE0_TXPREEMPHASIS0_IN        (),
-        .TILE0_TXPREEMPHASIS1_IN        (),
-
-
     
         //_____________________________________________________________________
         //_____________________________________________________________________
@@ -330,40 +320,38 @@ module fpga_main(
         .TILE1_RESETDONE0_OUT           (),
         .TILE1_RESETDONE1_OUT           (),
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
+        .TILE1_RXCHARISCOMMA0_OUT       (),
+        .TILE1_RXCHARISCOMMA1_OUT       (),
+        .TILE1_RXCHARISK0_OUT           (),
+        .TILE1_RXCHARISK1_OUT           (),
         .TILE1_RXDISPERR0_OUT           (),
         .TILE1_RXDISPERR1_OUT           (),
         .TILE1_RXNOTINTABLE0_OUT        (),
         .TILE1_RXNOTINTABLE1_OUT        (),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE1_RXENMCOMMAALIGN0_IN      (),
-        .TILE1_RXENMCOMMAALIGN1_IN      (),
-        .TILE1_RXENPCOMMAALIGN0_IN      (),
-        .TILE1_RXENPCOMMAALIGN1_IN      (),
+        .TILE1_RXBYTEISALIGNED0_OUT     (),
+        .TILE1_RXBYTEISALIGNED1_OUT     (),
+        .TILE1_RXCOMMADET0_OUT          (),
+        .TILE1_RXCOMMADET1_OUT          (),
+        .TILE1_RXENMCOMMAALIGN0_IN      (1'b1),
+        .TILE1_RXENMCOMMAALIGN1_IN      (1'b1),
+        .TILE1_RXENPCOMMAALIGN0_IN      (1'b1),
+        .TILE1_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
         .TILE1_RXDATA0_OUT              (),
         .TILE1_RXDATA1_OUT              (),
-        .TILE1_RXUSRCLK0_IN             (),
-        .TILE1_RXUSRCLK1_IN             (),
-        .TILE1_RXUSRCLK20_IN            (),
-        .TILE1_RXUSRCLK21_IN            (),
+        .TILE1_RXUSRCLK0_IN             (CLK250),
+        .TILE1_RXUSRCLK1_IN             (CLK250),
+        .TILE1_RXUSRCLK20_IN            (CLK125),
+        .TILE1_RXUSRCLK21_IN            (CLK125),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
-        .TILE1_RXEQMIX0_IN              (),
-        .TILE1_RXEQMIX1_IN              (),
         .TILE1_RXN0_IN                  (RX2[1]),
         .TILE1_RXN1_IN                  (RX3[1]),
         .TILE1_RXP0_IN                  (RX2[0]),
         .TILE1_RXP1_IN                  (RX3[0]),
-        //--------- Receive Ports - RX Elastic Buffer and Phase Alignment ----------
-        .TILE1_RXSTATUS0_OUT            (),
-        .TILE1_RXSTATUS1_OUT            (),
         //------------- Receive Ports - RX Loss-of-sync State Machine --------------
         .TILE1_RXLOSSOFSYNC0_OUT        (),
         .TILE1_RXLOSSOFSYNC1_OUT        (),
-        //------------ Receive Ports - RX Pipe Control for PCI Express -------------
-        .TILE1_PHYSTATUS0_OUT           (),
-        .TILE1_PHYSTATUS1_OUT           (),
-        .TILE1_RXVALID0_OUT             (),
-        .TILE1_RXVALID1_OUT             (),
         //-------------------------- TX/RX Datapath Ports --------------------------
         .TILE1_GTPCLKOUT0_OUT           (),
         .TILE1_GTPCLKOUT1_OUT           (),
@@ -373,23 +361,16 @@ module fpga_main(
         //---------------- Transmit Ports - TX Data Path interface -----------------
         .TILE1_TXDATA0_IN               (),
         .TILE1_TXDATA1_IN               (),
-        .TILE1_TXUSRCLK0_IN             (),
-        .TILE1_TXUSRCLK1_IN             (),
-        .TILE1_TXUSRCLK20_IN            (),
-        .TILE1_TXUSRCLK21_IN            (),
+        .TILE1_TXUSRCLK0_IN             (CLK250),
+        .TILE1_TXUSRCLK1_IN             (CLK250),
+        .TILE1_TXUSRCLK20_IN            (CLK125),
+        .TILE1_TXUSRCLK21_IN            (CLK125),
         //------------- Transmit Ports - TX Driver and OOB signalling --------------
-        .TILE1_TXDIFFCTRL0_IN           (),
-        .TILE1_TXDIFFCTRL1_IN           (),
         .TILE1_TXN0_OUT                 (TX2[1]),
         .TILE1_TXN1_OUT                 (TX3[1]),
         .TILE1_TXP0_OUT                 (TX2[0]),
-        .TILE1_TXP1_OUT                 (TX3[0]),
-        .TILE1_TXPREEMPHASIS0_IN        (),
-        .TILE1_TXPREEMPHASIS1_IN        ()
+        .TILE1_TXP1_OUT                 (TX3[0])
     );
-
-    //---------------------Dedicated GTP Reference Clock Inputs ---------------
-    // Each dedicated refclk you are using in your design will need its own IBUFDS instance
     
     IBUFDS tile0_gtp0_refclk_ibufds_i
     (
@@ -415,48 +396,69 @@ module fpga_main(
    );
 
    BUFG BUFG_inst (
-      .O(CLK125), // 1-bit output: Clock buffer output
+      .O(CLK125_i), // 1-bit output: Clock buffer output
       .I(CLKBUFIO)  // 1-bit input: Clock buffer input
    );
 
-  DCM_SP #(
-      .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
-                                            // (1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,9,10,11,12,13,14,15,16).
-      .CLKFX_DIVIDE(5),                     // Divide value on CLKFX outputs - D - (1-32)
-      .CLKFX_MULTIPLY(4),                   // Multiply value on CLKFX outputs - M - (2-32)
-      .CLKIN_DIVIDE_BY_2("FALSE"),          // CLKIN divide by two (TRUE/FALSE)
-      .CLKIN_PERIOD(8.0),                  // Input clock period specified in nS
-      .CLKOUT_PHASE_SHIFT("NONE"),          // Output phase shift (NONE, FIXED, VARIABLE)
-      .CLK_FEEDBACK("1X"),                  // Feedback source (NONE, 1X, 2X)
-      .DESKEW_ADJUST("SYSTEM_SYNCHRONOUS"), // SYSTEM_SYNCHRNOUS or SOURCE_SYNCHRONOUS
-      .DFS_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
-      .DLL_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
-      .DSS_MODE("NONE"),                    // Unsupported - Do not change value
-      .DUTY_CYCLE_CORRECTION("TRUE"),       // Unsupported - Do not change value
-      .FACTORY_JF(16'hc080),                // Unsupported - Do not change value
-      .PHASE_SHIFT(0),                      // Amount of fixed phase shift (-255 to 255)
-      .STARTUP_WAIT("FALSE")                // Delay config DONE until DCM_SP LOCKED (TRUE/FALSE)
+   PLL_BASE #(
+      .BANDWIDTH("OPTIMIZED"),             // "HIGH", "LOW" or "OPTIMIZED" 
+      .CLKFBOUT_MULT(4),                   // Multiply value for all CLKOUT clock outputs (1-64)
+      .CLKFBOUT_PHASE(0.0),                // Phase offset in degrees of the clock feedback output (0.0-360.0).
+      .CLKIN_PERIOD(8.0),                  // Input clock period in ns to ps resolution (i.e. 33.333 is 30
+                                           // MHz).
+      // CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT# clock output (1-128)
+      .CLKOUT0_DIVIDE(4),
+      .CLKOUT1_DIVIDE(2),
+      .CLKOUT2_DIVIDE(5),
+      .CLKOUT3_DIVIDE(1),
+      .CLKOUT4_DIVIDE(1),
+      .CLKOUT5_DIVIDE(1),
+      // CLKOUT0_DUTY_CYCLE - CLKOUT5_DUTY_CYCLE: Duty cycle for CLKOUT# clock output (0.01-0.99).
+      .CLKOUT0_DUTY_CYCLE(0.5),
+      .CLKOUT1_DUTY_CYCLE(0.5),
+      .CLKOUT2_DUTY_CYCLE(0.5),
+      .CLKOUT3_DUTY_CYCLE(0.5),
+      .CLKOUT4_DUTY_CYCLE(0.5),
+      .CLKOUT5_DUTY_CYCLE(0.5),
+      // CLKOUT0_PHASE - CLKOUT5_PHASE: Output phase relationship for CLKOUT# clock output (-360.0-360.0).
+      .CLKOUT0_PHASE(0.0),
+      .CLKOUT1_PHASE(0.0),
+      .CLKOUT2_PHASE(0.0),
+      .CLKOUT3_PHASE(0.0),
+      .CLKOUT4_PHASE(0.0),
+      .CLKOUT5_PHASE(0.0),
+      .CLK_FEEDBACK("CLKFBOUT"),           // Clock source to drive CLKFBIN ("CLKFBOUT" or "CLKOUT0")
+      .COMPENSATION("SYSTEM_SYNCHRONOUS"), // "SYSTEM_SYNCHRONOUS", "SOURCE_SYNCHRONOUS", "EXTERNAL" 
+      .DIVCLK_DIVIDE(1),                   // Division value for all output clocks (1-52)
+      .REF_JITTER(0.1),                    // Reference Clock Jitter in UI (0.000-0.999).
+      .RESET_ON_LOSS_OF_LOCK("FALSE")      // Must be set to FALSE
    )
-   DCM_SP_inst (
-      .CLK0(CLKFB),         // 1-bit output: 0 degree clock output
-      .CLK180(),     // 1-bit output: 180 degree clock output
-      .CLK270(),     // 1-bit output: 270 degree clock output
-      .CLK2X(),       // 1-bit output: 2X clock frequency clock output
-      .CLK2X180(), // 1-bit output: 2X clock frequency, 180 degree clock output
-      .CLK90(),       // 1-bit output: 90 degree clock output
-      .CLKDV(),       // 1-bit output: Divided clock output
-      .CLKFX(CLK),       // 1-bit output: Digital Frequency Synthesizer output (DFS)
-      .CLKFX180(), // 1-bit output: 180 degree CLKFX output
-      .LOCKED(),     // 1-bit output: DCM_SP Lock Output
-      .PSDONE(),     // 1-bit output: Phase shift done output
-      .STATUS(),     // 8-bit output: DCM_SP status output
-      .CLKFB(CLKFB),       // 1-bit input: Clock feedback input
-      .CLKIN(CLK125),       // 1-bit input: Clock input
-      .DSSEN(1'b0),       // 1-bit input: Unsupported, specify to GND.
-      .PSCLK(1'b0),       // 1-bit input: Phase shift clock input
-      .PSEN(1'b0),         // 1-bit input: Phase shift enable
-      .PSINCDEC(1'b0), // 1-bit input: Phase shift increment/decrement input
-      .RST(1'b0)            // 1-bit input: Active high reset input
+   PLL_BASE_inst (
+      .CLKFBOUT(CLKPLLFB), // 1-bit output: PLL_BASE feedback output
+      // CLKOUT0 - CLKOUT5: 1-bit (each) output: Clock outputs
+      .CLKOUT0(CLK125_o),
+      .CLKOUT1(CLK250_o),
+      .CLKOUT2(CLK100_o),
+      .CLKOUT3(),
+      .CLKOUT4(),
+      .CLKOUT5(),
+      .LOCKED(),     // 1-bit output: PLL_BASE lock status output
+      .CLKFBIN(CLKPLLFB),   // 1-bit input: Feedback clock input
+      .CLKIN(CLK125_i),       // 1-bit input: Clock input
+      .RST(~tile0_plllkdet_o)            // 1-bit input: Reset input
+   );
+
+   BUFG BUFG_inst250 (
+      .O(CLK250), // 1-bit output: Clock buffer output
+      .I(CLK250_o)  // 1-bit input: Clock buffer input
+   );
+   BUFG BUFG_inst125 (
+      .O(CLK125), // 1-bit output: Clock buffer output
+      .I(CLK125_o)  // 1-bit input: Clock buffer input
+   );
+   BUFG BUFG_inst100 (
+      .O(CLK), // 1-bit output: Clock buffer output
+      .I(CLK100_o)  // 1-bit input: Clock buffer input
    );
 
 
@@ -476,7 +478,7 @@ module fpga_main(
 	assign VME_DATA_i    = XD;
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
 	assign wb_clk = CLK;
-	assign wb_rst = ~once;
+	assign wb_rst = ~greset;
 	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
 VME64xCore_Top #(
@@ -490,7 +492,7 @@ VME64xCore_Top #(
 )
 vme (
 	.clk_i(CLK),
-	.rst_n_i(~once),
+	.rst_n_i(wb_rst),
 
 	.VME_AS_n_i       (XAS),
 	.VME_RST_n_i      (XRESET),
@@ -539,17 +541,18 @@ vme (
 
 	ledengine leda
 	(
-		.clk	(CLK),
+		.clk	(CLK125),
 		.led  (LED[1]),
 		.trig (triga)
 	);
-/*	ledengine ledb
+	
+   ledengine ledb
 	(
-		.clk	(CLK),
+		.clk	(CLK125),
 		.led  (LED[2]),
 		.trig (trigb)
 	);
-	ledengine ledc
+/*	ledengine ledc
 	(
 		.clk	(CLK),
 		.led  (LED[3]),
@@ -577,7 +580,7 @@ vme (
 
   i2c_master_slave i2c_ms_cbuf (
 		.wb_clk_i  (CLK), 
-		.wb_rst_i  (once),		// active high 
+		.wb_rst_i  (~wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
 		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[6:4]), 
 		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat), 
@@ -607,11 +610,11 @@ myblkram mymem(
     .wb_dat_i	(wb_m2s_mymem_dat),
     .wb_we		(wb_m2s_mymem_we),
     .wb_clk		(CLK),
-	 .wb_rst		(once),
+	 .wb_rst		(~wb_rst),
 	 .wb_sel		(wb_m2s_mymem_sel),
     .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DAT_A),
-    .gtp_vld	(GTP_VLD_A),
+    .gtp_vld	(1'b1),
     .cntrl_run (REG_OUTPUT[8]),
     .cntrl_ready (REG_INPUT[8])
     );
@@ -620,8 +623,11 @@ myblkram mymem(
 	assign wb_s2m_mymem_rty = 0;	
 
 	always @(posedge CLK) begin
+		if (!once) greset <= 0;
+	end;
+
+	always @(posedge CLK125) begin
 		CNT <= CNT + 1;
-		triga <= GTP_VLD_A;
 		if (CNT == 27'h7FFFFFF) once = 0;
 	end;
 

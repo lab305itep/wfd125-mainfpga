@@ -30,15 +30,15 @@ module myblkram(
 	 input wb_rst,
 	 input [3:0] wb_sel,
     input gtp_clk,
-    input [31:0] gtp_dat,
+    input [15:0] gtp_dat,
     input gtp_vld,
     input cntrl_run,
     output reg cntrl_ready
     );
 
 	 wire [3:0] WEA;
-	 reg [3:0] WEB;
-	 reg [8:0] ADDRB;
+	 reg [1:0] WEB;
+	 reg [9:0] ADDRB;
 	 reg cntrl_run_d;
 	 reg cntrl_run_dd;
 
@@ -46,7 +46,7 @@ module myblkram(
 	   RAMB16BWER #(
       // DATA_WIDTH_A/DATA_WIDTH_B: 0, 1, 2, 4, 9, 18, or 36
       .DATA_WIDTH_A(36),
-      .DATA_WIDTH_B(36),
+      .DATA_WIDTH_B(18),
       // DOA_REG/DOB_REG: Optional output register (0 or 1)
       .DOA_REG(0),
       .DOB_REG(0),
@@ -87,14 +87,14 @@ module myblkram(
       .DIA(wb_dat_i),       // 32-bit input: A port data input
       .DIPA(4'h0),     // 4-bit input: A port parity input
       // Port B Address/Control Signals: 14-bit (each) input: Port B address and control signals
-      .ADDRB({ADDRB, 5'h00}),   // 14-bit input: B port address input
+      .ADDRB({ADDRB, 4'h00}),   // 14-bit input: B port address input
       .CLKB(gtp_clk),     // 1-bit input: B port clock input
       .ENB(1'b1),       // 1-bit input: B port enable input
       .REGCEB(1'b0), // 1-bit input: B port register clock enable input
       .RSTB(1'b0),     // 1-bit input: B port register set/reset input
-      .WEB(WEB),       // 4-bit input: Port B byte-wide write enable input
+      .WEB({2'b00, WEB}),       // 4-bit input: Port B byte-wide write enable input
       // Port B Data: 32-bit (each) input: Port B data
-      .DIB(gtp_dat),       // 32-bit input: B port data input
+      .DIB({16'h0000, gtp_dat}),       // 32-bit input: B port data input
       .DIPB(4'h0)      // 4-bit input: B port parity input
    );
 
@@ -116,16 +116,16 @@ module myblkram(
 		if ((wb_rst) || (cntrl_run_d & !cntrl_run_dd)) begin
 			cntrl_ready <= 0;
 			ADDRB <= 0;
-			WEB <= 4'h0;
+			WEB <= 2'b00;
 		end else begin
 			if (!cntrl_ready && ADDRB == 9'h1FF) begin
 				cntrl_ready <= 1;
 			end
 			if (!cntrl_ready) begin
-				WEB <= {4*gtp_vld};
+				WEB <= {2{gtp_vld}};
 				if (gtp_vld) ADDRB <= ADDRB + 1;
 			end else begin
-				WEB <= 4'h0;
+				WEB <= 2'b00;
 			end
 		end
 	end
