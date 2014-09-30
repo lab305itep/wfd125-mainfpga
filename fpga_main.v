@@ -152,9 +152,9 @@ module fpga_main(
 	// module addressed bits
 	reg ADS = 0;
 	reg [31:0] CNT = 0;
-	wire triga;
-	wire trigb;
-	reg trigc = 0;
+//	reg triga = 0;
+//	reg trigb = 0;
+//	reg trigc = 0;
 	reg once = 1;
 	reg greset = 1;
 	wire comma;
@@ -191,12 +191,15 @@ module fpga_main(
 	wire [31:0]  REG_OUTPUT;
 	
 	wire [15:0]  GTP_DAT_A;
+	wire [15:0]  GTP_DAT_B;
+	wire [15:0]  GTP_DAT_C;
+	wire [15:0]  GTP_DAT_D;
 	wire         tile0_plllkdet_o;
 	wire [1:0]   rxcomma;
 
 	assign comma = (CNT[7:0] == 8'hBC) ? 1'b1 : 1'b0;
 
-	assign LED[0] = (REG_OUTPUT[0]) ? CNT[26] : CNT[23];
+// 	assign LED[0] = (REG_OUTPUT[0]) ? CNT[26] : CNT[23];
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -241,7 +244,7 @@ module fpga_main(
         //TILE0  (X0_Y0)
         //---------------------- Loopback and Powerdown Ports ----------------------
         .TILE0_LOOPBACK0_IN             (REG_OUTPUT[2:0]),
-        .TILE0_LOOPBACK1_IN             (3'b000),
+        .TILE0_LOOPBACK1_IN             (REG_OUTPUT[2:0]),
         //------------------------------- PLL Ports --------------------------------
         .TILE0_CLK00_IN                 (tile0_gtp0_refclk_i),
         .TILE0_CLK01_IN                 (tile0_gtp0_refclk_i),
@@ -252,18 +255,18 @@ module fpga_main(
         .TILE0_RESETDONE0_OUT           (),
         .TILE0_RESETDONE1_OUT           (),
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
-        .TILE0_RXCHARISCOMMA0_OUT       ({dummy_0, LED[3]}),
+        .TILE0_RXCHARISCOMMA0_OUT       (),
         .TILE0_RXCHARISCOMMA1_OUT       (),
         .TILE0_RXCHARISK0_OUT           (),
         .TILE0_RXCHARISK1_OUT           (),
-        .TILE0_RXDISPERR0_OUT           ({dummy_1, triga}),
-        .TILE0_RXDISPERR1_OUT           (),
-        .TILE0_RXNOTINTABLE0_OUT        ({dummy_2, trigb}),
-        .TILE0_RXNOTINTABLE1_OUT        (),
+        .TILE0_RXDISPERR0_OUT           ({dummy_1, GTP_DISPERR_A}),
+        .TILE0_RXDISPERR1_OUT           ({dummy_2, GTP_DISPERR_B}),
+        .TILE0_RXNOTINTABLE0_OUT        ({dummy_3, GTP_NOTINTAB_A}),
+        .TILE0_RXNOTINTABLE1_OUT        ({dummy_4, GTP_NOTINTAB_B}),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE0_RXBYTEISALIGNED0_OUT     (REG_INPUT[31]),
-        .TILE0_RXBYTEISALIGNED1_OUT     (),
-        .TILE0_RXCOMMADET0_OUT          (REG_INPUT[30]),
+        .TILE0_RXBYTEISALIGNED0_OUT     (GTP_ALIGNED_A),
+        .TILE0_RXBYTEISALIGNED1_OUT     (GTP_ALIGNED_B),
+        .TILE0_RXCOMMADET0_OUT          (),
         .TILE0_RXCOMMADET1_OUT          (),
         .TILE0_RXENMCOMMAALIGN0_IN      (1'b1),
         .TILE0_RXENMCOMMAALIGN1_IN      (1'b1),
@@ -271,7 +274,7 @@ module fpga_main(
         .TILE0_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
         .TILE0_RXDATA0_OUT              (GTP_DAT_A),
-        .TILE0_RXDATA1_OUT              (),
+        .TILE0_RXDATA1_OUT              (GTP_DAT_B),
         .TILE0_RXUSRCLK0_IN             (CLK250),
         .TILE0_RXUSRCLK1_IN             (CLK250),
         .TILE0_RXUSRCLK20_IN            (CLK125),
@@ -289,10 +292,10 @@ module fpga_main(
         .TILE0_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
         .TILE0_TXCHARISK0_IN            ({1'b0, comma}),
-        .TILE0_TXCHARISK1_IN            (),
+        .TILE0_TXCHARISK1_IN            ({1'b0, comma}),
         //---------------- Transmit Ports - TX Data Path interface -----------------
         .TILE0_TXDATA0_IN               (CNT[15:0]),
-        .TILE0_TXDATA1_IN               (),
+        .TILE0_TXDATA1_IN               (CNT[15:0]),
         .TILE0_TXUSRCLK0_IN             (CLK250),
         .TILE0_TXUSRCLK1_IN             (CLK250),
         .TILE0_TXUSRCLK20_IN            (CLK125),
@@ -308,8 +311,8 @@ module fpga_main(
         //TILE1  (X1_Y0)
  
         //---------------------- Loopback and Powerdown Ports ----------------------
-        .TILE1_LOOPBACK0_IN             (),
-        .TILE1_LOOPBACK1_IN             (),
+        .TILE1_LOOPBACK0_IN             (REG_OUTPUT[2:0]),
+        .TILE1_LOOPBACK1_IN             (REG_OUTPUT[2:0]),
         //------------------------------- PLL Ports --------------------------------
         .TILE1_CLK00_IN                 (tile0_gtp0_refclk_i),
         .TILE1_CLK01_IN                 (tile0_gtp0_refclk_i),
@@ -324,13 +327,13 @@ module fpga_main(
         .TILE1_RXCHARISCOMMA1_OUT       (),
         .TILE1_RXCHARISK0_OUT           (),
         .TILE1_RXCHARISK1_OUT           (),
-        .TILE1_RXDISPERR0_OUT           (),
-        .TILE1_RXDISPERR1_OUT           (),
-        .TILE1_RXNOTINTABLE0_OUT        (),
-        .TILE1_RXNOTINTABLE1_OUT        (),
+        .TILE1_RXDISPERR0_OUT           ({dummy_5, GTP_DISPERR_C}),
+        .TILE1_RXDISPERR1_OUT           ({dummy_6, GTP_DISPERR_D}),
+        .TILE1_RXNOTINTABLE0_OUT        ({dummy_7, GTP_NOTINTAB_C}),
+        .TILE1_RXNOTINTABLE1_OUT        ({dummy_8, GTP_NOTINTAB_D}),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE1_RXBYTEISALIGNED0_OUT     (),
-        .TILE1_RXBYTEISALIGNED1_OUT     (),
+        .TILE1_RXBYTEISALIGNED0_OUT     (GTP_ALIGNED_C),
+        .TILE1_RXBYTEISALIGNED1_OUT     (GTP_ALIGNED_D),
         .TILE1_RXCOMMADET0_OUT          (),
         .TILE1_RXCOMMADET1_OUT          (),
         .TILE1_RXENMCOMMAALIGN0_IN      (1'b1),
@@ -338,8 +341,8 @@ module fpga_main(
         .TILE1_RXENPCOMMAALIGN0_IN      (1'b1),
         .TILE1_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
-        .TILE1_RXDATA0_OUT              (),
-        .TILE1_RXDATA1_OUT              (),
+        .TILE1_RXDATA0_OUT              (GTP_DAT_C),
+        .TILE1_RXDATA1_OUT              (GTP_DAT_D),
         .TILE1_RXUSRCLK0_IN             (CLK250),
         .TILE1_RXUSRCLK1_IN             (CLK250),
         .TILE1_RXUSRCLK20_IN            (CLK125),
@@ -356,11 +359,11 @@ module fpga_main(
         .TILE1_GTPCLKOUT0_OUT           (),
         .TILE1_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
-        .TILE1_TXCHARISK0_IN            (),
-        .TILE1_TXCHARISK1_IN            (),
+        .TILE1_TXCHARISK0_IN            ({1'b0, comma}),
+        .TILE1_TXCHARISK1_IN            ({1'b0, comma}),
         //---------------- Transmit Ports - TX Data Path interface -----------------
-        .TILE1_TXDATA0_IN               (),
-        .TILE1_TXDATA1_IN               (),
+        .TILE1_TXDATA0_IN               (CNT[15:0]),
+        .TILE1_TXDATA1_IN               (CNT[15:0]),
         .TILE1_TXUSRCLK0_IN             (CLK250),
         .TILE1_TXUSRCLK1_IN             (CLK250),
         .TILE1_TXUSRCLK20_IN            (CLK125),
@@ -542,23 +545,29 @@ vme (
 	ledengine leda
 	(
 		.clk	(CLK125),
-		.led  (LED[1]),
+		.led  (LED[0]),
 		.trig (triga)
 	);
 	
    ledengine ledb
 	(
 		.clk	(CLK125),
-		.led  (LED[2]),
+		.led  (LED[1]),
 		.trig (trigb)
 	);
-/*	ledengine ledc
+	ledengine ledc
 	(
-		.clk	(CLK),
-		.led  (LED[3]),
+		.clk	(CLK125),
+		.led  (LED[2]),
 		.trig (trigc)
 	);
-*/
+	ledengine ledd
+	(
+		.clk	(CLK125),
+		.led  (LED[3]),
+		.trig (trigd)
+	);
+
 	assign wb_s2m_simple_gpio_rty = 0;
 	assign wb_s2m_simple_gpio_err = 0;
 	
@@ -601,26 +610,89 @@ vme (
    assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
    assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
 
-myblkram mymem(
-    .wb_adr		(wb_m2s_mymem_adr[10:2]),
-    .wb_stb		(wb_m2s_mymem_stb),
-    .wb_cyc		(wb_m2s_mymem_cyc),
-    .wb_ack		(wb_s2m_mymem_ack),
-    .wb_dat_o	(wb_s2m_mymem_dat),
-    .wb_dat_i	(wb_m2s_mymem_dat),
-    .wb_we		(wb_m2s_mymem_we),
+myblkram mymemA(
+    .wb_adr		(wb_m2s_mymemA_adr[10:2]),
+    .wb_stb		(wb_m2s_mymemA_stb),
+    .wb_cyc		(wb_m2s_mymemA_cyc),
+    .wb_ack		(wb_s2m_mymemA_ack),
+    .wb_dat_o	(wb_s2m_mymemA_dat),
+    .wb_dat_i	(wb_m2s_mymemA_dat),
+    .wb_we		(wb_m2s_mymemA_we),
     .wb_clk		(CLK),
 	 .wb_rst		(~wb_rst),
-	 .wb_sel		(wb_m2s_mymem_sel),
+	 .wb_sel		(wb_m2s_mymemA_sel),
     .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DAT_A),
     .gtp_vld	(1'b1),
-    .cntrl_run (REG_OUTPUT[8]),
-    .cntrl_ready (REG_INPUT[8])
+    .cntrl_run (REG_OUTPUT[16]),
+    .cntrl_ready ()
     );
 
-	assign wb_s2m_mymem_err = 0;
-	assign wb_s2m_mymem_rty = 0;	
+	assign wb_s2m_mymemA_err = 0;
+	assign wb_s2m_mymemA_rty = 0;	
+
+myblkram mymemB(
+    .wb_adr		(wb_m2s_mymemB_adr[10:2]),
+    .wb_stb		(wb_m2s_mymemB_stb),
+    .wb_cyc		(wb_m2s_mymemB_cyc),
+    .wb_ack		(wb_s2m_mymemB_ack),
+    .wb_dat_o	(wb_s2m_mymemB_dat),
+    .wb_dat_i	(wb_m2s_mymemB_dat),
+    .wb_we		(wb_m2s_mymemB_we),
+    .wb_clk		(CLK),
+	 .wb_rst		(~wb_rst),
+	 .wb_sel		(wb_m2s_mymemB_sel),
+    .gtp_clk	(CLK125),
+    .gtp_dat	(GTP_DAT_B),
+    .gtp_vld	(1'b1),
+    .cntrl_run (REG_OUTPUT[17]),
+    .cntrl_ready ()
+    );
+
+	assign wb_s2m_mymemB_err = 0;
+	assign wb_s2m_mymemB_rty = 0;	
+
+myblkram mymemC(
+    .wb_adr		(wb_m2s_mymemC_adr[10:2]),
+    .wb_stb		(wb_m2s_mymemC_stb),
+    .wb_cyc		(wb_m2s_mymemC_cyc),
+    .wb_ack		(wb_s2m_mymemC_ack),
+    .wb_dat_o	(wb_s2m_mymemC_dat),
+    .wb_dat_i	(wb_m2s_mymemC_dat),
+    .wb_we		(wb_m2s_mymemC_we),
+    .wb_clk		(CLK),
+	 .wb_rst		(~wb_rst),
+	 .wb_sel		(wb_m2s_mymemC_sel),
+    .gtp_clk	(CLK125),
+    .gtp_dat	(GTP_DAT_C),
+    .gtp_vld	(1'b1),
+    .cntrl_run (REG_OUTPUT[18]),
+    .cntrl_ready ()
+    );
+
+	assign wb_s2m_mymemC_err = 0;
+	assign wb_s2m_mymemC_rty = 0;	
+
+myblkram mymemD(
+    .wb_adr		(wb_m2s_mymemD_adr[10:2]),
+    .wb_stb		(wb_m2s_mymemD_stb),
+    .wb_cyc		(wb_m2s_mymemD_cyc),
+    .wb_ack		(wb_s2m_mymemD_ack),
+    .wb_dat_o	(wb_s2m_mymemD_dat),
+    .wb_dat_i	(wb_m2s_mymemD_dat),
+    .wb_we		(wb_m2s_mymemD_we),
+    .wb_clk		(CLK),
+	 .wb_rst		(~wb_rst),
+	 .wb_sel		(wb_m2s_mymemD_sel),
+    .gtp_clk	(CLK125),
+    .gtp_dat	(GTP_DAT_D),
+    .gtp_vld	(1'b1),
+    .cntrl_run (REG_OUTPUT[19]),
+    .cntrl_ready ()
+    );
+
+	assign wb_s2m_mymemD_err = 0;
+	assign wb_s2m_mymemD_rty = 0;	
 
 	always @(posedge CLK) begin
 		if (!once) greset <= 0;
@@ -629,6 +701,36 @@ myblkram mymem(
 	always @(posedge CLK125) begin
 		CNT <= CNT + 1;
 		if (CNT == 27'h7FFFFFF) once = 0;
+//		triga <= GTP_DISPERR_A | GTP_DISPERR_B | GTP_DISPERR_C | GTP_DISPERR_D | ICX[0] | ICX [4] | ICX[8] | ICX[12];
+//		trigb <= GTP_NOTINTAB_A | GTP_NOTINTAB_B | GTP_NOTINTAB_C | GTP_NOTINTAB_D | ICX[1] | ICX [5] | ICX[9] | ICX[13];
 	end;
+
+   assign REG_INPUT = {1'b0, GTP_ALIGNED_D, GTP_NOTINTAB_D, GTP_DISPERR_D, 1'b0, GTP_ALIGNED_C, GTP_NOTINTAB_C, GTP_DISPERR_C, 1'b0, GTP_ALIGNED_B, GTP_NOTINTAB_B, GTP_DISPERR_B, 1'b0, GTP_ALIGNED_A, GTP_NOTINTAB_A, GTP_DISPERR_A, ICX};
+//	assign LED[3] = GTP_ALIGNED_A & GTP_ALIGNED_B & GTP_ALIGNED_C & GTP_ALIGNED_D & ICX[2] & ICX[6] & ICX[10] & ICX[14]; 
+
+checkser ckserA(
+	.data (GTP_DAT_A),
+	.clk	(CLK125),
+	.err	(triga)
+);
+
+checkser ckserB(
+	.data (GTP_DAT_B),
+	.clk	(CLK125),
+	.err	(trigb)
+);
+
+checkser ckserC(
+	.data (GTP_DAT_C),
+	.clk	(CLK125),
+	.err	(trigc)
+);
+
+checkser ckserD(
+	.data (GTP_DAT_D),
+	.clk	(CLK125),
+	.err	(trigd)
+);
+
 
 endmodule

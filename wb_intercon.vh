@@ -24,6 +24,42 @@ wire [31:0] wb_s2m_simple_gpio_dat;
 wire        wb_s2m_simple_gpio_ack;
 wire        wb_s2m_simple_gpio_err;
 wire        wb_s2m_simple_gpio_rty;
+wire [31:0] wb_m2s_mymemA_adr;
+wire [31:0] wb_m2s_mymemA_dat;
+wire  [3:0] wb_m2s_mymemA_sel;
+wire        wb_m2s_mymemA_we;
+wire        wb_m2s_mymemA_cyc;
+wire        wb_m2s_mymemA_stb;
+wire  [2:0] wb_m2s_mymemA_cti;
+wire  [1:0] wb_m2s_mymemA_bte;
+wire [31:0] wb_s2m_mymemA_dat;
+wire        wb_s2m_mymemA_ack;
+wire        wb_s2m_mymemA_err;
+wire        wb_s2m_mymemA_rty;
+wire [31:0] wb_m2s_mymemB_adr;
+wire [31:0] wb_m2s_mymemB_dat;
+wire  [3:0] wb_m2s_mymemB_sel;
+wire        wb_m2s_mymemB_we;
+wire        wb_m2s_mymemB_cyc;
+wire        wb_m2s_mymemB_stb;
+wire  [2:0] wb_m2s_mymemB_cti;
+wire  [1:0] wb_m2s_mymemB_bte;
+wire [31:0] wb_s2m_mymemB_dat;
+wire        wb_s2m_mymemB_ack;
+wire        wb_s2m_mymemB_err;
+wire        wb_s2m_mymemB_rty;
+wire [31:0] wb_m2s_mymemC_adr;
+wire [31:0] wb_m2s_mymemC_dat;
+wire  [3:0] wb_m2s_mymemC_sel;
+wire        wb_m2s_mymemC_we;
+wire        wb_m2s_mymemC_cyc;
+wire        wb_m2s_mymemC_stb;
+wire  [2:0] wb_m2s_mymemC_cti;
+wire  [1:0] wb_m2s_mymemC_bte;
+wire [31:0] wb_s2m_mymemC_dat;
+wire        wb_s2m_mymemC_ack;
+wire        wb_s2m_mymemC_err;
+wire        wb_s2m_mymemC_rty;
 wire [31:0] wb_m2s_i2c_ms_cbuf_adr;
 wire  [7:0] wb_m2s_i2c_ms_cbuf_dat;
 wire  [3:0] wb_m2s_i2c_ms_cbuf_sel;
@@ -36,18 +72,18 @@ wire  [7:0] wb_s2m_i2c_ms_cbuf_dat;
 wire        wb_s2m_i2c_ms_cbuf_ack;
 wire        wb_s2m_i2c_ms_cbuf_err;
 wire        wb_s2m_i2c_ms_cbuf_rty;
-wire [31:0] wb_m2s_mymem_adr;
-wire [31:0] wb_m2s_mymem_dat;
-wire  [3:0] wb_m2s_mymem_sel;
-wire        wb_m2s_mymem_we;
-wire        wb_m2s_mymem_cyc;
-wire        wb_m2s_mymem_stb;
-wire  [2:0] wb_m2s_mymem_cti;
-wire  [1:0] wb_m2s_mymem_bte;
-wire [31:0] wb_s2m_mymem_dat;
-wire        wb_s2m_mymem_ack;
-wire        wb_s2m_mymem_err;
-wire        wb_s2m_mymem_rty;
+wire [31:0] wb_m2s_mymemD_adr;
+wire [31:0] wb_m2s_mymemD_dat;
+wire  [3:0] wb_m2s_mymemD_sel;
+wire        wb_m2s_mymemD_we;
+wire        wb_m2s_mymemD_cyc;
+wire        wb_m2s_mymemD_stb;
+wire  [2:0] wb_m2s_mymemD_cti;
+wire  [1:0] wb_m2s_mymemD_bte;
+wire [31:0] wb_s2m_mymemD_dat;
+wire        wb_s2m_mymemD_ack;
+wire        wb_s2m_mymemD_err;
+wire        wb_s2m_mymemD_rty;
 
 wb_intercon wb_intercon0
    (.wb_clk_i                (wb_clk),
@@ -76,6 +112,42 @@ wb_intercon wb_intercon0
     .wb_simple_gpio_ack_i    (wb_s2m_simple_gpio_ack),
     .wb_simple_gpio_err_i    (wb_s2m_simple_gpio_err),
     .wb_simple_gpio_rty_i    (wb_s2m_simple_gpio_rty),
+    .wb_mymemA_adr_o         (wb_m2s_mymemA_adr),
+    .wb_mymemA_dat_o         (wb_m2s_mymemA_dat),
+    .wb_mymemA_sel_o         (wb_m2s_mymemA_sel),
+    .wb_mymemA_we_o          (wb_m2s_mymemA_we),
+    .wb_mymemA_cyc_o         (wb_m2s_mymemA_cyc),
+    .wb_mymemA_stb_o         (wb_m2s_mymemA_stb),
+    .wb_mymemA_cti_o         (wb_m2s_mymemA_cti),
+    .wb_mymemA_bte_o         (wb_m2s_mymemA_bte),
+    .wb_mymemA_dat_i         (wb_s2m_mymemA_dat),
+    .wb_mymemA_ack_i         (wb_s2m_mymemA_ack),
+    .wb_mymemA_err_i         (wb_s2m_mymemA_err),
+    .wb_mymemA_rty_i         (wb_s2m_mymemA_rty),
+    .wb_mymemB_adr_o         (wb_m2s_mymemB_adr),
+    .wb_mymemB_dat_o         (wb_m2s_mymemB_dat),
+    .wb_mymemB_sel_o         (wb_m2s_mymemB_sel),
+    .wb_mymemB_we_o          (wb_m2s_mymemB_we),
+    .wb_mymemB_cyc_o         (wb_m2s_mymemB_cyc),
+    .wb_mymemB_stb_o         (wb_m2s_mymemB_stb),
+    .wb_mymemB_cti_o         (wb_m2s_mymemB_cti),
+    .wb_mymemB_bte_o         (wb_m2s_mymemB_bte),
+    .wb_mymemB_dat_i         (wb_s2m_mymemB_dat),
+    .wb_mymemB_ack_i         (wb_s2m_mymemB_ack),
+    .wb_mymemB_err_i         (wb_s2m_mymemB_err),
+    .wb_mymemB_rty_i         (wb_s2m_mymemB_rty),
+    .wb_mymemC_adr_o         (wb_m2s_mymemC_adr),
+    .wb_mymemC_dat_o         (wb_m2s_mymemC_dat),
+    .wb_mymemC_sel_o         (wb_m2s_mymemC_sel),
+    .wb_mymemC_we_o          (wb_m2s_mymemC_we),
+    .wb_mymemC_cyc_o         (wb_m2s_mymemC_cyc),
+    .wb_mymemC_stb_o         (wb_m2s_mymemC_stb),
+    .wb_mymemC_cti_o         (wb_m2s_mymemC_cti),
+    .wb_mymemC_bte_o         (wb_m2s_mymemC_bte),
+    .wb_mymemC_dat_i         (wb_s2m_mymemC_dat),
+    .wb_mymemC_ack_i         (wb_s2m_mymemC_ack),
+    .wb_mymemC_err_i         (wb_s2m_mymemC_err),
+    .wb_mymemC_rty_i         (wb_s2m_mymemC_rty),
     .wb_i2c_ms_cbuf_adr_o    (wb_m2s_i2c_ms_cbuf_adr),
     .wb_i2c_ms_cbuf_dat_o    (wb_m2s_i2c_ms_cbuf_dat),
     .wb_i2c_ms_cbuf_sel_o    (wb_m2s_i2c_ms_cbuf_sel),
@@ -88,16 +160,16 @@ wb_intercon wb_intercon0
     .wb_i2c_ms_cbuf_ack_i    (wb_s2m_i2c_ms_cbuf_ack),
     .wb_i2c_ms_cbuf_err_i    (wb_s2m_i2c_ms_cbuf_err),
     .wb_i2c_ms_cbuf_rty_i    (wb_s2m_i2c_ms_cbuf_rty),
-    .wb_mymem_adr_o          (wb_m2s_mymem_adr),
-    .wb_mymem_dat_o          (wb_m2s_mymem_dat),
-    .wb_mymem_sel_o          (wb_m2s_mymem_sel),
-    .wb_mymem_we_o           (wb_m2s_mymem_we),
-    .wb_mymem_cyc_o          (wb_m2s_mymem_cyc),
-    .wb_mymem_stb_o          (wb_m2s_mymem_stb),
-    .wb_mymem_cti_o          (wb_m2s_mymem_cti),
-    .wb_mymem_bte_o          (wb_m2s_mymem_bte),
-    .wb_mymem_dat_i          (wb_s2m_mymem_dat),
-    .wb_mymem_ack_i          (wb_s2m_mymem_ack),
-    .wb_mymem_err_i          (wb_s2m_mymem_err),
-    .wb_mymem_rty_i          (wb_s2m_mymem_rty));
+    .wb_mymemD_adr_o         (wb_m2s_mymemD_adr),
+    .wb_mymemD_dat_o         (wb_m2s_mymemD_dat),
+    .wb_mymemD_sel_o         (wb_m2s_mymemD_sel),
+    .wb_mymemD_we_o          (wb_m2s_mymemD_we),
+    .wb_mymemD_cyc_o         (wb_m2s_mymemD_cyc),
+    .wb_mymemD_stb_o         (wb_m2s_mymemD_stb),
+    .wb_mymemD_cti_o         (wb_m2s_mymemD_cti),
+    .wb_mymemD_bte_o         (wb_m2s_mymemD_bte),
+    .wb_mymemD_dat_i         (wb_s2m_mymemD_dat),
+    .wb_mymemD_ack_i         (wb_s2m_mymemD_ack),
+    .wb_mymemD_err_i         (wb_s2m_mymemD_err),
+    .wb_mymemD_rty_i         (wb_s2m_mymemD_rty));
 
