@@ -187,7 +187,7 @@ module fpga_main(
 	wire         CBUFSDA_en;
 	wire			 CBUFSCL_en;
 	
-	wire [31:0]  REG_INPUT;
+	reg [31:0]  REG_INPUT;
 	wire [31:0]  REG_OUTPUT;
 	
 	wire [15:0]  GTP_DAT_A;
@@ -199,7 +199,6 @@ module fpga_main(
 
 	assign comma = (CNT[7:0] == 8'hBC) ? 1'b1 : 1'b0;
 
-// 	assign LED[0] = (REG_OUTPUT[0]) ? CNT[26] : CNT[23];
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
 	assign MEMCKE = 1'bz;
@@ -230,7 +229,7 @@ module fpga_main(
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
 
-	assign TP[5:1] = {CBUFSDA_o, CBUFSCL_o, CBUFSDA_en, CBUFSCL_en, 1'b0};
+	assign TP[5:1] = {2'b00, ICX[4:2]};
 
     //--------------------------- The GTP Wrapper -----------------------------
     s6_gtpwizard_v1_11 #
@@ -591,7 +590,7 @@ vme (
 		.wb_clk_i  (CLK), 
 		.wb_rst_i  (~wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
-		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[6:4]), 
+		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[4:2]), 
 		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat), 
 		.wb_dat_o  (wb_s2m_i2c_ms_cbuf_dat),
 		.wb_we_i   (wb_m2s_i2c_ms_cbuf_we),
@@ -701,13 +700,16 @@ myblkram mymemD(
 	always @(posedge CLK125) begin
 		CNT <= CNT + 1;
 		if (CNT == 27'h7FFFFFF) once = 0;
-//		triga <= GTP_DISPERR_A | GTP_DISPERR_B | GTP_DISPERR_C | GTP_DISPERR_D | ICX[0] | ICX [4] | ICX[8] | ICX[12];
-//		trigb <= GTP_NOTINTAB_A | GTP_NOTINTAB_B | GTP_NOTINTAB_C | GTP_NOTINTAB_D | ICX[1] | ICX [5] | ICX[9] | ICX[13];
 	end;
 
-   assign REG_INPUT = {1'b0, GTP_ALIGNED_D, GTP_NOTINTAB_D, GTP_DISPERR_D, 1'b0, GTP_ALIGNED_C, GTP_NOTINTAB_C, GTP_DISPERR_C, 1'b0, GTP_ALIGNED_B, GTP_NOTINTAB_B, GTP_DISPERR_B, 1'b0, GTP_ALIGNED_A, GTP_NOTINTAB_A, GTP_DISPERR_A, ICX};
-//	assign LED[3] = GTP_ALIGNED_A & GTP_ALIGNED_B & GTP_ALIGNED_C & GTP_ALIGNED_D & ICX[2] & ICX[6] & ICX[10] & ICX[14]; 
-
+	always @(posedge CLK125) begin
+		REG_INPUT <= {16'h0000,
+		  1'b0, GTP_ALIGNED_D, GTP_NOTINTAB_D, GTP_DISPERR_D, 
+		  1'b0, GTP_ALIGNED_C, GTP_NOTINTAB_C, GTP_DISPERR_C, 
+		  1'b0, GTP_ALIGNED_B, GTP_NOTINTAB_B, GTP_DISPERR_B, 
+		  1'b0, GTP_ALIGNED_A, GTP_NOTINTAB_A, GTP_DISPERR_A};
+	end
+	
 checkser ckserA(
 	.data (GTP_DAT_A),
 	.clk	(CLK125),
@@ -732,5 +734,50 @@ checkser ckserD(
 	.err	(trigd)
 );
 
+wire [6:0] empty_spi_csa;
+
+xspi_master  #(
+	.CLK_DIV (49),
+	.CLK_POL (1'b1)
+) dac_spi (
+	 .wb_rst    (~wb_rst),
+    .wb_clk    (CLK),
+    .wb_we     (wb_m2s_dac_spi_we),
+    .wb_dat_i  (wb_m2s_dac_spi_dat[15:0]),
+    .wb_dat_o  (wb_s2m_dac_spi_dat[15:0]),
+    .wb_cyc		(wb_m2s_dac_spi_cyc),
+    .wb_stb		(wb_m2s_dac_spi_stb),
+    .wb_ack		(wb_s2m_dac_spi_ack),
+    .spi_dat   (BDACD),
+    .spi_clk   (BDACC),
+    .spi_cs    ({empty_spi_csa, BDACCS}),
+    .wb_adr		(wb_m2s_dac_spi_adr[2])
+);
+	assign wb_s2m_dac_spi_err = 0;
+	assign wb_s2m_dac_spi_rty = 0;	
+	assign wb_s2m_dac_spi_dat[31:16] = 0;	
+
+wire [6:0] empty_spi_csb;
+
+xspi_master  #(
+	.CLK_DIV (49),
+	.CLK_POL (1'b0)
+) icx_spi (
+	 .wb_rst    (~wb_rst),
+    .wb_clk    (CLK),
+    .wb_we     (wb_m2s_icx_spi_we),
+    .wb_dat_i  (wb_m2s_icx_spi_dat[15:0]),
+    .wb_dat_o  (wb_s2m_icx_spi_dat[15:0]),
+    .wb_cyc		(wb_m2s_icx_spi_cyc),
+    .wb_stb		(wb_m2s_icx_spi_stb),
+    .wb_ack		(wb_s2m_icx_spi_ack),
+    .spi_dat   (ICX[3]),
+    .spi_clk   (ICX[4]),
+    .spi_cs    ({empty_spi_csb, ICX[2]}),
+    .wb_adr		(wb_m2s_icx_spi_adr[2])
+);
+	assign wb_s2m_icx_spi_err = 0;
+	assign wb_s2m_icx_spi_rty = 0;	
+	assign wb_s2m_icx_spi_dat[31:16] = 0;	
 
 endmodule

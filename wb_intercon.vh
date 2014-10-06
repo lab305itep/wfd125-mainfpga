@@ -12,6 +12,18 @@ wire [31:0] wb_s2m_VME64xCore_Top_dat;
 wire        wb_s2m_VME64xCore_Top_ack;
 wire        wb_s2m_VME64xCore_Top_err;
 wire        wb_s2m_VME64xCore_Top_rty;
+wire [31:0] wb_m2s_icx_spi_adr;
+wire [31:0] wb_m2s_icx_spi_dat;
+wire  [3:0] wb_m2s_icx_spi_sel;
+wire        wb_m2s_icx_spi_we;
+wire        wb_m2s_icx_spi_cyc;
+wire        wb_m2s_icx_spi_stb;
+wire  [2:0] wb_m2s_icx_spi_cti;
+wire  [1:0] wb_m2s_icx_spi_bte;
+wire [31:0] wb_s2m_icx_spi_dat;
+wire        wb_s2m_icx_spi_ack;
+wire        wb_s2m_icx_spi_err;
+wire        wb_s2m_icx_spi_rty;
 wire [31:0] wb_m2s_simple_gpio_adr;
 wire [31:0] wb_m2s_simple_gpio_dat;
 wire  [3:0] wb_m2s_simple_gpio_sel;
@@ -84,6 +96,18 @@ wire [31:0] wb_s2m_mymemD_dat;
 wire        wb_s2m_mymemD_ack;
 wire        wb_s2m_mymemD_err;
 wire        wb_s2m_mymemD_rty;
+wire [31:0] wb_m2s_dac_spi_adr;
+wire [31:0] wb_m2s_dac_spi_dat;
+wire  [3:0] wb_m2s_dac_spi_sel;
+wire        wb_m2s_dac_spi_we;
+wire        wb_m2s_dac_spi_cyc;
+wire        wb_m2s_dac_spi_stb;
+wire  [2:0] wb_m2s_dac_spi_cti;
+wire  [1:0] wb_m2s_dac_spi_bte;
+wire [31:0] wb_s2m_dac_spi_dat;
+wire        wb_s2m_dac_spi_ack;
+wire        wb_s2m_dac_spi_err;
+wire        wb_s2m_dac_spi_rty;
 
 wb_intercon wb_intercon0
    (.wb_clk_i                (wb_clk),
@@ -100,6 +124,18 @@ wb_intercon wb_intercon0
     .wb_VME64xCore_Top_ack_o (wb_s2m_VME64xCore_Top_ack),
     .wb_VME64xCore_Top_err_o (wb_s2m_VME64xCore_Top_err),
     .wb_VME64xCore_Top_rty_o (wb_s2m_VME64xCore_Top_rty),
+    .wb_icx_spi_adr_o        (wb_m2s_icx_spi_adr),
+    .wb_icx_spi_dat_o        (wb_m2s_icx_spi_dat),
+    .wb_icx_spi_sel_o        (wb_m2s_icx_spi_sel),
+    .wb_icx_spi_we_o         (wb_m2s_icx_spi_we),
+    .wb_icx_spi_cyc_o        (wb_m2s_icx_spi_cyc),
+    .wb_icx_spi_stb_o        (wb_m2s_icx_spi_stb),
+    .wb_icx_spi_cti_o        (wb_m2s_icx_spi_cti),
+    .wb_icx_spi_bte_o        (wb_m2s_icx_spi_bte),
+    .wb_icx_spi_dat_i        (wb_s2m_icx_spi_dat),
+    .wb_icx_spi_ack_i        (wb_s2m_icx_spi_ack),
+    .wb_icx_spi_err_i        (wb_s2m_icx_spi_err),
+    .wb_icx_spi_rty_i        (wb_s2m_icx_spi_rty),
     .wb_simple_gpio_adr_o    (wb_m2s_simple_gpio_adr),
     .wb_simple_gpio_dat_o    (wb_m2s_simple_gpio_dat),
     .wb_simple_gpio_sel_o    (wb_m2s_simple_gpio_sel),
@@ -171,5 +207,17 @@ wb_intercon wb_intercon0
     .wb_mymemD_dat_i         (wb_s2m_mymemD_dat),
     .wb_mymemD_ack_i         (wb_s2m_mymemD_ack),
     .wb_mymemD_err_i         (wb_s2m_mymemD_err),
-    .wb_mymemD_rty_i         (wb_s2m_mymemD_rty));
+    .wb_mymemD_rty_i         (wb_s2m_mymemD_rty),
+    .wb_dac_spi_adr_o        (wb_m2s_dac_spi_adr),
+    .wb_dac_spi_dat_o        (wb_m2s_dac_spi_dat),
+    .wb_dac_spi_sel_o        (wb_m2s_dac_spi_sel),
+    .wb_dac_spi_we_o         (wb_m2s_dac_spi_we),
+    .wb_dac_spi_cyc_o        (wb_m2s_dac_spi_cyc),
+    .wb_dac_spi_stb_o        (wb_m2s_dac_spi_stb),
+    .wb_dac_spi_cti_o        (wb_m2s_dac_spi_cti),
+    .wb_dac_spi_bte_o        (wb_m2s_dac_spi_bte),
+    .wb_dac_spi_dat_i        (wb_s2m_dac_spi_dat),
+    .wb_dac_spi_ack_i        (wb_s2m_dac_spi_ack),
+    .wb_dac_spi_err_i        (wb_s2m_dac_spi_err),
+    .wb_dac_spi_rty_i        (wb_s2m_dac_spi_rty));
 

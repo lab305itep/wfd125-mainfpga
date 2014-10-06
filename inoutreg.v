@@ -31,11 +31,13 @@ module inoutreg(
     input [31:0] reg_i
     );
 
-	assign wb_dat_o = (wb_adr) ? reg_o : reg_i;
+	reg [31:0] reg_ii;
+	assign wb_dat_o = (wb_adr) ? reg_o : reg_ii;
 	
 	always @ (posedge wb_clk) begin
 		wb_ack <= #1 wb_cyc & wb_stb & !wb_ack;
 		if (wb_cyc & wb_stb & wb_we & wb_adr) reg_o <= wb_dat_i;
+		reg_ii <= reg_i;
 	end
 
 endmodule

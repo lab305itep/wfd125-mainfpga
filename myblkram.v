@@ -41,6 +41,7 @@ module myblkram(
 	 reg [9:0] ADDRB;
 	 reg cntrl_run_d;
 	 reg cntrl_run_dd;
+	 reg gtp_rst;
 
 
 	   RAMB16BWER #(
@@ -113,7 +114,8 @@ module myblkram(
 	always @ (posedge gtp_clk) begin
 		cntrl_run_d <= cntrl_run;
 		cntrl_run_dd <= cntrl_run_d;
-		if ((wb_rst) || (cntrl_run_d & !cntrl_run_dd)) begin
+		gtp_rst <= wb_rst;
+		if ((gtp_rst) || (cntrl_run_d & !cntrl_run_dd)) begin
 			cntrl_ready <= 0;
 			ADDRB <= 0;
 			WEB <= 2'b00;
