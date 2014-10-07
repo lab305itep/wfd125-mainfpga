@@ -228,6 +228,8 @@ module fpga_main(
    assign CLKENFP = 1'bz;
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
+	
+	assign ICX[5] = REG_OUTPUT[8];	// WB reset to channel FPGA
 
 	assign TP[5:1] = {2'b00, ICX[4:2]};
 
