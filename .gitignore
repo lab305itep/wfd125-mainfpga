@@ -1,5 +1,6 @@
 _ngo/
 _xmsgs/
+*.pyc
 *.bgn
 *.bld
 *.cmd_log
