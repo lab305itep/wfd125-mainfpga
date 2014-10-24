@@ -142,7 +142,7 @@ module fpga_main(
 	wire         wb_rst;
 `include "wb_intercon.vh"
 
-	wire CLK;
+	wire CLK125;
 	wire [3:0] trig;
 	reg once = 1;
 	reg greset = 1;
@@ -215,13 +215,17 @@ module fpga_main(
 	
 	assign ICX[5] = REG_OUTPUT[8];	// WB reset to channel FPGA
 
-	gtprcv4 UGTP (
+	gtprcv4 # (.WB_DIVIDE(3), .WB_MULTIPLY(5))
+	UGTP (
 		.rxpin	({RX3, RX2, RX1, RX0}),	// input data pins
 		.txpin	({TX3, TX2, TX1, TX0}),	// output data pins
 		.clkpin	(RCLK),						// input clock pins - tile0 package pins A10/B10
-		.clkout	(CLK),						// output 125 MHz clock
-		.data		(GTP_DATA),					// output data 4x16bit
-		.charisk	(GTP_CHARISK), 			// output char is K-char signature
+		.clkout	(CLK125),					// output 125 MHz clock
+		.clkwb   (wb_clk),					// output clock for wishbone
+		.data_o		(GTP_DATA),				// output data 4x16bit
+		.charisk_o	(GTP_CHARISK), 		// output char is K-char signature
+		.data_i     (64'h00BC00BC00BC00BC),
+		.charisk_i  (4'b1111),
 		.locked  ()
     );
 
@@ -240,8 +244,7 @@ module fpga_main(
 	assign DDIR          = (VME_DATA_DIR_o) ? 1'b1 : 1'bz;
 	assign VME_DATA_i    = XD;
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
-	assign wb_clk = CLK;
-	assign wb_rst = ~greset;
+	assign wb_rst 			= ~greset;
 	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
 VME64xCore_Top #(
@@ -254,7 +257,7 @@ VME64xCore_Top #(
     .g_ProgramID      (1)
 )
 vme (
-	.clk_i(CLK),
+	.clk_i(wb_clk),
 	.rst_n_i(wb_rst),
 
 	.VME_AS_n_i       (XAS),
@@ -307,7 +310,7 @@ generate
 	for (i = 0; i < 4; i = i + 1) begin : GLED
 		ledengine ULED
 		(
-			.clk	(CLK),
+			.clk	(CLK125),
 			.led  (LED[i]),
 			.trig (trig[i])
 		);
@@ -317,7 +320,7 @@ endgenerate
 	assign wb_s2m_simple_gpio_err = 0;
 	
 	inoutreg UREG (
-		.wb_clk (CLK), 
+		.wb_clk (wb_clk), 
 		.wb_cyc (wb_m2s_simple_gpio_cyc), 
 		.wb_stb (wb_m2s_simple_gpio_stb), 
 		.wb_adr (wb_m2s_simple_gpio_adr[2]), 
@@ -333,7 +336,7 @@ endgenerate
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 
    i2c_master_slave UI2C (
-		.wb_clk_i  (CLK), 
+		.wb_clk_i  (wb_clk), 
 		.wb_rst_i  (~wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
 		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[4:2]), 
@@ -357,7 +360,7 @@ endgenerate
 
 	generate
 	for (i = 0; i < 4; i = i + 1) begin : GCHAR
-		always @ (posedge CLK) begin
+		always @ (posedge CLK125) begin
 			if (GTP_CHARISK[i]) MEM_START[i] <= REG_OUTPUT[16+i];
 		end
 	end
@@ -371,10 +374,10 @@ myblkram mymemA(
     .wb_dat_o	(wb_s2m_mymemA_dat),
     .wb_dat_i	(wb_m2s_mymemA_dat),
     .wb_we		(wb_m2s_mymemA_we),
-    .wb_clk		(CLK),
+    .wb_clk		(wb_clk),
 	 .wb_rst		(~wb_rst),
 	 .wb_sel		(wb_m2s_mymemA_sel),
-    .gtp_clk	(CLK),
+    .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DATA[15:0]),
     .gtp_vld	(!GTP_CHARISK[0]),
     .cntrl_run (MEM_START[0]),
@@ -392,10 +395,10 @@ myblkram mymemB(
     .wb_dat_o	(wb_s2m_mymemB_dat),
     .wb_dat_i	(wb_m2s_mymemB_dat),
     .wb_we		(wb_m2s_mymemB_we),
-    .wb_clk		(CLK),
+    .wb_clk		(wb_clk),
 	 .wb_rst		(~wb_rst),
 	 .wb_sel		(wb_m2s_mymemB_sel),
-    .gtp_clk	(CLK),
+    .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DATA[31:16]),
     .gtp_vld	(!GTP_CHARISK[1]),
     .cntrl_run (MEM_START[1]),
@@ -413,10 +416,10 @@ myblkram mymemC(
     .wb_dat_o	(wb_s2m_mymemC_dat),
     .wb_dat_i	(wb_m2s_mymemC_dat),
     .wb_we		(wb_m2s_mymemC_we),
-    .wb_clk		(CLK),
+    .wb_clk		(wb_clk),
 	 .wb_rst		(~wb_rst),
 	 .wb_sel		(wb_m2s_mymemC_sel),
-    .gtp_clk	(CLK),
+    .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DATA[47:32]),
     .gtp_vld	(!GTP_CHARISK[2]),
     .cntrl_run (MEM_START[2]),
@@ -434,10 +437,10 @@ myblkram mymemD(
     .wb_dat_o	(wb_s2m_mymemD_dat),
     .wb_dat_i	(wb_m2s_mymemD_dat),
     .wb_we		(wb_m2s_mymemD_we),
-    .wb_clk		(CLK),
+    .wb_clk		(wb_clk),
 	 .wb_rst		(~wb_rst),
 	 .wb_sel		(wb_m2s_mymemD_sel),
-    .gtp_clk	(CLK),
+    .gtp_clk	(CLK125),
     .gtp_dat	(GTP_DATA[63:48]),
     .gtp_vld	(!GTP_CHARISK[3]),
     .cntrl_run (MEM_START[3]),
@@ -447,7 +450,7 @@ myblkram mymemD(
 	assign wb_s2m_mymemD_err = 0;
 	assign wb_s2m_mymemD_rty = 0;	
 
-	always @(posedge CLK) begin
+	always @(posedge CLK125) begin
 		if (!once) greset <= !C2X[7];
 		CNT <= CNT + 1;
 		if (CNT == 27'h7FFFFFF) once = 0;
@@ -460,7 +463,7 @@ xspi_master  #(
 	.CLK_POL (1'b1)
 ) dac_spi (
 	 .wb_rst    (~wb_rst),
-    .wb_clk    (CLK),
+    .wb_clk    (wb_clk),
     .wb_we     (wb_m2s_dac_spi_we),
     .wb_dat_i  (wb_m2s_dac_spi_dat[15:0]),
     .wb_dat_o  (wb_s2m_dac_spi_dat[15:0]),
@@ -483,7 +486,7 @@ xspi_master  #(
 	.CLK_POL (1'b0)
 ) icx_spi (
 	 .wb_rst    (~wb_rst),
-    .wb_clk    (CLK),
+    .wb_clk    (wb_clk),
     .wb_we     (wb_m2s_icx_spi_we),
     .wb_dat_i  (wb_m2s_icx_spi_dat[15:0]),
     .wb_dat_o  (wb_s2m_icx_spi_dat[15:0]),

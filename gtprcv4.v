@@ -9,7 +9,7 @@
 // Project Name:   fpga_main
 // Target Devices: XC6LXT
 // Tool versions: 
-// Description:    get data and clock via S6 GTP transiver module
+// Description:    get and send data and get clock via S6 GTP transiver module
 //
 // Dependencies: 
 //
@@ -23,12 +23,18 @@ module gtprcv4(
     output [7:0] txpin,		// output data pins
     input [1:0] clkpin,		// input clock pins - tile0 package pins A10/B10
     output clkout,			// output 125 MHz clock
-    output [63:0] data,		// output data 4x16bit
-    output [3:0] charisk,	// output char is K-char signature
+	 output clkwb,				// output clock for wishbone
+    output [63:0] data_o,	// output data 4x16bit
+    output [3:0] charisk_o,// output char is K-char signature
+    input [63:0] data_i,	// output data 4x16bit
+    input [3:0] charisk_i, // output char is K-char signature	 
 	 output locked				// DCM here is locked
     );
 
-	 wire [7:0] charisk_o;
+	 parameter WB_DIVIDE = 5;		// parameters for c clkwb generation
+	 parameter WB_MULTIPLY = 4;	// parameters for c clkwb generation - 100 MHz default
+
+	 wire [7:0] kchar_o;
 	 wire refclk_i;	// 125 MHz
 	 wire gtpclk_o;	// 125 MHz
 	 wire gclk_o;		// 125 MHz
@@ -40,7 +46,7 @@ module gtprcv4(
 	 genvar i;
 	 generate
 		for (i = 0; i < 4; i = i + 1) begin : LCharisk
-			assign charisk[i] = charisk_o[2*i] | charisk_o[2*i+1];
+			assign charisk_o[i] = kchar_o[2*i] | kchar_o[2*i+1];
 		end
 	 endgenerate
 	 
@@ -71,8 +77,8 @@ module gtprcv4(
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
         .TILE0_RXCHARISCOMMA0_OUT       (),
         .TILE0_RXCHARISCOMMA1_OUT       (),
-        .TILE0_RXCHARISK0_OUT           (charisk_o[1:0]),
-        .TILE0_RXCHARISK1_OUT           (charisk_o[3:2]),
+        .TILE0_RXCHARISK0_OUT           (kchar_o[1:0]),
+        .TILE0_RXCHARISK1_OUT           (kchar_o[3:2]),
         .TILE0_RXDISPERR0_OUT           (),
         .TILE0_RXDISPERR1_OUT           (),
         .TILE0_RXNOTINTABLE0_OUT        (),
@@ -87,8 +93,8 @@ module gtprcv4(
         .TILE0_RXENPCOMMAALIGN0_IN      (1'b1),
         .TILE0_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
-        .TILE0_RXDATA0_OUT              (data[15:0]),
-        .TILE0_RXDATA1_OUT              (data[31:16]),
+        .TILE0_RXDATA0_OUT              (data_o[15:0]),
+        .TILE0_RXDATA1_OUT              (data_o[31:16]),
         .TILE0_RXUSRCLK0_IN             (CLK250),
         .TILE0_RXUSRCLK1_IN             (CLK250),
         .TILE0_RXUSRCLK20_IN            (CLK125),
@@ -105,11 +111,11 @@ module gtprcv4(
         .TILE0_GTPCLKOUT0_OUT           ({dummy_0, gtpclk_o}),
         .TILE0_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
-        .TILE0_TXCHARISK0_IN            (2'b11),
-        .TILE0_TXCHARISK1_IN            (2'b11),
+        .TILE0_TXCHARISK0_IN            ({1'b0, charisk_i[0]}),
+        .TILE0_TXCHARISK1_IN            ({1'b0, charisk_i[1]}),
         //---------------- Transmit Ports - TX Data Path interface -----------------
-        .TILE0_TXDATA0_IN               (16'hBCBC),
-        .TILE0_TXDATA1_IN               (16'hBCBC),
+        .TILE0_TXDATA0_IN               (data_i[15:0]),
+        .TILE0_TXDATA1_IN               (data_i[31:16]),
         .TILE0_TXUSRCLK0_IN             (CLK250),
         .TILE0_TXUSRCLK1_IN             (CLK250),
         .TILE0_TXUSRCLK20_IN            (CLK125),
@@ -139,8 +145,8 @@ module gtprcv4(
         //--------------------- Receive Ports - 8b10b Decoder ----------------------
         .TILE1_RXCHARISCOMMA0_OUT       (),
         .TILE1_RXCHARISCOMMA1_OUT       (),
-        .TILE1_RXCHARISK0_OUT           (charisk_o[5:4]),
-        .TILE1_RXCHARISK1_OUT           (charisk_o[7:6]),
+        .TILE1_RXCHARISK0_OUT           (kchar_o[5:4]),
+        .TILE1_RXCHARISK1_OUT           (kchar_o[7:6]),
         .TILE1_RXDISPERR0_OUT           (),
         .TILE1_RXDISPERR1_OUT           (),
         .TILE1_RXNOTINTABLE0_OUT        (),
@@ -155,8 +161,8 @@ module gtprcv4(
         .TILE1_RXENPCOMMAALIGN0_IN      (1'b1),
         .TILE1_RXENPCOMMAALIGN1_IN      (1'b1),
         //----------------- Receive Ports - RX Data Path interface -----------------
-        .TILE1_RXDATA0_OUT              (data[47:32]),
-        .TILE1_RXDATA1_OUT              (data[63:48]),
+        .TILE1_RXDATA0_OUT              (data_o[47:32]),
+        .TILE1_RXDATA1_OUT              (data_o[63:48]),
         .TILE1_RXUSRCLK0_IN             (CLK250),
         .TILE1_RXUSRCLK1_IN             (CLK250),
         .TILE1_RXUSRCLK20_IN            (CLK125),
@@ -173,11 +179,11 @@ module gtprcv4(
         .TILE1_GTPCLKOUT0_OUT           (),
         .TILE1_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
-        .TILE1_TXCHARISK0_IN            (2'b11),
-        .TILE1_TXCHARISK1_IN            (2'b11),
+        .TILE1_TXCHARISK0_IN            ({1'b0, charisk_i[2]}),
+        .TILE1_TXCHARISK1_IN            ({1'b0, charisk_i[3]}),
         //---------------- Transmit Ports - TX Data Path interface -----------------
-        .TILE1_TXDATA0_IN               (16'hBCBC),
-        .TILE1_TXDATA1_IN               (16'hBCBC),
+        .TILE1_TXDATA0_IN               (data_i[47:32]),
+        .TILE1_TXDATA1_IN               (data_i[63:48]),
         .TILE1_TXUSRCLK0_IN             (CLK250),
         .TILE1_TXUSRCLK1_IN             (CLK250),
         .TILE1_TXUSRCLK20_IN            (CLK125),
@@ -217,10 +223,10 @@ module gtprcv4(
 	 DCM_SP #(
       .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
                                             // (1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,9,10,11,12,13,14,15,16).
-      .CLKFX_DIVIDE(1),                     // Divide value on CLKFX outputs - D - (1-32)
-      .CLKFX_MULTIPLY(2),                   // Multiply value on CLKFX outputs - M - (2-32)
+      .CLKFX_DIVIDE(WB_DIVIDE),             // Divide value on CLKFX outputs - D - (1-32)
+      .CLKFX_MULTIPLY(WB_MULTIPLY),         // Multiply value on CLKFX outputs - M - (2-32)
       .CLKIN_DIVIDE_BY_2("FALSE"),          // CLKIN divide by two (TRUE/FALSE)
-      .CLKIN_PERIOD(8.0),                  // Input clock period specified in nS
+      .CLKIN_PERIOD(8.0),                   // Input clock period specified in nS
       .CLKOUT_PHASE_SHIFT("NONE"),          // Output phase shift (NONE, FIXED, VARIABLE)
       .CLK_FEEDBACK("1X"),                  // Feedback source (NONE, 1X, 2X)
       .DESKEW_ADJUST("SYSTEM_SYNCHRONOUS"), // SYSTEM_SYNCHRNOUS or SOURCE_SYNCHRONOUS
@@ -240,7 +246,7 @@ module gtprcv4(
       .CLK2X180(), 			// 1-bit output: 2X clock frequency, 180 degree clock output
       .CLK90(),       		// 1-bit output: 90 degree clock output
       .CLKDV(),       		// 1-bit output: Divided clock output
-      .CLKFX(),       		// 1-bit output: Digital Frequency Synthesizer output (DFS)
+      .CLKFX(clkwb),   		// 1-bit output: Digital Frequency Synthesizer output (DFS)
       .CLKFX180(), 			// 1-bit output: 180 degree CLKFX output
       .LOCKED(locked),     // 1-bit output: DCM_SP Lock Output
       .PSDONE(),   		   // 1-bit output: Phase shift done output
