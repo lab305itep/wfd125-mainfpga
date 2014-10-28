@@ -305,6 +305,8 @@ vme (
 	.debug            (debug)
 );
 
+//		LEDs
+
 genvar i;
 generate
 	for (i = 0; i < 4; i = i + 1) begin : GLED
@@ -318,7 +320,8 @@ generate
 endgenerate
 	assign wb_s2m_simple_gpio_rty = 0;
 	assign wb_s2m_simple_gpio_err = 0;
-	
+
+//		Register	
 	inoutreg UREG (
 		.wb_clk (wb_clk), 
 		.wb_cyc (wb_m2s_simple_gpio_cyc), 
@@ -334,6 +337,8 @@ endgenerate
 
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
+
+//		clock buffer control
 
    i2c_master_slave UI2C (
 		.wb_clk_i  (wb_clk), 
@@ -357,6 +362,8 @@ endgenerate
 
    assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
    assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+
+
 
 	generate
 	for (i = 0; i < 4; i = i + 1) begin : GCHAR
@@ -453,7 +460,7 @@ myblkram mymemD(
 	always @(posedge CLK125) begin
 		if (!once) greset <= !C2X[7];
 		CNT <= CNT + 1;
-		if (CNT == 27'h7FFFFFF) once = 0;
+		if (CNT == 1000000) once = 0;
 	end;
 
 wire [6:0] empty_spi_csa;
