@@ -35,7 +35,7 @@ module inoutreg(
 	assign wb_dat_o = (wb_adr) ? reg_o : reg_ii;
 	
 	always @ (posedge wb_clk) begin
-		wb_ack <= #1 wb_cyc & wb_stb & !wb_ack;
+		wb_ack <= #1 wb_cyc & wb_stb;
 		if (wb_cyc & wb_stb & wb_we & wb_adr) reg_o <= wb_dat_i;
 		reg_ii <= reg_i;
 	end
