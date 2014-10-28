@@ -68,8 +68,8 @@ module gtprcv4(
         //------------------------------- PLL Ports --------------------------------
         .TILE0_CLK00_IN                 (refclk_i),
         .TILE0_CLK01_IN                 (refclk_i),
-        .TILE0_GTPRESET0_IN             (),
-        .TILE0_GTPRESET1_IN             (),
+        .TILE0_GTPRESET0_IN             (1'b0),
+        .TILE0_GTPRESET1_IN             (1'b0),
         .TILE0_PLLLKDET0_OUT            (pll_lock),
         .TILE0_PLLLKDET1_OUT            (),
         .TILE0_RESETDONE0_OUT           (),
@@ -136,8 +136,8 @@ module gtprcv4(
         //------------------------------- PLL Ports --------------------------------
         .TILE1_CLK00_IN                 (refclk_i),
         .TILE1_CLK01_IN                 (refclk_i),
-        .TILE1_GTPRESET0_IN             (),
-        .TILE1_GTPRESET1_IN             (),
+        .TILE1_GTPRESET0_IN             (1'b0),
+        .TILE1_GTPRESET1_IN             (1'b0),
         .TILE1_PLLLKDET0_OUT            (),
         .TILE1_PLLLKDET1_OUT            (),
         .TILE1_RESETDONE0_OUT           (),
