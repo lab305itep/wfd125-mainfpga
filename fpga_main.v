@@ -173,15 +173,13 @@ module fpga_main(
 	wire         CBUFSDA_en;
 	wire			 CBUFSCL_en;
 	
-	reg  [31:0]  REG_INPUT;
-	wire [31:0]  REG_OUTPUT;
-	
-	wire [63:0]  GTP_DATA;
-	wire [3:0]   GTP_CHARISK;
-	reg  [3:0]   MEM_START = 4'h0;
+	wire [63:0]  gtp_data_o;
+	wire [3:0]   gtp_kchar_o;
+	wire [63:0]  gtp_data_i;
+	wire [3:0]   gtp_kchar_i;
 	reg  [31:0]  CNT = 0;
 
-	assign TP = {CNT[4], VME_GA_i[5], VME_GA_i[0], MEM_START[0], GTP_CHARISK[0]};
+	assign TP = 0;
 
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
@@ -213,7 +211,22 @@ module fpga_main(
    assign CLKENBP = 1'bz;
    assign CLKENBFP = 1'bz;
 	
-	assign ICX[5] = REG_OUTPUT[8];	// WB reset to channel FPGA
+	wire [31:0] main_csr;
+	assign ICX[5] = main_csr[31];	// WB reset to channel FPGA
+	inoutreg reg_csr (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_reg_csr_cyc), 
+		.wb_stb (wb_m2s_reg_csr_stb), 
+		.wb_adr (wb_m2s_reg_csr_adr[2]), 
+		.wb_we  (wb_m2s_reg_csr_we), 
+		.wb_dat_i (wb_m2s_reg_csr_dat), 
+		.wb_dat_o (wb_s2m_reg_csr_dat), 
+		.wb_ack (wb_s2m_reg_csr_ack),
+		.reg_o   (main_csr),
+		.reg_i	(~main_csr)
+	);
+	assign wb_s2m_reg_csr_rty = 0;
+	assign wb_s2m_reg_csr_err = 0;
 
 	gtprcv4 # (.WB_DIVIDE(3), .WB_MULTIPLY(5))
 	UGTP (
@@ -222,10 +235,11 @@ module fpga_main(
 		.clkpin	(RCLK),						// input clock pins - tile0 package pins A10/B10
 		.clkout	(CLK125),					// output 125 MHz clock
 		.clkwb   (wb_clk),					// output clock for wishbone
-		.data_o		(GTP_DATA),				// output data 4x16bit
-		.charisk_o	(GTP_CHARISK), 		// output char is K-char signature
-		.data_i     (64'h00BC00BC00BC00BC),
-		.charisk_i  (4'b1111),
+//			Do remapping here
+		.data_o		({gtp_data_o[15:0], gtp_data_o[31:16], gtp_data_o[47:32], gtp_data_o[63:48]}),	// data received
+		.charisk_o	({gtp_kchar_o[0], gtp_kchar_o[1], gtp_kchar_o[2], gtp_kchar_o[3]}), 		// K-char signature received
+		.data_i		({gtp_data_i[15:0], gtp_data_i[31:16], gtp_data_i[47:32], gtp_data_i[63:48]}),	// data received
+		.charisk_i	({gtp_kchar_i[0], gtp_kchar_i[1], gtp_kchar_i[2], gtp_kchar_i[3]}), 		// K-char signature received
 		.locked  ()
     );
 
@@ -306,7 +320,6 @@ vme (
 );
 
 //		LEDs
-
 genvar i;
 generate
 	for (i = 0; i < 4; i = i + 1) begin : GLED
@@ -318,28 +331,8 @@ generate
 		);
 	end
 endgenerate
-	assign wb_s2m_simple_gpio_rty = 0;
-	assign wb_s2m_simple_gpio_err = 0;
-
-//		Register	
-	inoutreg UREG (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wb_m2s_simple_gpio_cyc), 
-		.wb_stb (wb_m2s_simple_gpio_stb), 
-		.wb_adr (wb_m2s_simple_gpio_adr[2]), 
-		.wb_we  (wb_m2s_simple_gpio_we), 
-		.wb_dat_i (wb_m2s_simple_gpio_dat), 
-		.wb_dat_o (wb_s2m_simple_gpio_dat), 
-		.wb_ack (wb_s2m_simple_gpio_ack),
-		.reg_o   (REG_OUTPUT),
-		.reg_i	(REG_INPUT)
-	);
-
-	assign wb_s2m_i2c_ms_cbuf_err = 0;
-	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 
 //		clock buffer control
-
    i2c_master_slave UI2C (
 		.wb_clk_i  (wb_clk), 
 		.wb_rst_i  (~wb_rst),		// active high 
@@ -362,109 +355,181 @@ endgenerate
 
    assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
    assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+	assign wb_s2m_i2c_ms_cbuf_err = 0;
+	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 
+//		Trigger processing
+	wire [15:0] trg2gtp;
+	wire kchar2gtp;
+	
+	assign gtp_data_i = {trg2gtp, trg2gtp, trg2gtp, trg2gtp};
+	assign gtp_kchar_i = {kchar2gtp, kchar2gtp, kchar2gtp, kchar2gtp};
+	
+   triggen UTRIG (
+		.wb_clk  	(wb_clk), 
+		.wb_rst  	(~wb_rst), 
+		.wb_adr  	(wb_m2s_triggen_adr[2]), 
+		.wb_dat_i  	(wb_m2s_triggen_dat), 
+		.wb_dat_o  	(wb_s2m_triggen_dat),
+		.wb_we   	(wb_m2s_triggen_we),
+		.wb_stb  	(wb_m2s_triggen_stb),
+		.wb_cyc  	(wb_m2s_triggen_cyc), 
+		.wb_ack  	(wb_s2m_triggen_ack), 
+		.trg_data_i	(gtp_data_o),
+		.trg_data_o (trg2gtp),
+		.clk			(CLK125),
+		.kchar_i		(gtp_kchar_o),
+		.kchar_o		(kchar2gtp),
+		.trg_ext(1'b0)
+	);
 
+	assign wb_s2m_triggen_err = 0;
+	assign wb_s2m_triggen_rty = 0;
 
-	generate
-	for (i = 0; i < 4; i = i + 1) begin : GCHAR
-		always @ (posedge CLK125) begin
-			if (GTP_CHARISK[i]) MEM_START[i] <= REG_OUTPUT[16+i];
-		end
-	end
-	endgenerate
+//		Fifo memory
+	wire [15:0] fifo_cnt_A;
+	wire [15:0] fifo_cnt_B;
+	wire [15:0] fifo_cnt_C;
+	wire [15:0] fifo_cnt_D;
 
-myblkram mymemA(
-    .wb_adr		(wb_m2s_mymemA_adr[10:2]),
-    .wb_stb		(wb_m2s_mymemA_stb),
-    .wb_cyc		(wb_m2s_mymemA_cyc),
-    .wb_ack		(wb_s2m_mymemA_ack),
-    .wb_dat_o	(wb_s2m_mymemA_dat),
-    .wb_dat_i	(wb_m2s_mymemA_dat),
-    .wb_we		(wb_m2s_mymemA_we),
-    .wb_clk		(wb_clk),
-	 .wb_rst		(~wb_rst),
-	 .wb_sel		(wb_m2s_mymemA_sel),
-    .gtp_clk	(CLK125),
-    .gtp_dat	(GTP_DATA[15:0]),
-    .gtp_vld	(!GTP_CHARISK[0]),
-    .cntrl_run (MEM_START[0]),
-    .cntrl_ready (trig[0])
+rcvfifo fifoA (
+		.wb_stb		(wb_m2s_fifoA_stb),
+		.wb_cyc		(wb_m2s_fifoA_cyc),
+		.wb_ack		(wb_s2m_fifoA_ack),
+		.wb_dat_o	(wb_s2m_fifoA_dat),
+		.wb_we		(wb_m2s_fifoA_we),
+		.wb_clk		(wb_clk),
+		.gtp_clk		(CLK125),
+		.gtp_dat		(gtp_data_o[15:0]),
+		.gtp_vld		(!gtp_kchar_o[0]),
+		.fifocnt		(fifo_cnt_A),
+		.overflow	(trig[0])
+   );
+
+	assign wb_s2m_fifoA_err = 0;
+	assign wb_s2m_fifoA_rty = 0;	
+
+rcvfifo fifoB(
+		.wb_stb		(wb_m2s_fifoB_stb),
+		.wb_cyc		(wb_m2s_fifoB_cyc),
+		.wb_ack		(wb_s2m_fifoB_ack),
+		.wb_dat_o	(wb_s2m_fifoB_dat),
+		.wb_we		(wb_m2s_fifoB_we),
+		.wb_clk		(wb_clk),
+		.gtp_clk		(CLK125),
+		.gtp_dat		(gtp_data_o[31:16]),
+		.gtp_vld		(!gtp_kchar_o[1]),
+		.fifocnt		(fifo_cnt_B),
+		.overflow	(trig[1])
+   );
+
+	assign wb_s2m_fifoB_err = 0;
+	assign wb_s2m_fifoB_rty = 0;	
+
+rcvfifo fifoC(
+		.wb_stb		(wb_m2s_fifoC_stb),
+		.wb_cyc		(wb_m2s_fifoC_cyc),
+		.wb_ack		(wb_s2m_fifoC_ack),
+		.wb_dat_o	(wb_s2m_fifoC_dat),
+		.wb_we		(wb_m2s_fifoC_we),
+		.wb_clk		(wb_clk),
+		.gtp_clk		(CLK125),
+		.gtp_dat		(gtp_data_o[47:32]),
+		.gtp_vld		(!gtp_kchar_o[2]),
+		.fifocnt		(fifo_cnt_C),
+		.overflow	(trig[2])
     );
 
-	assign wb_s2m_mymemA_err = 0;
-	assign wb_s2m_mymemA_rty = 0;	
+	assign wb_s2m_fifoC_err = 0;
+	assign wb_s2m_fifoC_rty = 0;	
 
-myblkram mymemB(
-    .wb_adr		(wb_m2s_mymemB_adr[10:2]),
-    .wb_stb		(wb_m2s_mymemB_stb),
-    .wb_cyc		(wb_m2s_mymemB_cyc),
-    .wb_ack		(wb_s2m_mymemB_ack),
-    .wb_dat_o	(wb_s2m_mymemB_dat),
-    .wb_dat_i	(wb_m2s_mymemB_dat),
-    .wb_we		(wb_m2s_mymemB_we),
-    .wb_clk		(wb_clk),
-	 .wb_rst		(~wb_rst),
-	 .wb_sel		(wb_m2s_mymemB_sel),
-    .gtp_clk	(CLK125),
-    .gtp_dat	(GTP_DATA[31:16]),
-    .gtp_vld	(!GTP_CHARISK[1]),
-    .cntrl_run (MEM_START[1]),
-    .cntrl_ready (trig[1])
-    );
+rcvfifo fifoD(
+		.wb_stb		(wb_m2s_fifoD_stb),
+		.wb_cyc		(wb_m2s_fifoD_cyc),
+		.wb_ack		(wb_s2m_fifoD_ack),
+		.wb_dat_o	(wb_s2m_fifoD_dat),
+		.wb_we		(wb_m2s_fifoD_we),
+		.wb_clk		(wb_clk),
+		.gtp_clk		(CLK125),
+		.gtp_dat		(gtp_data_o[63:48]),
+		.gtp_vld		(!gtp_kchar_o[3]),
+		.fifocnt		(fifo_cnt_D),
+		.overflow	(trig[3])
+   );
 
-	assign wb_s2m_mymemB_err = 0;
-	assign wb_s2m_mymemB_rty = 0;	
+	assign wb_s2m_fifoD_err = 0;
+	assign wb_s2m_fifoD_rty = 0;	
 
-myblkram mymemC(
-    .wb_adr		(wb_m2s_mymemC_adr[10:2]),
-    .wb_stb		(wb_m2s_mymemC_stb),
-    .wb_cyc		(wb_m2s_mymemC_cyc),
-    .wb_ack		(wb_s2m_mymemC_ack),
-    .wb_dat_o	(wb_s2m_mymemC_dat),
-    .wb_dat_i	(wb_m2s_mymemC_dat),
-    .wb_we		(wb_m2s_mymemC_we),
-    .wb_clk		(wb_clk),
-	 .wb_rst		(~wb_rst),
-	 .wb_sel		(wb_m2s_mymemC_sel),
-    .gtp_clk	(CLK125),
-    .gtp_dat	(GTP_DATA[47:32]),
-    .gtp_vld	(!GTP_CHARISK[2]),
-    .cntrl_run (MEM_START[2]),
-    .cntrl_ready (trig[2])
-    );
+//		Registers	
+	inoutreg regA (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_regA_cyc), 
+		.wb_stb (wb_m2s_regA_stb), 
+		.wb_adr (wb_m2s_regA_adr[2]), 
+		.wb_we  (wb_m2s_regA_we), 
+		.wb_dat_i (wb_m2s_regA_dat), 
+		.wb_dat_o (wb_s2m_regA_dat), 
+		.wb_ack (wb_s2m_regA_ack),
+		.reg_o   (),
+		.reg_i	({trig[0], 15'h0000, fifo_cnt_A})
+	);
+	assign wb_s2m_regA_rty = 0;
+	assign wb_s2m_regA_err = 0;
 
-	assign wb_s2m_mymemC_err = 0;
-	assign wb_s2m_mymemC_rty = 0;	
+	inoutreg regB (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_regB_cyc), 
+		.wb_stb (wb_m2s_regB_stb), 
+		.wb_adr (wb_m2s_regB_adr[2]), 
+		.wb_we  (wb_m2s_regB_we), 
+		.wb_dat_i (wb_m2s_regB_dat), 
+		.wb_dat_o (wb_s2m_regB_dat), 
+		.wb_ack (wb_s2m_regB_ack),
+		.reg_o   (),
+		.reg_i	({trig[1], 15'h0000, fifo_cnt_B})
+	);
+	assign wb_s2m_regB_rty = 0;
+	assign wb_s2m_regB_err = 0;
 
-myblkram mymemD(
-    .wb_adr		(wb_m2s_mymemD_adr[10:2]),
-    .wb_stb		(wb_m2s_mymemD_stb),
-    .wb_cyc		(wb_m2s_mymemD_cyc),
-    .wb_ack		(wb_s2m_mymemD_ack),
-    .wb_dat_o	(wb_s2m_mymemD_dat),
-    .wb_dat_i	(wb_m2s_mymemD_dat),
-    .wb_we		(wb_m2s_mymemD_we),
-    .wb_clk		(wb_clk),
-	 .wb_rst		(~wb_rst),
-	 .wb_sel		(wb_m2s_mymemD_sel),
-    .gtp_clk	(CLK125),
-    .gtp_dat	(GTP_DATA[63:48]),
-    .gtp_vld	(!GTP_CHARISK[3]),
-    .cntrl_run (MEM_START[3]),
-    .cntrl_ready (trig[3])
-    );
+	inoutreg regC (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_regC_cyc), 
+		.wb_stb (wb_m2s_regC_stb), 
+		.wb_adr (wb_m2s_regC_adr[2]), 
+		.wb_we  (wb_m2s_regC_we), 
+		.wb_dat_i (wb_m2s_regC_dat), 
+		.wb_dat_o (wb_s2m_regC_dat), 
+		.wb_ack (wb_s2m_regC_ack),
+		.reg_o   (),
+		.reg_i	({trig[2], 15'h0000, fifo_cnt_C})
+	);
+	assign wb_s2m_regC_rty = 0;
+	assign wb_s2m_regC_err = 0;
 
-	assign wb_s2m_mymemD_err = 0;
-	assign wb_s2m_mymemD_rty = 0;	
+	inoutreg regD (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_regD_cyc), 
+		.wb_stb (wb_m2s_regD_stb), 
+		.wb_adr (wb_m2s_regD_adr[2]), 
+		.wb_we  (wb_m2s_regD_we), 
+		.wb_dat_i (wb_m2s_regD_dat), 
+		.wb_dat_o (wb_s2m_regD_dat), 
+		.wb_ack (wb_s2m_regD_ack),
+		.reg_o   (),
+		.reg_i	({trig[3], 15'h0000, fifo_cnt_D})
+	);
+	assign wb_s2m_regD_rty = 0;
+	assign wb_s2m_regD_err = 0;
 
+//		Global counter
 	always @(posedge CLK125) begin
 		if (!once) greset <= !C2X[7];
 		CNT <= CNT + 1;
 		if (CNT == 1000000) once = 0;
 	end;
 
+//		SPI to DAC
 wire [6:0] empty_spi_csa;
-
 xspi_master  #(
 	.CLK_DIV (49),
 	.CLK_POL (1'b1)
@@ -486,8 +551,8 @@ xspi_master  #(
 	assign wb_s2m_dac_spi_rty = 0;	
 	assign wb_s2m_dac_spi_dat[31:16] = 0;	
 
+//		SPI to other xilinxes
 wire [6:0] empty_spi_csb;
-
 xspi_master  #(
 	.CLK_DIV (49),
 	.CLK_POL (1'b0)
