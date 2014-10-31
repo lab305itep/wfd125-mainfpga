@@ -228,7 +228,7 @@ module fpga_main(
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
 
-	gtprcv4 # (.WB_DIVIDE(5), .WB_MULTIPLY(4))
+	gtprcv4 # (.WB_DIVIDE(5), .WB_MULTIPLY(3))
 	UGTP (
 		.rxpin	({RX3, RX2, RX1, RX0}),	// input data pins
 		.txpin	({TX3, TX2, TX1, TX0}),	// output data pins
@@ -247,8 +247,8 @@ module fpga_main(
 								VME
 ****************************************************************/
 	assign XBERR         = ~VME_BERR_o;
-//	assign XDTACK        = VME_DTACK_OE_o ? VME_DTACK_n_o : 1'bz;
-//	assign XDTACKOE      = VME_DTACK_OE_o ? 1'b0 : 1'bz;
+	assign XDTACK        = VME_DTACK_OE_o ? VME_DTACK_n_o : 1'bz;
+	assign XDTACKOE      = VME_DTACK_OE_o ? 1'b0 : 1'bz;
 	assign XRETRY        = VME_RETRY_n_o;
 	assign XA            = (VME_ADDR_DIR_o) ? {VME_ADDR_o, VME_LWORD_n_o} : 32'bZ;
 	assign ADIR          = VME_ADDR_DIR_o;
@@ -261,13 +261,14 @@ module fpga_main(
 	assign wb_rst 			= ~greset;
 	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
-	dtack UDTACK (
+/*	dtack UDTACK (
 		.wb_clk			(wb_clk),
 		.vme_dtack		(VME_DTACK_n_o),
 		.vme_dtack_oe	(VME_DTACK_OE_o),
 		.xdtack			(XDTACK),
 		.xdtackoe		(XDTACKOE)
 	);
+*/
 
 VME64xCore_Top #(
     .g_clock (8), 	    		// clock period (ns)

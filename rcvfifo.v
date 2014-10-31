@@ -36,6 +36,7 @@ module rcvfifo(
    );
 
 	parameter MBITS = 13;
+	localparam	CH_COMMA = 16'h00BC;		// comma K28.5
 
 	reg [31:0] fifo [2**MBITS-1:0];
 	reg [MBITS-1:0] waddr = 0;
@@ -51,7 +52,7 @@ module rcvfifo(
 	wire [15:0] odddat;
 	wire [MBITS-1:0] waddrp;
 	
-	assign odddat = (gtp_vld) ? gtp_dat : 16'hFFFF;
+	assign odddat = (gtp_vld) ? gtp_dat : 16'h7FFF;
 	assign waddrp = waddr + 1;
 
 //		write fifo
@@ -62,10 +63,10 @@ module rcvfifo(
 			waddr <= 0;
 			odd <= 0;
 			overflow <= 0;
-		end else if (waddrp != rraddr && !odd && gtp_vld) begin
+		end else if (!overflow && !odd && gtp_vld) begin
 			evendat <= gtp_dat;
 			odd <= 1;
-		end else if (odd) begin
+		end else if (odd && (gtp_vld || (gtp_dat == CH_COMMA))) begin
 			fifo[waddr] <= {odddat, evendat};	// fill the last halfword after block
 			odd <= 0;
 			waddr <= waddr + 1;
