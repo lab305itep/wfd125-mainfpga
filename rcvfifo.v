@@ -63,7 +63,7 @@ module rcvfifo(
 			waddr <= 0;
 			odd <= 0;
 			overflow <= 0;
-		end else if (!overflow && !odd && gtp_vld) begin
+		end else if (!overflow && !odd && gtp_vld && waddrp != rraddr) begin
 			evendat <= gtp_dat;
 			odd <= 1;
 		end else if (odd && (gtp_vld || (gtp_dat == CH_COMMA))) begin
