@@ -188,7 +188,7 @@ wire        wb_s2m_resize_i2c_ms_cbuf_rty;
 wb_mux
   #(.num_slaves (13),
     .MATCH_ADDR ({32'h00010000, 32'h00010040, 32'h00010050, 32'h00010060, 32'h00010070, 32'h00020000, 32'h00040000, 32'h00060000, 32'h00080000, 32'h000a0000, 32'h00010020, 32'h00010010, 32'h00010030}),
-    .MATCH_MASK ({32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hffffffe0, 32'hfffff800, 32'hfffff800, 32'hfffff800, 32'hfffff800, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8}))
+    .MATCH_MASK ({32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hffffffe0, 32'hfffe0000, 32'hfffe0000, 32'hfffe0000, 32'hfffe0000, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8}))
  wb_mux_VME64xCore_Top
    (.wb_clk_i  (wb_clk_i),
     .wb_rst_i  (wb_rst_i),
