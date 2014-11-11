@@ -178,8 +178,16 @@ module fpga_main(
 	wire [63:0]  gtp_data_i;
 	wire [3:0]   gtp_kchar_i;
 	reg  [31:0]  CNT = 0;
+	reg [5:1] tpdebug = 0;
 
-	assign TP = {gtp_kchar_i[0], gtp_kchar_o};
+	assign TP = tpdebug;
+	always @ (posedge CLK125) begin
+		tpdebug[5] <= gtp_kchar_i[0];
+		tpdebug[4] <= gtp_data_o[63] & gtp_kchar_o[3];
+		tpdebug[3] <= gtp_data_o[47] & gtp_kchar_o[2];
+		tpdebug[2] <= gtp_data_o[31] & gtp_kchar_o[1];
+		tpdebug[1] <= gtp_data_o[15] & gtp_kchar_o[0];
+	end
 
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
