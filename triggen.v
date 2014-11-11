@@ -49,20 +49,22 @@ module triggen(
 	reg [3:0]  STRG = 0;
 	reg [7:0]  dcnt = 0;
 	reg trg_ext_s = 0;
+	reg cnt_reset = 0;
 
 //		WishBone
 	assign wb_dat_o = (wb_adr) ? CNT : CSR;
 	always @ (posedge wb_clk) begin
+		cnt_reset <= 0;
 		wb_ack <= wb_cyc && wb_stb;
 		if (wb_cyc && wb_stb && wb_we) begin
 			if (wb_adr) begin
-				CNT <= wb_dat_i;
+				cnt_reset <= 1;
 			end else begin
 				CSR <= wb_dat_i;
 			end
 		end
 		if (wb_rst) begin
-			CNT <= 0;
+			cnt_reset <= 1;
 			CSR <= 0;
 		end
 		if (CSR[7]) CSR[7] <= 0;
@@ -84,7 +86,9 @@ module triggen(
 			dcnt <= CSR[15:8];
 			kchar_o <= 0;
 			trg_data_o <= {1'b1, CNT[14:0]};
+			CNT <= CNT + 1;
 		end
+		if (cnt_reset) CNT <= 0;
 		if (| dcnt) dcnt <= dcnt - 1;
 	end
 

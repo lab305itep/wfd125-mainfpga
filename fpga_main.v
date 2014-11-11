@@ -179,7 +179,7 @@ module fpga_main(
 	wire [3:0]   gtp_kchar_i;
 	reg  [31:0]  CNT = 0;
 
-	assign TP = 0;
+	assign TP = {gtp_kchar_i[0], gtp_kchar_o};
 
 	assign IACKPASS = 1'bz;
 	assign MEMRST = 1'bz;
