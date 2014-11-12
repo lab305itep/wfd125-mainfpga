@@ -135,7 +135,7 @@ module fpga_main(
     input MEMZIO,
     input MEMRZQ,
 	// Test points
-    output [5:1] TP
+    output reg [5:1] TP
     );
 
 	wire			 wb_clk;
@@ -180,13 +180,13 @@ module fpga_main(
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
 
-	assign TP = tpdebug;
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= gtp_kchar_i[0];
 		tpdebug[4] <= gtp_data_o[63] & gtp_kchar_o[3];
 		tpdebug[3] <= gtp_data_o[47] & gtp_kchar_o[2];
 		tpdebug[2] <= gtp_data_o[31] & gtp_kchar_o[1];
 		tpdebug[1] <= gtp_data_o[15] & gtp_kchar_o[0];
+		TP <= tpdebug;
 	end
 
 	assign IACKPASS = 1'bz;
@@ -279,7 +279,7 @@ module fpga_main(
 */
 
 VME64xCore_Top #(
-    .g_clock (8), 	    		// clock period (ns)
+    .g_clock (13), 	    		// clock period (ns)
     .g_wb_data_width (32),		// WB data width:
     .g_wb_addr_width (32),		// WB address width:
 	 .g_BoardID       (125),
@@ -333,8 +333,11 @@ vme (
 
 	.INT_ack_o        (),
 	.IRQ_i            (1'b0),
-	.debug            (debug)
+	.debug            ()
 );
+
+	assign wb_m2s_VME64xCore_Top_cti = 0;
+	assign wb_m2s_VME64xCore_Top_bte = 0;
 
 //		LEDs
 genvar i;
