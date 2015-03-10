@@ -243,6 +243,47 @@ NET "PHYRST" LOC = U16;
 NET "PHYINT" LOC = W17;
 
 # SDRAM interface
+CONFIG MCB_PERFORMANCE= EXTENDED;
+# Timing Ignore constraints for paths crossing the clock domain 
+#NET "memc1_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
+#NET "c1_pll_lock" TIG;
+#INST "memc1_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL*" TIG;
+#Please uncomment the below TIG if used in a design which enables self-refresh mode
+#NET "memc1_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/SELFREFRESH_MCB_REQ" TIG;
+############################################################################
+## Memory Device: DDR3_SDRAM->MT41J256M16XX-125 
+## Frequency: 125 MHz
+## Time Period: 8000 ps
+############################################################################
+## Clock constraints
+## not needed for internal clocks                                                        
+#NET "memc1_infrastructure_inst/sys_clk_ibufg" TNM_NET = "SYS_CLK1";
+#TIMESPEC "TS_SYS_CLK1" = PERIOD "SYS_CLK1"  8  ns HIGH 50 %;
+## I/O TERMINATION                                                          
+NET "MEMD[*]"             IN_TERM = NONE;
+NET "MEMLDQS[*]"          IN_TERM = NONE;
+NET "MEMUDQS[*]"          IN_TERM = NONE;
+# I/O STANDARDS 
+NET  "MEMD[*]"            IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMA[*]"            IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMBA[*]"           IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMLDQS[*]"         IOSTANDARD = DIFF_SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMUDQS[*]"         IOSTANDARD = DIFF_SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMCK[*]"           IOSTANDARD = DIFF_SSTL15_II  |OUT_TERM = UNTUNED_50;
+#NET  "MEMLDQS[*]"         IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+#NET  "MEMUDQS[*]"         IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+#NET  "MEMCK[*]"           IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMCKE"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMRAS"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMCAS"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMWE"              IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMODT"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMRST"             IOSTANDARD = LVCMOS15  ;
+NET  "MEMLDM"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMUDM"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMRZQ"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+NET  "MEMZIO"             IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
+# pin locations
 # Address
 NET "MEMA<0>" LOC = H21;
 NET "MEMA<1>" LOC = H22;
@@ -301,16 +342,23 @@ NET "MEMZIO" LOC = P19;
 NET "MEMRZQ" LOC = D21;
 
 # Test points
-NET "TP<1>" LOC = T18;
-NET "TP<2>" LOC = T19;
-NET "TP<3>" LOC = U19;
-NET "TP<4>" LOC = V19;
-NET "TP<5>" LOC = T17;
+NET "TP<1>" LOC = T18 | IOSTANDARD = LVCMOS15;
+NET "TP<2>" LOC = T19 | IOSTANDARD = LVCMOS15;
+NET "TP<3>" LOC = U19 | IOSTANDARD = LVCMOS15;
+NET "TP<4>" LOC = V19 | IOSTANDARD = LVCMOS15;
+NET "TP<5>" LOC = T17 | IOSTANDARD = LVCMOS15;
 #Created by Constraints Editor (xc6slx45t-fgg484-2) - 2014/09/24
-NET "wb_clk" TNM_NET = wb_clk;
-TIMESPEC TS_wb_clk = PERIOD "wb_clk" 13 ns HIGH 50%;
-NET "CLK125" TNM_NET = CLK125;
-TIMESPEC TS_CLK125 = PERIOD "CLK125" 8 ns HIGH 50%;
+#NET "wb_clk" TNM_NET = wb_clk;
+#TIMESPEC TS_wb_clk = PERIOD "wb_clk" 13 ns HIGH 50%;
+#NET "CLK125" TNM_NET = CLK125;
+#TIMESPEC TS_CLK125 = PERIOD "CLK125" 8 ns HIGH 50%;
+#NET "RCLK<0>" TNM_NET = RCLK<0>;
+#TIMESPEC TS_RCLK_0_ = PERIOD "RCLK<0>" 8 ns HIGH 50%;
+#NET "RCLK<1>" TNM_NET = RCLK<1>;
+#TIMESPEC TS_RCLK_1_ = PERIOD "RCLK<1>" 8 ns HIGH 50%;
+NET "UGTP/gtpclk_o<0>" TNM_NET = gtpclk;
+TIMESPEC TS_gtpclk = PERIOD "gtpclk" 8 ns HIGH 50%;
+#Created by Constraints Editor (xc6slx45t-fgg484-2) - 2015/03/03
 NET "RCLK<0>" TNM_NET = RCLK<0>;
 TIMESPEC TS_RCLK_0_ = PERIOD "RCLK<0>" 8 ns HIGH 50%;
 NET "RCLK<1>" TNM_NET = RCLK<1>;

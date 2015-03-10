@@ -60,6 +60,18 @@ wire [31:0] wb_s2m_fifoC_dat;
 wire        wb_s2m_fifoC_ack;
 wire        wb_s2m_fifoC_err;
 wire        wb_s2m_fifoC_rty;
+wire [31:0] wb_m2s_fifoB_adr;
+wire [31:0] wb_m2s_fifoB_dat;
+wire  [3:0] wb_m2s_fifoB_sel;
+wire        wb_m2s_fifoB_we;
+wire        wb_m2s_fifoB_cyc;
+wire        wb_m2s_fifoB_stb;
+wire  [2:0] wb_m2s_fifoB_cti;
+wire  [1:0] wb_m2s_fifoB_bte;
+wire [31:0] wb_s2m_fifoB_dat;
+wire        wb_s2m_fifoB_ack;
+wire        wb_s2m_fifoB_err;
+wire        wb_s2m_fifoB_rty;
 wire [31:0] wb_m2s_i2c_ms_cbuf_adr;
 wire  [7:0] wb_m2s_i2c_ms_cbuf_dat;
 wire  [3:0] wb_m2s_i2c_ms_cbuf_sel;
@@ -144,18 +156,18 @@ wire [31:0] wb_s2m_fifoD_dat;
 wire        wb_s2m_fifoD_ack;
 wire        wb_s2m_fifoD_err;
 wire        wb_s2m_fifoD_rty;
-wire [31:0] wb_m2s_fifoB_adr;
-wire [31:0] wb_m2s_fifoB_dat;
-wire  [3:0] wb_m2s_fifoB_sel;
-wire        wb_m2s_fifoB_we;
-wire        wb_m2s_fifoB_cyc;
-wire        wb_m2s_fifoB_stb;
-wire  [2:0] wb_m2s_fifoB_cti;
-wire  [1:0] wb_m2s_fifoB_bte;
-wire [31:0] wb_s2m_fifoB_dat;
-wire        wb_s2m_fifoB_ack;
-wire        wb_s2m_fifoB_err;
-wire        wb_s2m_fifoB_rty;
+wire [31:0] wb_m2s_wb_tmem_adr;
+wire [31:0] wb_m2s_wb_tmem_dat;
+wire  [3:0] wb_m2s_wb_tmem_sel;
+wire        wb_m2s_wb_tmem_we;
+wire        wb_m2s_wb_tmem_cyc;
+wire        wb_m2s_wb_tmem_stb;
+wire  [2:0] wb_m2s_wb_tmem_cti;
+wire  [1:0] wb_m2s_wb_tmem_bte;
+wire [31:0] wb_s2m_wb_tmem_dat;
+wire        wb_s2m_wb_tmem_ack;
+wire        wb_s2m_wb_tmem_err;
+wire        wb_s2m_wb_tmem_rty;
 wire [31:0] wb_m2s_regD_adr;
 wire [31:0] wb_m2s_regD_dat;
 wire  [3:0] wb_m2s_regD_sel;
@@ -232,6 +244,18 @@ wb_intercon wb_intercon0
     .wb_fifoC_ack_i          (wb_s2m_fifoC_ack),
     .wb_fifoC_err_i          (wb_s2m_fifoC_err),
     .wb_fifoC_rty_i          (wb_s2m_fifoC_rty),
+    .wb_fifoB_adr_o          (wb_m2s_fifoB_adr),
+    .wb_fifoB_dat_o          (wb_m2s_fifoB_dat),
+    .wb_fifoB_sel_o          (wb_m2s_fifoB_sel),
+    .wb_fifoB_we_o           (wb_m2s_fifoB_we),
+    .wb_fifoB_cyc_o          (wb_m2s_fifoB_cyc),
+    .wb_fifoB_stb_o          (wb_m2s_fifoB_stb),
+    .wb_fifoB_cti_o          (wb_m2s_fifoB_cti),
+    .wb_fifoB_bte_o          (wb_m2s_fifoB_bte),
+    .wb_fifoB_dat_i          (wb_s2m_fifoB_dat),
+    .wb_fifoB_ack_i          (wb_s2m_fifoB_ack),
+    .wb_fifoB_err_i          (wb_s2m_fifoB_err),
+    .wb_fifoB_rty_i          (wb_s2m_fifoB_rty),
     .wb_i2c_ms_cbuf_adr_o    (wb_m2s_i2c_ms_cbuf_adr),
     .wb_i2c_ms_cbuf_dat_o    (wb_m2s_i2c_ms_cbuf_dat),
     .wb_i2c_ms_cbuf_sel_o    (wb_m2s_i2c_ms_cbuf_sel),
@@ -316,18 +340,18 @@ wb_intercon wb_intercon0
     .wb_fifoD_ack_i          (wb_s2m_fifoD_ack),
     .wb_fifoD_err_i          (wb_s2m_fifoD_err),
     .wb_fifoD_rty_i          (wb_s2m_fifoD_rty),
-    .wb_fifoB_adr_o          (wb_m2s_fifoB_adr),
-    .wb_fifoB_dat_o          (wb_m2s_fifoB_dat),
-    .wb_fifoB_sel_o          (wb_m2s_fifoB_sel),
-    .wb_fifoB_we_o           (wb_m2s_fifoB_we),
-    .wb_fifoB_cyc_o          (wb_m2s_fifoB_cyc),
-    .wb_fifoB_stb_o          (wb_m2s_fifoB_stb),
-    .wb_fifoB_cti_o          (wb_m2s_fifoB_cti),
-    .wb_fifoB_bte_o          (wb_m2s_fifoB_bte),
-    .wb_fifoB_dat_i          (wb_s2m_fifoB_dat),
-    .wb_fifoB_ack_i          (wb_s2m_fifoB_ack),
-    .wb_fifoB_err_i          (wb_s2m_fifoB_err),
-    .wb_fifoB_rty_i          (wb_s2m_fifoB_rty),
+    .wb_wb_tmem_adr_o        (wb_m2s_wb_tmem_adr),
+    .wb_wb_tmem_dat_o        (wb_m2s_wb_tmem_dat),
+    .wb_wb_tmem_sel_o        (wb_m2s_wb_tmem_sel),
+    .wb_wb_tmem_we_o         (wb_m2s_wb_tmem_we),
+    .wb_wb_tmem_cyc_o        (wb_m2s_wb_tmem_cyc),
+    .wb_wb_tmem_stb_o        (wb_m2s_wb_tmem_stb),
+    .wb_wb_tmem_cti_o        (wb_m2s_wb_tmem_cti),
+    .wb_wb_tmem_bte_o        (wb_m2s_wb_tmem_bte),
+    .wb_wb_tmem_dat_i        (wb_s2m_wb_tmem_dat),
+    .wb_wb_tmem_ack_i        (wb_s2m_wb_tmem_ack),
+    .wb_wb_tmem_err_i        (wb_s2m_wb_tmem_err),
+    .wb_wb_tmem_rty_i        (wb_s2m_wb_tmem_rty),
     .wb_regD_adr_o           (wb_m2s_regD_adr),
     .wb_regD_dat_o           (wb_m2s_regD_dat),
     .wb_regD_sel_o           (wb_m2s_regD_sel),

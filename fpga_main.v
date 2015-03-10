@@ -132,8 +132,8 @@ module fpga_main(
     output [1:0] MEMUDQS,
     output [1:0] MEMLDQS,
 	// Impedance matching
-    input MEMZIO,
-    input MEMRZQ,
+    output MEMZIO,
+    output MEMRZQ,
 	// Test points
     output reg [5:1] TP
     );
@@ -143,6 +143,7 @@ module fpga_main(
 `include "wb_intercon.vh"
 
 	wire CLK125;
+	wire CLKMCB;
 	wire [3:0] trig;
 	reg once = 1;
 	reg greset = 1;
@@ -190,20 +191,6 @@ module fpga_main(
 	end
 
 	assign IACKPASS = 1'bz;
-	assign MEMRST = 1'bz;
-	assign MEMCKE = 1'bz;
-	assign MEMWE  = 1'bz;
-	assign MEMODT = 1'bz;
-	assign MEMRAS = 1'bz;
-	assign MEMCAS = 1'bz;
-	assign MEMUDM = 1'bz;
-	assign MEMLDM = 1'bz;
-	assign MEMCK =  2'bzz;
-	assign MEMUDQS =  2'bzz;
-	assign MEMLDQS =  2'bzz;
-	assign MEMA =  14'hzzzz;
-	assign MEMD =  16'hzzzz;
-	assign MEMBA =  3'bzzz;
    assign PHYTXCLK = 1'bz;
    assign PHYTXENB = 1'bz;
    assign PHYTXD  = 4'hz;
@@ -243,6 +230,7 @@ module fpga_main(
 		.clkpin	(RCLK),						// input clock pins - tile0 package pins A10/B10
 		.clkout	(CLK125),					// output 125 MHz clock
 		.clkwb   (wb_clk),					// output clock for wishbone
+		.gck_o   (CLKMCB),					// clock to MCB
 //			Do remapping here
 		.data_o		({gtp_data_o[15:0], gtp_data_o[31:16], gtp_data_o[47:32], gtp_data_o[63:48]}),	// data received
 		.charisk_o	({gtp_kchar_o[0], gtp_kchar_o[1], gtp_kchar_o[2], gtp_kchar_o[3]}), 		// K-char signature received
@@ -593,5 +581,48 @@ xspi_master  #(
 	assign wb_s2m_icx_spi_err = 0;
 	assign wb_s2m_icx_spi_rty = 0;	
 	assign wb_s2m_icx_spi_dat[31:16] = 0;	
+
+// memory test module
+wb_tmem(
+	// system clock 125 MHz
+	 .clk       (CLKMCB),
+	// system reset, active high
+	 .rst       (greset),
+	// wb interface
+    .wb_dat_i  (wb_m2s_wb_tmem_dat),
+    .wb_dat_o  (wb_s2m_wb_tmem_dat),
+    .wb_we     (wb_m2s_wb_tmem_we),
+    .wb_clk    (wb_clk),
+    .wb_cyc    (wb_m2s_wb_tmem_cyc),
+    .wb_ack    (wb_s2m_wb_tmem_ack),
+    .wb_stb    (wb_m2s_wb_tmem_stb),
+    .wb_adr    (wb_m2s_wb_tmem_adr[5:2]),
+	// SDRAM interface
+	// Address
+    .MEMA      (MEMA),
+	// Bank addr
+    .MEMBA     (MEMBA),
+	// Data
+    .MEMD      (MEMD),
+	// Other single ended
+    .MEMRST    (MEMRST),
+    .MEMCKE    (MEMCKE),
+    .MEMWE     (MEMWE),
+    .MEMODT    (MEMODT),
+    .MEMRAS    (MEMRAS),
+    .MEMCAS    (MEMCAS),
+    .MEMUDM    (MEMUDM),
+    .MEMLDM    (MEMLDM),
+	// Pairs
+    .MEMCK     (MEMCK),
+    .MEMUDQS   (MEMUDQS),
+    .MEMLDQS   (MEMLDQS),
+	// Impedance matching
+    .MEMZIO    (MEMZIO),
+    .MEMRZQ    (MEMRZQ)
+    );
+
+	assign wb_s2m_wb_tmem_err = 0;
+	assign wb_s2m_wb_tmem_rty = 0;
 
 endmodule

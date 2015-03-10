@@ -24,6 +24,7 @@ module gtprcv4(
     input [1:0] clkpin,		// input clock pins - tile0 package pins A10/B10
     output clkout,			// output 125 MHz clock
 	 output clkwb,				// output clock for wishbone
+ 	 output gck_o,				// output clock for mcb
     output [63:0] data_o,	// output data 4x16bit
     output [3:0] charisk_o,// output char is K-char signature
     input [63:0] data_i,	// output data 4x16bit
@@ -36,7 +37,8 @@ module gtprcv4(
 
 	 wire [7:0] kchar_o;
 	 wire refclk_i;	// 125 MHz
-	 wire gtpclk_o;	// 125 MHz
+//	 (* KEEP = "TRUE" *) wire gtpclk_o;	// 125 MHz
+	 wire [1:0] gtpclk_o;	// 125 MHz
 	 wire gclk_o;		// 125 MHz
 	 wire bufclk_o;	// 125 MHz
 	 wire pll_lock;
@@ -108,7 +110,7 @@ module gtprcv4(
         .TILE0_RXLOSSOFSYNC0_OUT        (),
         .TILE0_RXLOSSOFSYNC1_OUT        (),
         //-------------------------- TX/RX Datapath Ports --------------------------
-        .TILE0_GTPCLKOUT0_OUT           ({dummy_0, gtpclk_o}),
+        .TILE0_GTPCLKOUT0_OUT           (gtpclk_o),
         .TILE0_GTPCLKOUT1_OUT           (),
         //----------------- Transmit Ports - 8b10b Encoder Control -----------------
         .TILE0_TXCHARISK0_IN            ({1'b0, charisk_i[0]}),
@@ -212,13 +214,15 @@ module gtprcv4(
       .DIVCLK(bufclk_o),      // 1-bit output: Divided clock output
       .IOCLK(),           		// 1-bit output: I/O output clock
       .SERDESSTROBE(), 			// 1-bit output: Output SERDES strobe (connect to ISERDES2/OSERDES2)
-      .I(gtpclk_o) 		      // 1-bit input: Clock input (connect to IBUFG)
+      .I(gtpclk_o[0]) 		      // 1-bit input: Clock input (connect to IBUFG)
     );
 
     BUFG gtpclk_bufg_i (
        .O(gclk_o),   // 1-bit output: Clock buffer output
        .I(bufclk_o)  // 1-bit input: Clock buffer input
     );
+
+	 assign gck_o = gclk_o;
 
 	 DCM_SP #(
       .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
