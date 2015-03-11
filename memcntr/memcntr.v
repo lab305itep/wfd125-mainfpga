@@ -249,11 +249,11 @@ module memcntr #
 // Chapter-2 of ug388.pdf in the /docs directory for further details.
    localparam C1_PORT_ENABLE              = 6'b111111;
    localparam C1_PORT_CONFIG             =  "B32_B32_W32_W32_W32_W32";
-   localparam C1_CLKOUT0_DIVIDE       = 2;       
-   localparam C1_CLKOUT1_DIVIDE       = 2;       
-   localparam C1_CLKOUT2_DIVIDE       = 32;       
-   localparam C1_CLKOUT3_DIVIDE       = 16;       
-   localparam C1_CLKFBOUT_MULT        = 4;       
+   localparam C1_CLKOUT0_DIVIDE       = 1;   // CLK2x =500 MHz    
+   localparam C1_CLKOUT1_DIVIDE       = 1;   // !CLK2x =500 MHz    
+   localparam C1_CLKOUT2_DIVIDE       = 16;  // userclk not used     
+   localparam C1_CLKOUT3_DIVIDE       = 8;   // calib CLK 62.5 MHz    
+   localparam C1_CLKFBOUT_MULT        = 4;  	// x4 =500 MHz   
    localparam C1_DIVCLK_DIVIDE        = 1;       
    localparam C1_ARB_ALGORITHM        = 0;       
    localparam C1_ARB_NUM_TIME_SLOTS   = 12;       
