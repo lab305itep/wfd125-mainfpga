@@ -72,36 +72,10 @@ package vme64x_pack is
   -- Constants:
   --WB data width:
   constant c_width             : integer                      := 64;  --must be 32 or 64!
-  --CRAM size in the CR/CSR space (bytes):
-  constant c_CRAM_SIZE         : integer                      := 1024;
-  -- remember to set properly the "END_CRAM" register in the CR space
   -- WB addr width:
   constant c_addr_width        : integer                      := 9;
-  --
-  constant DFS                 : integer                      := 2;  -- for accessing at the ADEM's bit 2
-  constant XAM_MODE            : integer                      := 0;  -- for accessing at the ADER's bit 0
   -- Tclk in ns used to calculate the data transfer rate
   constant c_clk_period        : integer                      := 10;  --c_CLK_PERIOD     : std_logic_vector(19 downto 0) := "00000000000000001010";
-  -- add here the default boards ID:
-  constant c_SVEC_ID           : integer                      := 408;  -- 0x00000198
-  constant c_CERN_ID           : integer                      := 524336;  -- 0x080030
-  constant c_RevisionID        : integer                      := 1;  -- 0x00000001
-  --BoardID positions:
-  constant c_BOARD_ID_p1       : integer                      := 12;
-  constant c_BOARD_ID_p2       : integer                      := 13;
-  constant c_BOARD_ID_p3       : integer                      := 14;
-  constant c_BOARD_ID_p4       : integer                      := 15;
-  --ManufacturerID positions:
-  constant c_Manuf_ID_p1       : integer                      := 9;
-  constant c_Manuf_ID_p2       : integer                      := 10;
-  constant c_Manuf_ID_p3       : integer                      := 11;
-  --RevisionID positions:
-  constant c_Rev_ID_p1         : integer                      := 16;
-  constant c_Rev_ID_p2         : integer                      := 17;
-  constant c_Rev_ID_p3         : integer                      := 18;
-  constant c_Rev_ID_p4         : integer                      := 19;
-  --ProgramID positions:
-  constant c_Prog_ID_p         : integer                      := 31;
   -- AM table. 
   -- References:
   -- Table 2-3 "Address Modifier Codes" pages 21/22 VME64std ANSI/VITA 1-1994
@@ -133,79 +107,6 @@ package vme64x_pack is
   constant c_A64_2eVME         : std_logic_vector(7 downto 0) := "00000010";  -- hex code 0x22
   constant c_A32_2eSST         : std_logic_vector(7 downto 0) := "00010001";  -- hex code 0x11
   constant c_A64_2eSST         : std_logic_vector(7 downto 0) := "00010010";  -- hex code 0x12
-  --CSR array's index:
-  constant BAR                 : integer                      := 255;
-  constant BIT_SET_CLR_REG     : integer                      := 254;
-  constant USR_BIT_SET_CLR_REG : integer                      := 253;
-  constant CRAM_OWNER          : integer                      := 252;
-  constant FUNC7_ADER_0        : integer                      := 251;
-  constant FUNC7_ADER_1        : integer                      := FUNC7_ADER_0 - 1;
-  constant FUNC7_ADER_2        : integer                      := FUNC7_ADER_0 - 2;
-  constant FUNC7_ADER_3        : integer                      := FUNC7_ADER_0 - 3;
-  constant FUNC6_ADER_0        : integer                      := FUNC7_ADER_0 - 4;
-  constant FUNC6_ADER_1        : integer                      := FUNC7_ADER_0 - 5;
-  constant FUNC6_ADER_2        : integer                      := FUNC7_ADER_0 - 6;
-  constant FUNC6_ADER_3        : integer                      := FUNC7_ADER_0 - 7;
-  constant FUNC5_ADER_0        : integer                      := FUNC7_ADER_0 - 8;
-  constant FUNC5_ADER_1        : integer                      := FUNC7_ADER_0 - 9;
-  constant FUNC5_ADER_2        : integer                      := FUNC7_ADER_0 - 10;
-  constant FUNC5_ADER_3        : integer                      := FUNC7_ADER_0 - 11;
-  constant FUNC4_ADER_0        : integer                      := FUNC7_ADER_0 - 12;
-  constant FUNC4_ADER_1        : integer                      := FUNC7_ADER_0 - 13;
-  constant FUNC4_ADER_2        : integer                      := FUNC7_ADER_0 - 14;
-  constant FUNC4_ADER_3        : integer                      := FUNC7_ADER_0 - 15;
-  constant FUNC3_ADER_0        : integer                      := FUNC7_ADER_0 - 16;
-  constant FUNC3_ADER_1        : integer                      := FUNC7_ADER_0 - 17;
-  constant FUNC3_ADER_2        : integer                      := FUNC7_ADER_0 - 18;
-  constant FUNC3_ADER_3        : integer                      := FUNC7_ADER_0 - 19;
-  constant FUNC2_ADER_0        : integer                      := FUNC7_ADER_0 - 20;
-  constant FUNC2_ADER_1        : integer                      := FUNC7_ADER_0 - 21;
-  constant FUNC2_ADER_2        : integer                      := FUNC7_ADER_0 - 22;
-  constant FUNC2_ADER_3        : integer                      := FUNC7_ADER_0 - 23;
-  constant FUNC1_ADER_0        : integer                      := FUNC7_ADER_0 - 24;
-  constant FUNC1_ADER_1        : integer                      := FUNC7_ADER_0 - 25;
-  constant FUNC1_ADER_2        : integer                      := FUNC7_ADER_0 - 26;
-  constant FUNC1_ADER_3        : integer                      := FUNC7_ADER_0 - 27;
-  constant FUNC0_ADER_0        : integer                      := FUNC7_ADER_0 - 28;
-  constant FUNC0_ADER_1        : integer                      := FUNC7_ADER_0 - 29;
-  constant FUNC0_ADER_2        : integer                      := FUNC7_ADER_0 - 30;
-  constant FUNC0_ADER_3        : integer                      := FUNC7_ADER_0 - 31;
-  constant IRQ_Vector          : integer                      := FUNC0_ADER_3 -1;
-  constant IRQ_level           : integer                      := FUNC0_ADER_3 -2;
-  constant TIME0_ns            : integer                      := FUNC0_ADER_3 -5;
-  constant TIME1_ns            : integer                      := FUNC0_ADER_3 -6;
-  constant TIME2_ns            : integer                      := FUNC0_ADER_3 -7;
-  constant TIME3_ns            : integer                      := FUNC0_ADER_3 -8;
-  constant TIME4_ns            : integer                      := FUNC0_ADER_3 -9;
-  constant BYTES0              : integer                      := FUNC0_ADER_3 -10;
-  constant BYTES1              : integer                      := FUNC0_ADER_3 -11;
-  constant WB32bits            : integer                      := FUNC0_ADER_3 -12;
-  constant Endian              : integer                      := FUNC0_ADER_3 -4;
-
-  -- Initialization CR:
-  constant BEG_USER_CR  : integer := 1;
-  constant END_USER_CR  : integer := 2;
-  constant BEG_CRAM     : integer := 3;
-  constant END_CRAM     : integer := 4;
-  constant BEG_USER_CSR : integer := 5;
-  constant END_USER_CSR : integer := 6;
-  constant FUNC_AMCAP   : integer := 7;
-  constant FUNC_XAMCAP  : integer := 8;
-  constant FUNC_ADEM    : integer := 9;
-
-  constant c_CRinitAddr : t_cr_add_table(BEG_USER_CR to FUNC_ADEM) := (
-    BEG_USER_CR => (add => 16#020#, len => 3),
-    END_USER_CR => (add => 16#023#, len => 3),
-
-    BEG_CRAM => (add => 16#26#, len => 3),
-    END_CRAM => (add => 16#29#, len => 3),
-
-    BEG_USER_CSR => (add => 16#02C#, len => 3),
-    END_USER_CSR => (add => 16#02F#, len => 3),
-
-    FUNC_AMCAP  => (add => 16#048#, len => 64),
-    FUNC_XAMCAP => (add => 16#088#, len => 256),
-    FUNC_ADEM   => (add => 16#188#, len => 32));
 
   -- Main Finite State machine signals default:
   -- When the S_FPGA detects the magic sequency, it erases the A_FPGA so 
@@ -243,57 +144,6 @@ package vme64x_pack is
     s_DSlatch   => '0',
     s_DTACK_OE  => '0'
     );
-
-  -- CSR address:
-  constant c_BAR_addr             : unsigned(19 downto 0) := x"7FFFF";  -- VME64x defined CSR
-  constant c_BIT_SET_REG_addr     : unsigned(19 downto 0) := x"7FFFB";
-  constant c_BIT_CLR_REG_addr     : unsigned(19 downto 0) := x"7FFF7";
-  constant c_CRAM_OWNER_addr      : unsigned(19 downto 0) := x"7FFF3";
-  constant c_USR_BIT_SET_REG_addr : unsigned(19 downto 0) := x"7FFEF";
-  constant c_USR_BIT_CLR_REG_addr : unsigned(19 downto 0) := x"7FFEB";
-  constant c_FUNC7_ADER_0_addr    : unsigned(19 downto 0) := x"7FFDF";
-  constant c_FUNC7_ADER_1_addr    : unsigned(19 downto 0) := x"7FFDB";
-  constant c_FUNC7_ADER_2_addr    : unsigned(19 downto 0) := x"7FFD7";
-  constant c_FUNC7_ADER_3_addr    : unsigned(19 downto 0) := x"7FFD3";
-  constant c_FUNC6_ADER_0_addr    : unsigned(19 downto 0) := x"7FFCF";
-  constant c_FUNC6_ADER_1_addr    : unsigned(19 downto 0) := x"7FFCB";
-  constant c_FUNC6_ADER_2_addr    : unsigned(19 downto 0) := x"7FFC7";
-  constant c_FUNC6_ADER_3_addr    : unsigned(19 downto 0) := x"7FFC3";
-  constant c_FUNC5_ADER_0_addr    : unsigned(19 downto 0) := x"7FFBF";
-  constant c_FUNC5_ADER_1_addr    : unsigned(19 downto 0) := x"7FFBB";
-  constant c_FUNC5_ADER_2_addr    : unsigned(19 downto 0) := x"7FFB7";
-  constant c_FUNC5_ADER_3_addr    : unsigned(19 downto 0) := x"7FFB3";
-  constant c_FUNC4_ADER_0_addr    : unsigned(19 downto 0) := x"7FFAF";
-  constant c_FUNC4_ADER_1_addr    : unsigned(19 downto 0) := x"7FFAB";
-  constant c_FUNC4_ADER_2_addr    : unsigned(19 downto 0) := x"7FFA7";
-  constant c_FUNC4_ADER_3_addr    : unsigned(19 downto 0) := x"7FFA3";
-  constant c_FUNC3_ADER_0_addr    : unsigned(19 downto 0) := x"7FF9F";
-  constant c_FUNC3_ADER_1_addr    : unsigned(19 downto 0) := x"7FF9B";
-  constant c_FUNC3_ADER_2_addr    : unsigned(19 downto 0) := x"7FF97";
-  constant c_FUNC3_ADER_3_addr    : unsigned(19 downto 0) := x"7FF93";
-  constant c_FUNC2_ADER_0_addr    : unsigned(19 downto 0) := x"7FF8F";
-  constant c_FUNC2_ADER_1_addr    : unsigned(19 downto 0) := x"7FF8B";
-  constant c_FUNC2_ADER_2_addr    : unsigned(19 downto 0) := x"7FF87";
-  constant c_FUNC2_ADER_3_addr    : unsigned(19 downto 0) := x"7FF83";
-  constant c_FUNC1_ADER_0_addr    : unsigned(19 downto 0) := x"7FF7F";
-  constant c_FUNC1_ADER_1_addr    : unsigned(19 downto 0) := x"7FF7B";
-  constant c_FUNC1_ADER_2_addr    : unsigned(19 downto 0) := x"7FF77";
-  constant c_FUNC1_ADER_3_addr    : unsigned(19 downto 0) := x"7FF73";
-  constant c_FUNC0_ADER_0_addr    : unsigned(19 downto 0) := x"7FF6F";
-  constant c_FUNC0_ADER_1_addr    : unsigned(19 downto 0) := x"7FF6B";
-  constant c_FUNC0_ADER_2_addr    : unsigned(19 downto 0) := x"7FF67";
-  constant c_FUNC0_ADER_3_addr    : unsigned(19 downto 0) := x"7FF63";  -- VME64x defined CSR
-  constant c_IRQ_Vector_addr      : unsigned(19 downto 0) := x"7FF5F";  -- VME64x reserved CSR
-  constant c_IRQ_level_addr       : unsigned(19 downto 0) := x"7FF5B";  -- VME64x reserved CSR
-  constant c_TIME0_ns_addr        : unsigned(19 downto 0) := x"7FF4f";  -- VME64x reserved CSR
-  constant c_TIME1_ns_addr        : unsigned(19 downto 0) := x"7FF4b";
-  constant c_TIME2_ns_addr        : unsigned(19 downto 0) := x"7FF47";
-  constant c_TIME3_ns_addr        : unsigned(19 downto 0) := x"7FF43";
-  constant c_TIME4_ns_addr        : unsigned(19 downto 0) := x"7FF3f";
-  constant c_BYTES0_addr          : unsigned(19 downto 0) := x"7FF3b";
-  constant c_BYTES1_addr          : unsigned(19 downto 0) := x"7FF37";
-  constant c_WB32bits_addr        : unsigned(19 downto 0) := x"7FF33";
-  constant c_Endian_addr          : unsigned(19 downto 0) := x"7FF53";  -- VME64x reserved CSR
 
 --___________________________________________________________________________________________
 -- TYPE:
@@ -388,26 +238,10 @@ package vme64x_pack is
 --                                  TWOe_END_2
                                  );
 
-  type t_initState is (IDLE,
-                                 SET_ADDR,
-                                 GET_DATA,
-                                 END_INIT
-                                 );
-
-  type t_FUNC_32b_array is array (0 to 7) of unsigned(31 downto 0);  -- ADER register array
-  type t_FUNC_64b_array is array (0 to 7) of unsigned(63 downto 0);  -- AMCAP register array
-  type t_FUNC_256b_array is array (0 to 7) of unsigned(255 downto 0);  -- XAMCAP register array
-  type t_FUNC_32b_array_std is array (0 to 7) of std_logic_vector(31 downto 0);  -- ADER register array
-  type t_FUNC_64b_array_std is array (0 to 7) of std_logic_vector(63 downto 0);  -- AMCAP register array
-  type t_FUNC_256b_array_std is array (0 to 7) of std_logic_vector(255 downto 0);  -- XAMCAP register array
-  type t_CSRarray is array(BAR downto WB32bits) of unsigned(7 downto 0);
-  type t_cr_array is array (natural range <>) of std_logic_vector(7 downto 0);
 
 -- functions
   function f_div8 (width  : integer) return integer;
   function f_log2_size (A : natural) return natural;
-  function f_set_CR_space (BoardID : integer; cr_default : t_cr_array;
-  ManufacturerID                   : integer; RevisionID : integer; ProgramID : integer) return t_cr_array;
   function f_latchDS (clk_period : integer) return integer;
 --_____________________________________________________________________________________________________
 --COMPONENTS:
@@ -644,67 +478,6 @@ package body vme64x_pack is
     return(63);
   end function f_log2_size;
   
-  function f_set_CR_space(BoardID : integer; cr_default : t_cr_array;
-  ManufacturerID                  : integer; RevisionID : integer;
-  ProgramID                       : integer) return t_cr_array is
-    variable v_CR_space       : t_cr_array(2**12 downto 0);
-    variable v_BoardID        : std_logic_vector(31 downto 0);
-    variable v_ManufacturerID : std_logic_vector(23 downto 0);
-    variable v_RevisionID     : std_logic_vector(31 downto 0);
-    variable v_ProgramID      : std_logic_vector(7 downto 0);
-    
-  begin
-    v_BoardID        := std_logic_vector(to_unsigned(BoardID, 32));
-    v_ManufacturerID := std_logic_vector(to_unsigned(ManufacturerID, 24));
-    v_RevisionID     := std_logic_vector(to_unsigned(RevisionID, 32));
-    v_ProgramID      := std_logic_vector(to_unsigned(ProgramID, 8));
-    for i in cr_default'range loop
-      case i is
-        when c_BOARD_ID_p1 => v_CR_space(i) := v_BoardID(31 downto 24);
-        when c_BOARD_ID_p2 => v_CR_space(i) := v_BoardID(23 downto 16);
-        when c_BOARD_ID_p3 => v_CR_space(i) := v_BoardID(15 downto 8);
-        when c_BOARD_ID_p4 => v_CR_space(i) := v_BoardID(7 downto 0);
-        when c_Manuf_ID_p1 => v_CR_space(i) := v_ManufacturerID(23 downto 16);
-        when c_Manuf_ID_p2 => v_CR_space(i) := v_ManufacturerID(15 downto 8);
-        when c_Manuf_ID_p3 => v_CR_space(i) := v_ManufacturerID(7 downto 0);
-        when c_Rev_ID_p1   => v_CR_space(i) := v_RevisionID(31 downto 24);
-        when c_Rev_ID_p2   => v_CR_space(i) := v_RevisionID(23 downto 16);
-        when c_Rev_ID_p3   => v_CR_space(i) := v_RevisionID(15 downto 8);
-        when c_Rev_ID_p4   => v_CR_space(i) := v_RevisionID(7 downto 0);
-        when c_Prog_ID_p   => v_CR_space(i) := v_ProgramID(7 downto 0);
-        when others        => v_CR_space(i) := cr_default(i);
-      end case;
---           if    i = c_BOARD_ID_p1 then
---                   v_CR_space(i) := v_BoardID(31 downto 24);
---                elsif i = c_BOARD_ID_p2 then
---                   v_CR_space(i) := v_BoardID(23 downto 16);
---                elsif i = c_BOARD_ID_p3 then
---                   v_CR_space(i) := v_BoardID(15 downto 8);
---                elsif i = c_BOARD_ID_p4 then
---                   v_CR_space(i) := v_BoardID(7 downto 0);      
---                elsif i = c_Manuf_ID_p1 then
---                   v_CR_space(i) := v_ManufacturerID(23 downto 16);     
---                elsif i = c_Manuf_ID_p2 then
---                   v_CR_space(i) := v_ManufacturerID(15 downto 8);
---                elsif i = c_Manuf_ID_p3 then
---                   v_CR_space(i) := v_ManufacturerID(7 downto 0);       
---                elsif i = c_Rev_ID_p1 then
---                   v_CR_space(i) := v_RevisionID(31 downto 24);
---                elsif i = c_Rev_ID_p2 then
---                   v_CR_space(i) := v_RevisionID(23 downto 16);
---                elsif i = c_Rev_ID_p3 then
---                   v_CR_space(i) := v_RevisionID(15 downto 8);          
---                elsif i = c_Rev_ID_p4 then
---                   v_CR_space(i) := v_RevisionID(7 downto 0);  
---                elsif i = c_Prog_ID_p then
---                   v_CR_space(i) := v_ProgramID(7 downto 0);    
---                else 
---              v_CR_space(i) := cr_default(i);   
---                end if;
-    end loop;
-    return(v_CR_space);
-  end function f_set_CR_space;
-
   function f_latchDS(clk_period : integer) return integer is
   begin
     for I in 1 to 4 loop
