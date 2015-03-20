@@ -270,10 +270,10 @@ VME64xCore_Top #(
     .g_clock (13), 	    		// clock period (ns)
     .g_wb_data_width (32),		// WB data width:
     .g_wb_addr_width (32),		// WB address width:
-	 .g_BoardID       (125),
-    .g_ManufacturerID (305),
-    .g_RevisionID     (1),
-    .g_ProgramID      (1)
+	 .g_endian        (0),		// no swap
+	 .g_IRQ_level     (0),		// no IRQ so far, range 1-7
+	 .g_IRQ_vector    (0),		// no IRQ so far
+	 .g_addr_hi			(0)		// two most significant address bits
 )
 vme (
 	.clk_i(wb_clk),

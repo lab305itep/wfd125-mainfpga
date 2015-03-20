@@ -26,7 +26,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.numeric_std.all;
---use work.VME_CR_pack.all;
 package vme64x_pack is
 --__________________________________________________________________________________
 -- Records:
@@ -416,7 +415,7 @@ package vme64x_pack is
     generic(g_clock           : integer := c_clk_period;
               g_wb_data_width : integer := c_width;
               g_wb_addr_width : integer := c_addr_width;
-              g_cram_size     : integer := c_CRAM_SIZE
+				  g_addr_hi		   : integer := 0		-- two most significant address bits
               );
     port(
       clk_i           : in  std_logic;
@@ -436,18 +435,6 @@ package vme64x_pack is
       err_i           : in  std_logic;
       rty_i           : in  std_logic;
       stall_i         : in  std_logic;
-      CRAMdata_i      : in  std_logic_vector(7 downto 0);
-      CRdata_i        : in  std_logic_vector(7 downto 0);
-      CSRData_i       : in  std_logic_vector(7 downto 0);
-      reset_flag_i    : in  std_logic;
-      Ader0           : in  std_logic_vector(31 downto 0);
-      Ader1           : in  std_logic_vector(31 downto 0);
-      Ader2           : in  std_logic_vector(31 downto 0);
-      Ader3           : in  std_logic_vector(31 downto 0);
-      Ader4           : in  std_logic_vector(31 downto 0);
-      Ader5           : in  std_logic_vector(31 downto 0);
-      Ader6           : in  std_logic_vector(31 downto 0);
-      Ader7           : in  std_logic_vector(31 downto 0);
       ModuleEnable    : in  std_logic;
       Endian_i        : in  std_logic_vector(2 downto 0);
       Sw_Reset        : in  std_logic;
@@ -471,20 +458,12 @@ package vme64x_pack is
       wbSel_o         : out std_logic_vector(f_div8(g_wb_data_width) - 1 downto 0);
       RW_o            : out std_logic;
       cyc_o           : out std_logic;
-      CRAMaddr_o      : out std_logic_vector(f_log2_size(g_cram_size)-1 downto 0);
-      CRAMdata_o      : out std_logic_vector(7 downto 0);
-      CRAMwea_o       : out std_logic;
-      CRaddr_o        : out std_logic_vector(11 downto 0);
-      en_wr_CSR       : out std_logic;
-      CrCsrOffsetAddr : out std_logic_vector(18 downto 0);
-      CSRData_o       : out std_logic_vector(7 downto 0);
       err_flag_o      : out std_logic;
       numBytes        : out std_logic_vector(12 downto 0);
       transfTime      : out std_logic_vector(39 downto 0);
       leds            : out std_logic_vector(7 downto 0)
       );
   end component VME_bus;
-
 
   component VME_Access_Decode is
     port (
@@ -493,162 +472,17 @@ package vme64x_pack is
       mainFSMreset   : in  std_logic;
       decode         : in  std_logic;
       ModuleEnable   : in  std_logic;
-      InitInProgress : in  std_logic;
       Addr           : in  std_logic_vector(63 downto 0);
-      Ader0          : in  std_logic_vector(31 downto 0);
-      Ader1          : in  std_logic_vector(31 downto 0);
-      Ader2          : in  std_logic_vector(31 downto 0);
-      Ader3          : in  std_logic_vector(31 downto 0);
-      Ader4          : in  std_logic_vector(31 downto 0);
-      Ader5          : in  std_logic_vector(31 downto 0);
-      Ader6          : in  std_logic_vector(31 downto 0);
-      Ader7          : in  std_logic_vector(31 downto 0);
-      Adem0          : in  std_logic_vector(31 downto 0);
-      Adem1          : in  std_logic_vector(31 downto 0);
-      Adem2          : in  std_logic_vector(31 downto 0);
-      Adem3          : in  std_logic_vector(31 downto 0);
-      Adem4          : in  std_logic_vector(31 downto 0);
-      Adem5          : in  std_logic_vector(31 downto 0);
-      Adem6          : in  std_logic_vector(31 downto 0);
-      Adem7          : in  std_logic_vector(31 downto 0);
-      AmCap0         : in  std_logic_vector(63 downto 0);
-      AmCap1         : in  std_logic_vector(63 downto 0);
-      AmCap2         : in  std_logic_vector(63 downto 0);
-      AmCap3         : in  std_logic_vector(63 downto 0);
-      AmCap4         : in  std_logic_vector(63 downto 0);
-      AmCap5         : in  std_logic_vector(63 downto 0);
-      AmCap6         : in  std_logic_vector(63 downto 0);
-      AmCap7         : in  std_logic_vector(63 downto 0);
-      XAmCap0        : in  std_logic_vector(255 downto 0);
-      XAmCap1        : in  std_logic_vector(255 downto 0);
-      XAmCap2        : in  std_logic_vector(255 downto 0);
-      XAmCap3        : in  std_logic_vector(255 downto 0);
-      XAmCap4        : in  std_logic_vector(255 downto 0);
-      XAmCap5        : in  std_logic_vector(255 downto 0);
-      XAmCap6        : in  std_logic_vector(255 downto 0);
-      XAmCap7        : in  std_logic_vector(255 downto 0);
       Am             : in  std_logic_vector(5 downto 0);
       XAm            : in  std_logic_vector(7 downto 0);
       BAR_i          : in  std_logic_vector(4 downto 0);
+		Addr_HI_i      : in  STD_LOGIC_VECTOR (1 downto 0);   
       AddrWidth      : in  std_logic_vector(1 downto 0);
-      Funct_Sel      : out std_logic_vector(7 downto 0);
       Base_Addr      : out std_logic_vector(63 downto 0);
-      Confaccess     : out std_logic;
       CardSel        : out std_logic
       );
   end component VME_Access_Decode;
 
-  component VME_Funct_Match is
-    port(
-      clk_i        : in  std_logic;
-      reset        : in  std_logic;
-      decode       : in  std_logic;
-      mainFSMreset : in  std_logic;
-      Addr         : in  std_logic_vector(63 downto 0);
-      AddrWidth    : in  std_logic_vector(1 downto 0);
-      Ader0        : in  std_logic_vector(31 downto 0);
-      Ader1        : in  std_logic_vector(31 downto 0);
-      Ader2        : in  std_logic_vector(31 downto 0);
-      Ader3        : in  std_logic_vector(31 downto 0);
-      Ader4        : in  std_logic_vector(31 downto 0);
-      Ader5        : in  std_logic_vector(31 downto 0);
-      Ader6        : in  std_logic_vector(31 downto 0);
-      Ader7        : in  std_logic_vector(31 downto 0);
-      Adem0        : in  std_logic_vector(31 downto 0);
-      Adem1        : in  std_logic_vector(31 downto 0);
-      Adem2        : in  std_logic_vector(31 downto 0);
-      Adem3        : in  std_logic_vector(31 downto 0);
-      Adem4        : in  std_logic_vector(31 downto 0);
-      Adem5        : in  std_logic_vector(31 downto 0);
-      Adem6        : in  std_logic_vector(31 downto 0);
-      Adem7        : in  std_logic_vector(31 downto 0);
-      FunctMatch   : out std_logic_vector(7 downto 0);
-      DFS_o        : out std_logic_vector(7 downto 0);
-      Nx_Base_Addr : out std_logic_vector(63 downto 0)
-      );
-  end component VME_Funct_Match;
-
-  component VME_CR_CSR_Space is
-    generic(
-      g_cram_size      : integer := c_CRAM_SIZE;
-      g_wb_data_width  : integer := c_width;
-      g_CRspace        : t_cr_array;    -- := c_cr_array;
-      g_BoardID        : integer := c_SVEC_ID;
-      g_ManufacturerID : integer := c_CERN_ID;
-      g_RevisionID     : integer := c_RevisionID;
-      g_ProgramID      : integer := 96
-      );
-    port(
-      clk_i              : in  std_logic;
-      reset              : in  std_logic;
-      CR_addr            : in  std_logic_vector(11 downto 0);
-      CRAM_addr          : in  std_logic_vector(f_log2_size(g_cram_size)-1 downto 0);
-      CRAM_data_i        : in  std_logic_vector(7 downto 0);
-      CRAM_Wen           : in  std_logic;
-      en_wr_CSR          : in  std_logic;
-      CrCsrOffsetAddr    : in  std_logic_vector(18 downto 0);
-      VME_GA_oversampled : in  std_logic_vector(5 downto 0);
-      locDataIn          : in  std_logic_vector(7 downto 0);
-      err_flag           : in  std_logic;
-      CR_data            : out std_logic_vector(7 downto 0);
-      CRAM_data_o        : out std_logic_vector(7 downto 0);
-      reset_flag         : out std_logic;
-      CSRdata            : out std_logic_vector(7 downto 0);
-      Ader0              : out std_logic_vector(31 downto 0);
-      Ader1              : out std_logic_vector(31 downto 0);
-      Ader2              : out std_logic_vector(31 downto 0);
-      Ader3              : out std_logic_vector(31 downto 0);
-      Ader4              : out std_logic_vector(31 downto 0);
-      Ader5              : out std_logic_vector(31 downto 0);
-      Ader6              : out std_logic_vector(31 downto 0);
-      Ader7              : out std_logic_vector(31 downto 0);
-      ModuleEnable       : out std_logic;
-      Sw_Reset           : out std_logic;
-      numBytes           : in  std_logic_vector(12 downto 0);
-      transfTime         : in  std_logic_vector(39 downto 0);
-      Endian_o           : out std_logic_vector(2 downto 0);
-      BAR_o              : out std_logic_vector(4 downto 0);
-      INT_Level          : out std_logic_vector(7 downto 0);
-      INT_Vector         : out std_logic_vector(7 downto 0)
-      );
-  end component VME_CR_CSR_Space;
-
-  component VME_Am_Match is
-    port(
-      clk_i        : in  std_logic;
-      reset        : in  std_logic;
-      mainFSMreset : in  std_logic;
-      Ader0        : in  std_logic_vector(31 downto 0);
-      Ader1        : in  std_logic_vector(31 downto 0);
-      Ader2        : in  std_logic_vector(31 downto 0);
-      Ader3        : in  std_logic_vector(31 downto 0);
-      Ader4        : in  std_logic_vector(31 downto 0);
-      Ader5        : in  std_logic_vector(31 downto 0);
-      Ader6        : in  std_logic_vector(31 downto 0);
-      Ader7        : in  std_logic_vector(31 downto 0);
-      AmCap0       : in  std_logic_vector(63 downto 0);
-      AmCap1       : in  std_logic_vector(63 downto 0);
-      AmCap2       : in  std_logic_vector(63 downto 0);
-      AmCap3       : in  std_logic_vector(63 downto 0);
-      AmCap4       : in  std_logic_vector(63 downto 0);
-      AmCap5       : in  std_logic_vector(63 downto 0);
-      AmCap6       : in  std_logic_vector(63 downto 0);
-      AmCap7       : in  std_logic_vector(63 downto 0);
-      XAmCap0      : in  std_logic_vector(255 downto 0);
-      XAmCap1      : in  std_logic_vector(255 downto 0);
-      XAmCap2      : in  std_logic_vector(255 downto 0);
-      XAmCap3      : in  std_logic_vector(255 downto 0);
-      XAmCap4      : in  std_logic_vector(255 downto 0);
-      XAmCap5      : in  std_logic_vector(255 downto 0);
-      XAmCap6      : in  std_logic_vector(255 downto 0);
-      XAmCap7      : in  std_logic_vector(255 downto 0);
-      Am           : in  std_logic_vector(5 downto 0);
-      XAm          : in  std_logic_vector(7 downto 0);
-      DFS_i        : in  std_logic_vector(7 downto 0);
-      decode       : in  std_logic;
-      AmMatch      : out std_logic_vector(7 downto 0)
-      );
-  end component VME_Am_Match;
 
   component VME_Wb_master is
     generic(
@@ -682,47 +516,6 @@ package vme64x_pack is
       RW_o            : out std_logic
       );
   end component VME_Wb_master;
-
-  component VME_Init is
-    port(
-      clk_i            : in  std_logic;
-      rst_n_i : in std_logic;
-      CRAddr_i         : in  std_logic_vector(18 downto 0);
-      CRdata_i         : in  std_logic_vector(7 downto 0);
-     InitReadCount_o  : out std_logic_vector(8 downto 0);
-      InitInProgress_o : out std_logic;
-      BEG_USR_CR_o     : out std_logic_vector(23 downto 0);
-      END_USR_CR_o     : out std_logic_vector(23 downto 0);
-      BEG_USR_CSR_o    : out std_logic_vector(23 downto 0);
-      END_USR_CSR_o    : out std_logic_vector(23 downto 0);
-      BEG_CRAM_o       : out std_logic_vector(23 downto 0);
-      END_CRAM_o       : out std_logic_vector(23 downto 0);
-      FUNC0_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC1_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC2_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC3_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC4_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC5_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC6_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC7_ADEM_o     : out std_logic_vector(31 downto 0);
-      FUNC0_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC1_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC2_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC3_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC4_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC5_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC6_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC7_AMCAP_o    : out std_logic_vector(63 downto 0);
-      FUNC0_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC1_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC2_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC3_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC4_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC5_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC6_XAMCAP_o   : out std_logic_vector(255 downto 0);
-      FUNC7_XAMCAP_o   : out std_logic_vector(255 downto 0)
-      );
-  end component VME_Init;
 
   component VME_swapper is
     port(
@@ -828,20 +621,6 @@ package vme64x_pack is
       VME_DATA_o      : out std_logic_vector (31 downto 0);
       VME_DATA_DIR_o  : out std_logic);
   end component;
-
-
-  component VME_CRAM is
-    generic (dl : integer := 8;
-             al : integer := f_log2_size(c_CRAM_SIZE)
-             );    
-    port(
-      clk : in  std_logic;
-      we  : in  std_logic;
-      aw  : in  std_logic_vector(al - 1 downto 0);
-      di  : in  std_logic_vector(dl - 1 downto 0);
-      dw  : out std_logic_vector(dl - 1 downto 0)
-      );
-  end component VME_CRAM;
 
 end vme64x_pack;
 package body vme64x_pack is
