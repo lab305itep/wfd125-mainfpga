@@ -149,7 +149,7 @@ module fpga_main(
 	reg greset = 1;
 	
 	wire [5:0]   VME_GA_i;
-	assign 		 VME_GA_i = {^C2X[4:0],~C2X[4:0]};
+	assign 		 VME_GA_i = ~C2X[5:0];
 	
 	wire         VME_BERR_o;
 	wire         VME_DTACK_n_o;
@@ -321,7 +321,7 @@ vme (
 
 	.INT_ack_o        (),
 	.IRQ_i            (1'b0),
-	.debug            ()
+	.debug            (debug)
 );
 
 	assign wb_m2s_VME64xCore_Top_cti = 0;
@@ -339,6 +339,7 @@ generate
 		);
 	end
 endgenerate
+
 
 //		clock buffer control
    i2c_master_slave UI2C (

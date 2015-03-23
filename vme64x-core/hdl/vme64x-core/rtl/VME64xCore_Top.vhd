@@ -284,15 +284,16 @@ begin
 
 -- If the crate is not driving the GA lines or the parity is even 
 -- or GA is set to 0 or 1 even with correct parity, module is disabled
--- parity should be odd
+-- 6 bit parity should be odd,
+-- GA[4:0] are active LOW
 s_odd_parity   <=  VME_GA_oversampled(5) xor VME_GA_oversampled(4) xor 
                    VME_GA_oversampled(3) xor VME_GA_oversampled(2) xor 
 					    VME_GA_oversampled(1) xor VME_GA_oversampled(0);	
 -- 0 and 1 are forbidden
-s_BARerror <= not(VME_GA_oversampled(4) or VME_GA_oversampled(3)or VME_GA_oversampled(2) or VME_GA_oversampled(1));  
+s_BARerror <= VME_GA_oversampled(4) and VME_GA_oversampled(3) and VME_GA_oversampled(2) and VME_GA_oversampled(1);  
   
 s_ModuleEnable <= s_odd_parity and (not s_BARerror);  
-  
+
   Inst_VME_bus : VME_bus
     generic map(
       g_clock         => g_clock,
@@ -345,7 +346,7 @@ s_ModuleEnable <= s_odd_parity and (not s_BARerror);
       ModuleEnable    => s_ModuleEnable,
       Endian_i        => std_logic_vector(TO_UNSIGNED(g_endian, 3)),
       Sw_Reset        => '0',		-- active high, synched to AS
-      BAR_i           => VME_GA_oversampled(4 downto 0),
+      BAR_i           => not (VME_GA_oversampled(4 downto 0)),
       numBytes        => s_bytes,
       transfTime      => s_time,
       -- debug
