@@ -223,7 +223,7 @@ module fpga_main(
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
 
-	gtprcv4 # (.WB_DIVIDE(5), .WB_MULTIPLY(3))
+	gtprcv4 # (.WB_DIVIDE(2), .WB_MULTIPLY(2))	// 125 MHz for wishbone
 	UGTP (
 		.rxpin	({RX3, RX2, RX1, RX0}),	// input data pins
 		.txpin	({TX3, TX2, TX1, TX0}),	// output data pins
@@ -257,14 +257,6 @@ module fpga_main(
 	assign wb_rst 			= ~greset;
 	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
-/*	dtack UDTACK (
-		.wb_clk			(wb_clk),
-		.vme_dtack		(VME_DTACK_n_o),
-		.vme_dtack_oe	(VME_DTACK_OE_o),
-		.xdtack			(XDTACK),
-		.xdtackoe		(XDTACKOE)
-	);
-*/
 
 VME64xCore_Top #(
     .g_clock (13), 	    		// clock period (ns)
