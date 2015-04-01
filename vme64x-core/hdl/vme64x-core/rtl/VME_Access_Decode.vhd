@@ -9,30 +9,20 @@
 -- allows the access to WB bus by asserting the CardSel signal.
 --
 --+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
--- Only A32 access is considered, all AM's
+-- Only A32 and A64 access is considered, all AM's
 -- 2e transfers are not supported yet
--- 32 mByte window (lower 25 bits are not checked)
--- base addr = Addr_Hi(1:0) & GA(4:0)
+--		A64:	512 MByte window for memory access
+--				VME base addr: zero(27:0) & Addr_Hi(1:0) & GA(4:0) & zero(28:0)
+--				mapped to local WB addresses 0-1FFFFFFF
+--		A32:	1 Mbyte window for register space
+--				VME base addr: zero(4:0) & Addr_Hi(1:0) & GA(4:0) & zero(19:0)
+--				mapped to local WB addresses 20000000-200FFFFF
 --+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 --________________________________________________________________________________________
 -- Authors:                                     
 --               Svirlex
 -- Date         03/2015                                                                           
 -- Version      v0.04 
---________________________________________________________________________________________
---                               GNU LESSER GENERAL PUBLIC LICENSE                                
---                              ------------------------------------    
--- Copyright (c) 2009 - 2011 CERN                           
--- This source file is free software; you can redistribute it and/or modify it 
--- under the terms of the GNU Lesser General Public License as published by the 
--- Free Software Foundation; either version 2.1 of the License, or (at your option) 
--- any later version. This source is distributed in the hope that it will be useful, 
--- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
--- FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for 
--- more details. You should have received a copy of the GNU Lesser General Public 
--- License along with this source; if not, download it from 
--- http://www.gnu.org/licenses/lgpl-2.1.html                     
------------------------------------------------------------------------------------------
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -71,28 +61,37 @@ architecture Behavioral of VME_Access_Decode is
 --===========================================================================	
 begin
 
--- !!! may be necessary to delay outputs one cycle
-
    p_Match : process(clk_i)
    begin
       if rising_edge(clk_i) then
          if mainFSMreset = '1' or reset = '1' then
             CardSel <= '0';
             Base_Addr <= (others => '0');
-         elsif decode = '1' then
-				if ModuleEnable = '1' and 
-					((Am = c_A32) or					-- hex code 0x09
+         elsif decode = '1' and ModuleEnable = '1' then
+				if	((Am = c_A32) or					-- hex code 0x09
 					 (Am = c_A32_sup) or 			-- hex code 0x0d
 					 (Am = c_A32_BLT) or				-- hex code 0x0b  
 					 (Am = c_A32_BLT_sup) or 		-- hex code 0x0f
 					 (Am = c_A32_MBLT) or			-- hex code 0x08
 					 (Am = c_A32_MBLT_sup)) and	-- hex code 0x0c
-					Addr(31 downto 30) = Addr_HI_i and
-					Addr(29 downto 25) = BAR_i then 
+					Addr(31 downto 27) = "00000" and
+					Addr(26 downto 25) = Addr_HI_i and
+					Addr(24 downto 20) = BAR_i then 
 						CardSel <= '1';
-                  Base_Addr(31 downto 25) <= Addr_HI_i & BAR_i;
-                  Base_Addr(63 downto 32) <= (others => '0');
-                  Base_Addr(24 downto 0)  <= (others => '0');                
+                  Base_Addr(63 downto 28) <= x"FFFFFFFFE";
+                  Base_Addr(27 downto 20) <= '0' & Addr_HI_i & BAR_i;
+                  Base_Addr(19 downto 0)  <= (others => '0');                
+				end if;
+				if	((Am = c_A64) or					-- hex code 0x01
+					 (Am = c_A64_BLT) or		  		-- hex code 0x03
+					 (Am = c_A64_MBLT)) and			-- hex code 0x00
+					Addr(63 downto 36) = x"0000000" and
+					Addr(35 downto 34) = Addr_HI_i and
+					Addr(33 downto 29) = BAR_i then 
+						CardSel <= '1';
+                  Base_Addr(63 downto 36) <= (others => '0');
+                  Base_Addr(35 downto 29) <= Addr_HI_i & BAR_i;
+                  Base_Addr(28 downto 0)  <= (others => '0');                
 				end if;
 			end if;
 		end if;
