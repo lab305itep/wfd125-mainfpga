@@ -16,7 +16,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 module memory # (
-    parameter READ_BURST_LEN = 16
+    parameter READ_BURST_LEN = 8
 )
 (
     input         wb_clk,
@@ -29,8 +29,8 @@ module memory # (
 	 input [28:0]  wbm_addr,	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
     input [31:0]  wbm_dat_i,
     output reg    wbm_ack,
-    output reg    wbm_stall,
-    output [31:0] wbm_dat_o,
+    output        wbm_stall,
+    output reg [31:0] wbm_dat_o,
    // Register WishBone
     input         wbr_cyc,
     input         wbr_stb,
@@ -74,12 +74,27 @@ module memory # (
     output [31:0] status
     );
 
-	wire mem_rst;			// external reset or command from register
-	wire wf_empty;			// port 0 write fifo empty -- end of previous write
-	reg wf_enable = 0;	// port 0 write fifo enable
-	reg [31:0] wf_data;	// data to be written to port 0 fifo
-	reg [6:0] stb_cnt;
-	reg [28:0] adr_beg;	// block beginning address
+	wire  		mem_rst;			// external reset or command from register
+	wire  		w0_full;			// port 0 write fifo full
+	wire  		w0_enable;	   // port 0 write fifo enable
+	wire  		p0_full;       // port 0 cmd fifo full
+	reg   		p0_enable = 0; // port 0 cmd fifo enable
+	reg   		r0_enable = 0; // port 0 read fifo enable
+	wire			r0_empty;		// port 0 read fifo empty
+	reg [5:0] 	p0_blen;			// port 0 current burst length
+	reg [2:0] 	p0_cmd;			// port 0 instruction
+	wire [31:0] r0_data;			// port 0 read fifo data
+	reg [6:0] 	stb_cnt;			// valid wbm_stb counter for one block transfer
+	reg [6:0] 	ack_cnt;			// read wbm_ack counter for one block transfer
+	reg [28:0] 	adr_beg;			// burst beginning address
+	reg [28:0] 	adr_next;		// next address available in read fifo
+	reg [6:0] 	rd_left = 0;	// words in read fifo availiable for read
+	reg			rd_dummy;		// flag to execute dummy read from rd fifo
+
+	// We always write to wr_fifo if it's not full, otherwise we signal STALL
+	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
+	assign wbm_stall = w0_full | p0_full;
+	assign mem_rst = wb_rst;
 
 // main state machine
 	reg [3:0] state;
@@ -87,13 +102,27 @@ module memory # (
 	localparam ST_IDLE 		= 1;
 	localparam ST_WR_FIFO 	= 2;
 	localparam ST_WR_CMD		= 3;
-	localparam ST_WR_WAIT	= 4;
+	localparam ST_RD_FIFO 	= 4;
+	localparam ST_RD_CMD		= 5;
+	
 	
 	always @(posedge wb_clk) begin
 		// Defaults
-		wbm_stall <= 0;
-		wbm_ack <= 0;
-		wf_enable <= 0;
+		wbm_ack <= w0_enable;	
+		if (wbm_cyc & wbm_stb & ~wbm_stall) begin
+			stb_cnt <= stb_cnt + 1;
+		end
+		p0_enable <= 0;
+		r0_enable <= 0;
+		// Dummy read from rd fifo
+		if (rd_dummy && rd_left != 0) begin
+			r0_enable <= 1;
+			rd_left <= rd_left - 1;
+		end else if (rd_dummy) begin
+			rd_left <= READ_BURST_LEN;		// this will become the number of words in rd fifo after burst execution
+			rd_dummy <= 0;
+		end
+		// main state machine
 		if (mem_rst) begin
          state <= ST_RST;
       end else begin
@@ -101,36 +130,97 @@ module memory # (
 				ST_RST : begin
 					// Wait for end of current cycle here
 					stb_cnt <= 0;
-					if ~wbm_cyc begin
+					if (~wbm_cyc) begin
 						state <= ST_IDLE;
 					end
 				end
             ST_IDLE : begin
 					stb_cnt <= 0;
-					if wbm_cyc & wbm_stb begin
-						// This is first stb in a cycle
-						stb_cnt <= stb_cnt + 1;
+					ack_cnt <= 0;
+					if (wbm_cyc & wbm_stb & ~wbm_stall) begin
+						// This is first valid stb in a cycle
+						stb_cnt <= 1;
 						adr_beg <= wbm_addr;
-						if wbm_we begin
-							// Write operation, assume that write fifo always has space for one word
-							wf_data <= wbm_dat_i;	// memorize data for this write
-							wf_enable <= 1;			// enable write
-							wbm_ack <= 1;				// ack the data
-							if ~wf_empty begin
-								// Have to wait till previous write finishes
-								wbm_stall <= 1;		// assert stall
-								state <= ST_WR_WAIT;
-							end else
-								state <= ST_WR_FIFO;
-							end
+						if (wbm_we) begin
+							// Write operation
+							state <= ST_WR_FIFO;
 						end else begin
-						// Read operation
+							// Read operation
+							if (wbm_addr == adr_next && ~r0_empty) begin
+								// we have reqired data in read fifo
+								r0_enable <= 1;
+								wbm_ack <= 1;
+								wbm_dat_o <= r0_data;
+								ack_cnt <= 1;
+								adr_next <= adr_next + 1;
+								rd_left <= rd_left - 1;
+								state <= ST_RD_FIFO;
+							end else begin
+								// otherwise start new burst and read out dummy data if necessary
+								rd_dummy <= 1;				// signal dummy readout
+								p0_blen <= READ_BURST_LEN - 1;
+								p0_cmd <= 3'b011;			// read with autoprecharge
+								adr_next <= wbm_addr;	// this will become address of the first word in fifo after dummy readout
+								if (p0_full) begin
+									state <= ST_RD_CMD;
+								end else begin 
+									p0_enable <= 1;		// execute instruction
+									state <= ST_RD_FIFO;
+								end
+							end
 						end
 					end
             end
-            ST_WRFIFO : begin
+            ST_WR_FIFO : begin
+					if (w0_full || ~wbm_cyc) begin
+						// wr_fifo full or write cycle ended
+						p0_blen <= stb_cnt - 1;
+						p0_cmd <= 3'b010;			// write with autoprecharge
+						if (p0_full) begin
+							state <= ST_WR_CMD;
+						end else begin 
+							p0_enable <= 1;	// execute instruction
+							state <= ST_IDLE;
+						end	// else we stay in this state and continue writing FIFO
+					end 
             end
-            ST_WRCMD : begin
+            ST_WR_CMD : begin
+					if (~p0_full) begin
+						p0_enable <= 1;
+						state <= ST_IDLE;
+					end
+            end
+            ST_RD_FIFO : begin
+					if (wbm_cyc && (ack_cnt < stb_cnt || wbm_stb)) begin
+						if (~rd_dummy && ~r0_empty) begin
+							// we have data to read and junk already removed -- send
+							r0_enable <= 1;
+							wbm_ack <= 1;
+							wbm_dat_o <= r0_data;
+							ack_cnt <= ack_cnt + 1;
+							adr_next <= adr_next + 1;
+							rd_left <= rd_left - 1;
+						end else if (r0_empty) begin
+							// we need more data -- start new burst
+							p0_blen <= READ_BURST_LEN - 1;
+							p0_cmd <= 3'b011;			// read with autoprecharge
+							adr_beg <= adr_next;	// this will become address of the first word in fifo after dummy readout
+							rd_left <= READ_BURST_LEN;
+							if (p0_full) begin
+								state <= ST_RD_CMD;
+							end else begin 
+								p0_enable <= 1;		// execute instruction
+							end
+						end
+					end else begin
+						state <= ST_IDLE;
+					end
+            end
+            ST_RD_CMD : begin
+					if (~p0_full) begin
+						p0_enable <= 1;		// execute instruction (prepared in ST_IDLE)
+						state <= ST_RD_FIFO;
+					end
             end
          endcase 
       end
@@ -183,48 +273,48 @@ u_memcntr (
   .mcb1_zio               (MEMZIO),
 // port 0 bidirectional
    .c1_p0_cmd_clk                          (wb_clk),
-   .c1_p0_cmd_en                           (0),
-   .c1_p0_cmd_instr                        (0 ? 3'b011 : 3'b010), // write or read with autoprecharge
-   .c1_p0_cmd_bl                           (0),		// burst length
-   .c1_p0_cmd_byte_addr                    (0),
+   .c1_p0_cmd_en                           (p0_enable),
+   .c1_p0_cmd_instr                        (p0_cmd), // write or read with autoprecharge
+   .c1_p0_cmd_bl                           (p0_blen),		// burst length
+   .c1_p0_cmd_byte_addr                    ({1'b0, adr_beg}),
    .c1_p0_cmd_empty                        (),
-   .c1_p0_cmd_full                         (),
+   .c1_p0_cmd_full                         (p0_full),
    .c1_p0_wr_clk                           (wb_clk),
-   .c1_p0_wr_en                            (0),
-   .c1_p0_wr_mask                          (4'b0000),	// always all 4 bytes
-   .c1_p0_wr_data                          (0),
-   .c1_p0_wr_full                          (),
-   .c1_p0_wr_empty                         (wf_empty),
+   .c1_p0_wr_en                            (w0_enable),
+   .c1_p0_wr_mask                          (~wbm_sel),	// this is masking out
+   .c1_p0_wr_data                          (wbm_dat_i),
+   .c1_p0_wr_full                          (w0_full),
+   .c1_p0_wr_empty                         (),
    .c1_p0_wr_count                         (),
    .c1_p0_wr_underrun                      (),
    .c1_p0_wr_error                         (),
    .c1_p0_rd_clk                           (wb_clk),
-   .c1_p0_rd_en                            (0),		// always valid if not empty
-   .c1_p0_rd_data                          (),
+   .c1_p0_rd_en                            (r0_enable),
+   .c1_p0_rd_data                          (r0_data),
    .c1_p0_rd_full                          (),
-   .c1_p0_rd_empty                         (),
+   .c1_p0_rd_empty                         (r0_empty),
    .c1_p0_rd_count                         (),
    .c1_p0_rd_overflow                      (),
    .c1_p0_rd_error                         (),
 // port1 unused
-   .c1_p1_cmd_clk                          (0),
-   .c1_p1_cmd_en                           (0),
-   .c1_p1_cmd_instr                        (0),
-   .c1_p1_cmd_bl                           (0),
-   .c1_p1_cmd_byte_addr                    (0),
+   .c1_p1_cmd_clk                          (1'b0),
+   .c1_p1_cmd_en                           (1'b0),
+   .c1_p1_cmd_instr                        (3'b000),
+   .c1_p1_cmd_bl                           (6'b000000),
+   .c1_p1_cmd_byte_addr                    (30'h00000000),
    .c1_p1_cmd_empty                        (),
    .c1_p1_cmd_full                         (),
-   .c1_p1_wr_clk                           (0),
-   .c1_p1_wr_en                            (0),
-   .c1_p1_wr_mask                          (0),
-   .c1_p1_wr_data                          (0),
+   .c1_p1_wr_clk                           (1'b0),
+   .c1_p1_wr_en                            (1'b0),
+   .c1_p1_wr_mask                          (4'b1111),
+   .c1_p1_wr_data                          (32'h00000000),
    .c1_p1_wr_full                          (),
    .c1_p1_wr_empty                         (),
    .c1_p1_wr_count                         (),
    .c1_p1_wr_underrun                      (),
    .c1_p1_wr_error                         (),
-   .c1_p1_rd_clk                           (0),
-   .c1_p1_rd_en                            (0),
+   .c1_p1_rd_clk                           (1'b0),
+   .c1_p1_rd_en                            (1'b0),
    .c1_p1_rd_data                          (),
    .c1_p1_rd_full                          (),
    .c1_p1_rd_empty                         (),
@@ -233,65 +323,65 @@ u_memcntr (
    .c1_p1_rd_error                         (),
 // port 2 write only
    .c1_p2_cmd_clk                          (wb_clk),
-   .c1_p2_cmd_en                           (0),
+   .c1_p2_cmd_en                           (1'b0),
    .c1_p2_cmd_instr                        (3'b010),	// always write with autoprecharge
-   .c1_p2_cmd_bl                           (0),
-   .c1_p2_cmd_byte_addr                    (0),
+   .c1_p2_cmd_bl                           (6'b000000),
+   .c1_p2_cmd_byte_addr                    (30'h00000000),
    .c1_p2_cmd_empty                        (),
    .c1_p2_cmd_full                         (),
    .c1_p2_wr_clk                           (wb_clk),
-   .c1_p2_wr_en                            (0),
+   .c1_p2_wr_en                            (1'b0),
    .c1_p2_wr_mask                          (4'b0000),
-   .c1_p2_wr_data                          (0),
+   .c1_p2_wr_data                          (32'h00000000),
    .c1_p2_wr_full                          (),
    .c1_p2_wr_empty                         (),
    .c1_p2_wr_count                         (),
    .c1_p2_wr_underrun                      (),
    .c1_p2_wr_error                         (),
 // ports 3-5 unused
-   .c1_p3_cmd_clk                          (0),
-   .c1_p3_cmd_en                           (0),
-   .c1_p3_cmd_instr                        (0),
-   .c1_p3_cmd_bl                           (0),
-   .c1_p3_cmd_byte_addr                    (0),
+   .c1_p3_cmd_clk                          (1'b0),
+   .c1_p3_cmd_en                           (1'b0),
+   .c1_p3_cmd_instr                        (3'b000),
+   .c1_p3_cmd_bl                           (6'b000000),
+   .c1_p3_cmd_byte_addr                    (30'h00000000),
    .c1_p3_cmd_empty                        (),
    .c1_p3_cmd_full                         (),
-   .c1_p3_wr_clk                           (0),
-   .c1_p3_wr_en                            (0),
-   .c1_p3_wr_mask                          (0),
-   .c1_p3_wr_data                          (0),
+   .c1_p3_wr_clk                           (1'b0),
+   .c1_p3_wr_en                            (1'b0),
+   .c1_p3_wr_mask                          (4'b1111),
+   .c1_p3_wr_data                          (32'h00000000),
    .c1_p3_wr_full                          (),
    .c1_p3_wr_empty                         (),
    .c1_p3_wr_count                         (),
    .c1_p3_wr_underrun                      (),
    .c1_p3_wr_error                         (),
-   .c1_p4_cmd_clk                          (0),
-   .c1_p4_cmd_en                           (0),
-   .c1_p4_cmd_instr                        (0),
-   .c1_p4_cmd_bl                           (0),
-   .c1_p4_cmd_byte_addr                    (0),
+   .c1_p4_cmd_clk                          (1'b0),
+   .c1_p4_cmd_en                           (1'b0),
+   .c1_p4_cmd_instr                        (3'b000),
+   .c1_p4_cmd_bl                           (6'b000000),
+   .c1_p4_cmd_byte_addr                    (30'h00000000),
    .c1_p4_cmd_empty                        (),
    .c1_p4_cmd_full                         (),
-   .c1_p4_wr_clk                           (0),
-   .c1_p4_wr_en                            (0),
-   .c1_p4_wr_mask                          (0),
-   .c1_p4_wr_data                          (0),
+   .c1_p4_wr_clk                           (1'b0),
+   .c1_p4_wr_en                            (1'b0),
+   .c1_p4_wr_mask                          (4'b1111),
+   .c1_p4_wr_data                          (32'h00000000),
    .c1_p4_wr_full                          (),
    .c1_p4_wr_empty                         (),
    .c1_p4_wr_count                         (),
    .c1_p4_wr_underrun                      (),
    .c1_p4_wr_error                         (),
-   .c1_p5_cmd_clk                          (0),
-   .c1_p5_cmd_en                           (0),
-   .c1_p5_cmd_instr                        (0),
-   .c1_p5_cmd_bl                           (0),
-   .c1_p5_cmd_byte_addr                    (0),
+   .c1_p5_cmd_clk                          (1'b0),
+   .c1_p5_cmd_en                           (1'b0),
+   .c1_p5_cmd_instr                        (3'b000),
+   .c1_p5_cmd_bl                           (6'b000000),
+   .c1_p5_cmd_byte_addr                    (30'h00000000),
    .c1_p5_cmd_empty                        (),
    .c1_p5_cmd_full                         (),
-   .c1_p5_wr_clk                           (0),
-   .c1_p5_wr_en                            (0),
-   .c1_p5_wr_mask                          (0),
-   .c1_p5_wr_data                          (0),
+   .c1_p5_wr_clk                           (1'b0),
+   .c1_p5_wr_en                            (1'b0),
+   .c1_p5_wr_mask                          (4'b1111),
+   .c1_p5_wr_data                          (32'h00000000),
    .c1_p5_wr_full                          (),
    .c1_p5_wr_empty                         (),
    .c1_p5_wr_count                         (),
