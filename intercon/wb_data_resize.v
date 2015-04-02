@@ -14,6 +14,7 @@ module wb_data_resize
     output [mdw-1:0] wbm_dat_o,
     output 	     wbm_ack_o,
     output 	     wbm_err_o,
+    output 	     wbm_stall_o, 
     output 	     wbm_rty_o, 
     // Wishbone Slave interface
     output [aw-1:0]  wbs_adr_o,
@@ -26,6 +27,7 @@ module wb_data_resize
     input  [sdw-1:0] wbs_dat_i,
     input 	     wbs_ack_i,
     input 	     wbs_err_i,
+    input 	     wbs_stall_i,
     input 	     wbs_rty_i);
 
    assign wbs_adr_o[aw-1:2] = wbm_adr_i[aw-1:2];
@@ -51,6 +53,7 @@ module wb_data_resize
 	              {24'd0, wbs_dat_i};
    assign wbm_ack_o = wbs_ack_i;
    assign wbm_err_o = wbs_err_i;
+   assign wbm_stall_o = wbs_stall_i;
    assign wbm_rty_o = wbs_rty_i;
    
 endmodule

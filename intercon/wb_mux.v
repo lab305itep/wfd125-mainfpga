@@ -71,6 +71,7 @@ module wb_mux
     output [dw-1:0] 	       wbm_dat_o,
     output 		       wbm_ack_o,
     output 		       wbm_err_o,
+    output 		       wbm_stall_o, 
     output 		       wbm_rty_o, 
     // Wishbone Slave interface
     output [num_slaves*aw-1:0] wbs_adr_o,
@@ -84,6 +85,7 @@ module wb_mux
     input [num_slaves*dw-1:0]  wbs_dat_i,
     input [num_slaves-1:0]     wbs_ack_i,
     input [num_slaves-1:0]     wbs_err_i,
+    input [num_slaves-1:0]     wbs_stall_i,
     input [num_slaves-1:0]     wbs_rty_i);
 
 `include "verilog_utils.vh"
@@ -125,6 +127,7 @@ module wb_mux
    assign wbm_dat_o = wbs_dat_i[slave_sel*dw+:dw];
    assign wbm_ack_o = wbs_ack_i[slave_sel];
    assign wbm_err_o = wbs_err_i[slave_sel] | wbm_err;
+   assign wbm_stall_o = wbs_stall_i[slave_sel];
    assign wbm_rty_o = wbs_rty_i[slave_sel];
 
 endmodule

@@ -11,7 +11,8 @@
 // Description: 
 //		Accepts and buffers data from 4 GTP recievers, passes it to SDRAM memory
 //		in blocks with round-robbin arbitration
-//		Supports full pipelined interface for Wishbone block transfers
+//		Supports full pipelined block transfer interface for Wishbone
+//		assumes only sequential addresses in a single block transfers
 //
 //
 //////////////////////////////////////////////////////////////////////////////////
@@ -44,8 +45,8 @@ module memory # (
 	 input         gtp_clk,
 	// recied data from 4 recievers
     input [63:0]  gtp_dat,
-	// recieved data valid (not a comma)
-    input         gtp_vld,
+	// recieved data valid (not a comma) from 4 recievers
+    input [3:0]   gtp_vld,
 	// SDRAM interface
 	 input         mcb_clk,
 	// Address
@@ -74,6 +75,7 @@ module memory # (
     output [31:0] status
     );
 
+	// port 0 : MIG to WB interface and fsm signals
 	wire  		mem_rst;			// external reset or command from register
 	wire  		w0_full;			// port 0 write fifo full
 	wire  		w0_enable;	   // port 0 write fifo enable
@@ -91,12 +93,35 @@ module memory # (
 	reg [6:0] 	rd_left = 0;	// words in read fifo availiable for read
 	reg			rd_dummy;		// flag to execute dummy read from rd fifo
 
+
+	wire [31:0] debug;
+	
+	inoutreg regdebug (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wbr_cyc), 
+		.wb_stb (wbr_stb), 
+		.wb_adr (wbr_addr[0]), 
+		.wb_we  (wbr_we), 
+		.wb_dat_i (wbr_dat_i), 
+		.wb_dat_o (wbr_dat_o), 
+		.wb_ack (wbr_ack),
+		.reg_o   (),
+		.reg_i	(debug)
+	);
+	assign debug[7] = 0;
+	assign debug[19] = 0;
+	assign debug[27:26] = 0;
+	assign debug[9] = w0_full;
+	assign debug[20] = r0_empty;
+	assign debug[25] = p0_full;
+	assign debug[31:28] = state;
+
 	// We always write to wr_fifo if it's not full, otherwise we signal STALL
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
 	assign wbm_stall = w0_full | p0_full;
 	assign mem_rst = wb_rst;
 
-// main state machine
+// MIG to WB state machine
 	reg [3:0] state;
 	localparam ST_RST 		= 0;
 	localparam ST_IDLE 		= 1;
@@ -160,6 +185,7 @@ module memory # (
 								rd_dummy <= 1;				// signal dummy readout
 								p0_blen <= READ_BURST_LEN - 1;
 								p0_cmd <= 3'b011;			// read with autoprecharge
+								ack_cnt <= 0;
 								adr_next <= wbm_addr;	// this will become address of the first word in fifo after dummy readout
 								if (p0_full) begin
 									state <= ST_RD_CMD;
@@ -277,25 +303,25 @@ u_memcntr (
    .c1_p0_cmd_instr                        (p0_cmd), // write or read with autoprecharge
    .c1_p0_cmd_bl                           (p0_blen),		// burst length
    .c1_p0_cmd_byte_addr                    ({1'b0, adr_beg}),
-   .c1_p0_cmd_empty                        (),
+   .c1_p0_cmd_empty                        (debug[24]),
    .c1_p0_cmd_full                         (p0_full),
    .c1_p0_wr_clk                           (wb_clk),
    .c1_p0_wr_en                            (w0_enable),
    .c1_p0_wr_mask                          (~wbm_sel),	// this is masking out
    .c1_p0_wr_data                          (wbm_dat_i),
    .c1_p0_wr_full                          (w0_full),
-   .c1_p0_wr_empty                         (),
-   .c1_p0_wr_count                         (),
-   .c1_p0_wr_underrun                      (),
-   .c1_p0_wr_error                         (),
+   .c1_p0_wr_empty                         (debug[8]),
+   .c1_p0_wr_count                         (debug[6:0]),
+   .c1_p0_wr_underrun                      (debug[10]),
+   .c1_p0_wr_error                         (debug[11]),
    .c1_p0_rd_clk                           (wb_clk),
    .c1_p0_rd_en                            (r0_enable),
    .c1_p0_rd_data                          (r0_data),
-   .c1_p0_rd_full                          (),
+   .c1_p0_rd_full                          (debug[21]),
    .c1_p0_rd_empty                         (r0_empty),
-   .c1_p0_rd_count                         (),
-   .c1_p0_rd_overflow                      (),
-   .c1_p0_rd_error                         (),
+   .c1_p0_rd_count                         (debug[18:12]),
+   .c1_p0_rd_overflow                      (debug[22]),
+   .c1_p0_rd_error                         (debug[23]),
 // port1 unused
    .c1_p1_cmd_clk                          (1'b0),
    .c1_p1_cmd_en                           (1'b0),

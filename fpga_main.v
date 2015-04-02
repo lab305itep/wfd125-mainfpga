@@ -254,7 +254,7 @@ module fpga_main(
 	assign DDIR          = (VME_DATA_DIR_o) ? 1'b1 : 1'bz;
 	assign VME_DATA_i    = XD;
 	assign XIRQ     		= {VME_IRQ_o[7:5], VME_IRQ_o[3:1]};
-	assign wb_rst 			= ~greset;
+	assign wb_rst 			= greset;	// wb_rst is now active high
 	assign wb_m2s_VME64xCore_Top_adr[1:0] = 2'b00;
 
 
@@ -269,7 +269,7 @@ VME64xCore_Top #(
 )
 vme (
 	.clk_i(wb_clk),
-	.rst_n_i(wb_rst),
+	.rst_n_i(~wb_rst),
 
 	.VME_AS_n_i       (XAS),
 	.VME_RST_n_i      (XRESET),
@@ -309,7 +309,7 @@ vme (
 	.STB_o            (wb_m2s_VME64xCore_Top_stb),
 	.ACK_i            (wb_s2m_VME64xCore_Top_ack),
 	.WE_o             (wb_m2s_VME64xCore_Top_we),
-	.STALL_i          (1'b0),
+	.STALL_i          (wb_s2m_VME64xCore_Top_stall),
 
 	.INT_ack_o        (),
 	.IRQ_i            (1'b0),
@@ -336,7 +336,7 @@ endgenerate
 //		clock buffer control
    i2c_master_slave UI2C (
 		.wb_clk_i  (wb_clk), 
-		.wb_rst_i  (~wb_rst),		// active high 
+		.wb_rst_i  (wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
 		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[4:2]), 
 		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat), 
@@ -368,7 +368,7 @@ endgenerate
 	
    triggen UTRIG (
 		.wb_clk  	(wb_clk), 
-		.wb_rst  	(~wb_rst), 
+		.wb_rst  	(wb_rst), 
 		.wb_adr  	(wb_m2s_triggen_adr[2]), 
 		.wb_dat_i  	(wb_m2s_triggen_dat), 
 		.wb_dat_o  	(wb_s2m_triggen_dat),
@@ -535,7 +535,7 @@ xspi_master  #(
 	.CLK_DIV (49),
 	.CLK_POL (1'b1)
 ) dac_spi (
-	 .wb_rst    (~wb_rst),
+	 .wb_rst    (wb_rst),
     .wb_clk    (wb_clk),
     .wb_we     (wb_m2s_dac_spi_we),
     .wb_dat_i  (wb_m2s_dac_spi_dat[15:0]),
@@ -558,7 +558,7 @@ xspi_master  #(
 	.CLK_DIV (49),
 	.CLK_POL (1'b0)
 ) icx_spi (
-	 .wb_rst    (~wb_rst),
+	 .wb_rst    (wb_rst),
     .wb_clk    (wb_clk),
     .wb_we     (wb_m2s_icx_spi_we),
     .wb_dat_i  (wb_m2s_icx_spi_dat[15:0]),
@@ -575,47 +575,68 @@ xspi_master  #(
 	assign wb_s2m_icx_spi_rty = 0;	
 	assign wb_s2m_icx_spi_dat[31:16] = 0;	
 
-// memory test module
-wb_tmem(
-	// system clock 125 MHz
-	 .clk       (CLKMCB),
-	// system reset, active high
-	 .rst       (greset),
-	// wb interface
-    .wb_dat_i  (wb_m2s_wb_tmem_dat),
-    .wb_dat_o  (wb_s2m_wb_tmem_dat),
-    .wb_we     (wb_m2s_wb_tmem_we),
-    .wb_clk    (wb_clk),
-    .wb_cyc    (wb_m2s_wb_tmem_cyc),
-    .wb_ack    (wb_s2m_wb_tmem_ack),
-    .wb_stb    (wb_m2s_wb_tmem_stb),
-    .wb_adr    (wb_m2s_wb_tmem_adr[5:2]),
+memory # (
+    .READ_BURST_LEN(8)
+)
+sdram (
+    .wb_clk		(wb_clk),
+    .wb_rst    (wb_rst),
+   // Memory WishBone
+    .wbm_cyc   (wb_m2s_sdram_cyc),
+    .wbm_stb	(wb_m2s_sdram_stb),
+    .wbm_we		(wb_m2s_sdram_we),
+	 .wbm_sel   (wb_m2s_sdram_sel),
+	 .wbm_addr  (wb_m2s_sdram_adr),	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
+    .wbm_dat_i	(wb_m2s_sdram_dat),
+    .wbm_ack	(wb_s2m_sdram_ack),
+    .wbm_stall (wb_s2m_sdram_stall),
+    .wbm_dat_o	(wb_s2m_sdram_dat),
+   // Register WishBone
+    .wbr_cyc	(wb_m2s_reg_fifo_cyc),
+    .wbr_stb	(wb_m2s_reg_fifo_stb),
+    .wbr_we		(wb_m2s_reg_fifo_we),
+	 .wbr_addr	(wb_m2s_reg_fifo_adr[3:2]),
+    .wbr_dat_i	(wb_m2s_reg_fifo_dat),
+    .wbr_ack	(wb_s2m_reg_fifo_ack),
+    .wbr_dat_o	(wb_s2m_reg_fifo_dat),
+   // GTP data
+	// reciever clock 125 MHz
+	 .gtp_clk	(CLK125),
+	// recied data from 4 recievers
+    .gtp_dat	(gtp_data_o),
+	// recieved data valid (not a comma)
+    .gtp_vld	(~gtp_kchar_o),
 	// SDRAM interface
+	 .mcb_clk		(CLKMCB),
 	// Address
-    .MEMA      (MEMA),
+    .MEMA			(MEMA),
 	// Bank addr
-    .MEMBA     (MEMBA),
+    .MEMBA			(MEMBA),
 	// Data
-    .MEMD      (MEMD),
+    .MEMD			(MEMD),
 	// Other single ended
-    .MEMRST    (MEMRST),
-    .MEMCKE    (MEMCKE),
-    .MEMWE     (MEMWE),
-    .MEMODT    (MEMODT),
-    .MEMRAS    (MEMRAS),
-    .MEMCAS    (MEMCAS),
-    .MEMUDM    (MEMUDM),
-    .MEMLDM    (MEMLDM),
+    .MEMRST			(MEMRST),
+    .MEMCKE			(MEMCKE),
+    .MEMWE			(MEMWE),
+    .MEMODT			(MEMODT),
+    .MEMRAS			(MEMRAS),
+    .MEMCAS			(MEMCAS),
+    .MEMUDM			(MEMUDM),
+    .MEMLDM			(MEMLDM),
 	// Pairs
-    .MEMCK     (MEMCK),
-    .MEMUDQS   (MEMUDQS),
-    .MEMLDQS   (MEMLDQS),
+    .MEMCK			(MEMCK),
+    .MEMUDQS		(MEMUDQS),
+    .MEMLDQS		(MEMLDQS),
 	// Impedance matching
-    .MEMZIO    (MEMZIO),
-    .MEMRZQ    (MEMRZQ)
+    .MEMZIO			(MEMZIO),
+    .MEMRZQ			(MEMRZQ),
+	// current status
+    .status			()
     );
-
-	assign wb_s2m_wb_tmem_err = 0;
-	assign wb_s2m_wb_tmem_rty = 0;
+	
+	assign	wb_s2m_sdram_err = 0;
+	assign	wb_s2m_sdram_rty = 0;
+	assign	wb_s2m_reg_fifo_err = 0;
+	assign	wb_s2m_reg_fifo_rty = 0;
 
 endmodule

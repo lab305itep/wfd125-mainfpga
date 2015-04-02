@@ -19,6 +19,7 @@ WB_MASTER_PORTS = [Signal('adr', 32),
 
 WB_SLAVE_PORTS  = [Signal('dat', 32),
                    Signal('ack'),
+                   Signal('stall'),
                    Signal('err'),
                    Signal('rty')]
 
