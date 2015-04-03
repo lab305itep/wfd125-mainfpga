@@ -93,7 +93,6 @@ module memory # (
 	reg [6:0] 	rd_left = 0;	// words in read fifo availiable for read
 	reg			rd_dummy;		// flag to execute dummy read from rd fifo
 
-
 	wire [31:0] debug;
 	
 	inoutreg regdebug (
@@ -114,7 +113,7 @@ module memory # (
 	assign debug[9] = w0_full;
 	assign debug[20] = r0_empty;
 	assign debug[25] = p0_full;
-	assign debug[31:28] = state;
+	assign debug[31:28] = rd_left[3:0];
 
 	// We always write to wr_fifo if it's not full, otherwise we signal STALL
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
@@ -122,7 +121,7 @@ module memory # (
 	assign mem_rst = wb_rst;
 
 // MIG to WB state machine
-	reg [3:0] state;
+	reg [2:0] state;
 	localparam ST_RST 		= 0;
 	localparam ST_IDLE 		= 1;
 	localparam ST_WR_FIFO 	= 2;
@@ -144,7 +143,14 @@ module memory # (
 			r0_enable <= 1;
 			rd_left <= rd_left - 1;
 		end else if (rd_dummy) begin
-			rd_left <= READ_BURST_LEN;		// this will become the number of words in rd fifo after burst execution
+			if (state == ST_RD_FIFO || state == ST_RD_CMD) begin
+				// this will become the number of words in rd fifo after burst execution
+				// on reads we always do fifo clear together with burst execution 
+				// and it's convenient to make this assignment here just once
+				rd_left <= READ_BURST_LEN;		
+			end else begin
+				rd_left <= 0;		// on writes
+			end
 			rd_dummy <= 0;
 		end
 		// main state machine
@@ -153,9 +159,11 @@ module memory # (
       end else begin
 			case (state)
 				ST_RST : begin
+					// We are here at the end of reset pulse and always with mcb_reset (no need to clear fifos)
 					// Wait for end of current cycle here
-					stb_cnt <= 0;
 					if (~wbm_cyc) begin
+						rd_left <= 0;
+						rd_dummy <= 0;
 						state <= ST_IDLE;
 					end
 				end
@@ -171,13 +179,13 @@ module memory # (
 							state <= ST_WR_FIFO;
 						end else begin
 							// Read operation
-							if (wbm_addr == adr_next && ~r0_empty) begin
+							if (wbm_addr == adr_next && ~r0_empty) begin	// adr_next is always valid if read fifo is not empty
 								// we have reqired data in read fifo
 								r0_enable <= 1;
 								wbm_ack <= 1;
 								wbm_dat_o <= r0_data;
 								ack_cnt <= 1;
-								adr_next <= adr_next + 1;
+								adr_next <= adr_next + 4;
 								rd_left <= rd_left - 1;
 								state <= ST_RD_FIFO;
 							end else begin
@@ -202,6 +210,7 @@ module memory # (
 						// wr_fifo full or write cycle ended
 						p0_blen <= stb_cnt - 1;
 						p0_cmd <= 3'b010;			// write with autoprecharge
+						rd_dummy <= 1;				// initiate read fifo clear (always at write)
 						if (p0_full) begin
 							state <= ST_WR_CMD;
 						end else begin 
@@ -224,10 +233,10 @@ module memory # (
 							wbm_ack <= 1;
 							wbm_dat_o <= r0_data;
 							ack_cnt <= ack_cnt + 1;
-							adr_next <= adr_next + 1;
+							adr_next <= adr_next + 4;
 							rd_left <= rd_left - 1;
-						end else if (r0_empty) begin
-							// we need more data -- start new burst
+						end else if (r0_empty && ( |ack_cnt )) begin
+							// this is not the first read and we need more data -- start new burst
 							p0_blen <= READ_BURST_LEN - 1;
 							p0_cmd <= 3'b011;			// read with autoprecharge
 							adr_beg <= adr_next;	// this will become address of the first word in fifo after dummy readout
