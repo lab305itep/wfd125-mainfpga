@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Company: 
-// Engineer: 
+// Engineer: 		SvirLex
 // 
 // Create Date:    17:03:59 03/27/2015 
 // Design Name:    memory
@@ -14,8 +14,33 @@
 //		Supports full pipelined block transfer interface for Wishbone
 //		assumes only sequential addresses in a single block transfers
 //
+//	Registers:	actually they are in arbitter module(bits not mentioned are not used)
+//		0: 	CSR (RW)
+//				CSR31	Recieve FIFO enable/reset, when 0 fifos do not accept data and
+//						no arbitration is performed, at rising edge all pointers are initialized
+//				CSR30	Full reset of the module (MCB, WBRAM fsm, FIFOs) -- auto cleared
+//				CSR29	MCB and WBRAM fsm reset -- auto cleared
+//				CSR28	enable debug, when 1 WADR reads debug lines rather than last written block addr
+//				CSR7	SDRAM GTP area full -  no more blocks can be written from GTP
+//				CSR6	SDRAM GTP area emty -  no new data available for read
+//				CSR4	OR of CSR[3:0]
+//				CSR[3:0] (sticky) Recieve FIFO 3-0 overflow - packet missed, only cleared by asserting CSR30
 //
-//////////////////////////////////////////////////////////////////////////////////
+//		4:		RADR	(RW)
+//				RADR[28:2]	must be set by readout procedure to indicate the last physical address that was already read by it
+//				RADR[1:0]	will be ignored and 00 used instead
+//
+//		8:		LIMR	(RW)
+//				LIMR[31:16]	upper 16bit of the address of the first 8K block following the recieving area
+//				LIMR[15:0]	upper 16bit of the address of the first 8K block of the recieving area
+//
+//		C:		WADR	(R)
+//				WADR[28:2]	physical addres of the first free cell after recieved block is written
+//				WADR[1:0]	always reads 00
+//
+//				with CSR28=1 reads debug lines as indicated below
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
     parameter READ_BURST_LEN = 8
 )
@@ -75,8 +100,12 @@ module memory # (
     output [31:0] status
     );
 
+//======= SIGNALS ==============
+
 	// port 0 : MIG to WB interface and fsm signals
 	wire  		mem_rst;			// external reset or command from register
+	wire  		sft_rst;			// mcb and fsm reset from CSR
+	wire			fifo_rst;		// recieving fifo reset from CSR
 	wire  		w0_full;			// port 0 write fifo full
 	wire  		w0_enable;	   // port 0 write fifo enable
 	wire  		p0_full;       // port 0 cmd fifo full
@@ -93,20 +122,32 @@ module memory # (
 	reg [6:0] 	rd_left = 0;	// words in read fifo availiable for read
 	reg			rd_dummy;		// flag to execute dummy read from rd fifo
 
+	// gtp recievers and arbitter
+	localparam 				NFIFO		= 5;
+	wire [NFIFO*32-1:0] 	dattoarb;						// data from gtp FIFOs to arbitter
+	wire 						fifo_have [NFIFO-1:0];		// ready from FIFOs to arbitter
+	wire 						arb_wants [NFIFO-1:0];		// get from arbitter to FIFOs
+	wire 						fifo_missed[NFIFO-1:0];		// error pulse from fifo when it's full to accept
+
+	// port 2 : arbitter to MIG interface
+	wire			p2_enable;		// port 2 cmd fifo enable
+	wire			p2_full;			// port 2 cmd fifo full
+	wire [5:0]	p2_blen;			// port 2 current burst length
+	wire			w2_enable;		// port 2 write fifo enable
+	wire			w2_full;			// port 2 write fifo full
+	wire [28:0]	adr_rcv;			// port 2 address within recieving area
+	wire [31:0]	datfromarb;		// port 2 write data from arbitter
+
+	wire [31:0] wbr_dat_a;		// register data from arbitter
+
+	// debug lines
+	// 31        28  X X 25  24     23  22  21  20   X 18  12     11  10   9   8   X 6    0
+	// rd_left[3:0]     ful emp    err ovf ful emp     rd_cnt    err ovf ful emp     rd_cnt
+	//                  p0_cmd     -------- p0_rd -----------    -------- p0_wr -----------
 	wire [31:0] debug;
-	
-	inoutreg regdebug (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wbr_cyc), 
-		.wb_stb (wbr_stb), 
-		.wb_adr (wbr_addr[0]), 
-		.wb_we  (wbr_we), 
-		.wb_dat_i (wbr_dat_i), 
-		.wb_dat_o (wbr_dat_o), 
-		.wb_ack (wbr_ack),
-		.reg_o   (),
-		.reg_i	(debug)
-	);
+
+	assign wbr_dat_o = (en_debug) ? debug : wbr_dat_a;
+
 	assign debug[7] = 0;
 	assign debug[19] = 0;
 	assign debug[27:26] = 0;
@@ -118,7 +159,7 @@ module memory # (
 	// We always write to wr_fifo if it's not full, otherwise we signal STALL
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
 	assign wbm_stall = w0_full | p0_full;
-	assign mem_rst = wb_rst;
+	assign mem_rst = wb_rst | sft_rst;
 
 // MIG to WB state machine
 	reg [2:0] state;
@@ -357,18 +398,18 @@ u_memcntr (
    .c1_p1_rd_overflow                      (),
    .c1_p1_rd_error                         (),
 // port 2 write only
-   .c1_p2_cmd_clk                          (wb_clk),
-   .c1_p2_cmd_en                           (1'b0),
-   .c1_p2_cmd_instr                        (3'b010),	// always write with autoprecharge
-   .c1_p2_cmd_bl                           (6'b000000),
-   .c1_p2_cmd_byte_addr                    (30'h00000000),
+   .c1_p2_cmd_clk                          (gtp_clk),
+   .c1_p2_cmd_en                           (p2_enable),
+   .c1_p2_cmd_instr                        (3'b010),		// always write with autoprecharge
+   .c1_p2_cmd_bl                           (p2_blen),
+   .c1_p2_cmd_byte_addr                    ({1'b0, adr_rcv}),
    .c1_p2_cmd_empty                        (),
-   .c1_p2_cmd_full                         (),
-   .c1_p2_wr_clk                           (wb_clk),
-   .c1_p2_wr_en                            (1'b0),
-   .c1_p2_wr_mask                          (4'b0000),
-   .c1_p2_wr_data                          (32'h00000000),
-   .c1_p2_wr_full                          (),
+   .c1_p2_cmd_full                         (p2_full),
+   .c1_p2_wr_clk                           (gtp_clk),
+   .c1_p2_wr_en                            (w2_enable),
+   .c1_p2_wr_mask                          (4'b0000),		// always all 4 bytes
+   .c1_p2_wr_data                          (datfromarb),
+   .c1_p2_wr_full                          (w2_full),
    .c1_p2_wr_empty                         (),
    .c1_p2_wr_count                         (),
    .c1_p2_wr_underrun                      (),
@@ -423,5 +464,62 @@ u_memcntr (
    .c1_p5_wr_underrun                      (),
    .c1_p5_wr_error                         ()
 );
+
+// these FIFO's recieve blocks of data from GTP and interface to arbitter
+   genvar i;
+   generate
+      for (i=0; i < 4; i=i+1) 
+      begin: rcvfifo
+			gtpfifo(
+				.gtp_clk		(gtp_clk),
+				.gtp_dat    (gtp_dat[i*16+15:i*16]),
+				.gtp_vld		(gtp_vld[i]),
+				.rst			(fifo_rst),
+				.give			(arb_wants[i]),
+				.data			(dattoarb[i*32+31:i*32]),
+				.have			(fifo_have[i]),
+				.missed		(fifo_missed[i])
+			);
+      end
+   endgenerate
+
+//	fifth fifo keeps trigger information for triggers, generated in this module
+	assign dattoarb[159:128] = 0;
+	assign fifo_have[4] = 0;
+	assign fifo_missed[4] = 0;
+	
+// arbitter
+	
+rcv_arb #(
+	 .NFIFO		(5)
+)
+arbitter (
+   // Register WishBone
+    .wbr_cyc		(wbr_cyc),
+    .wbr_stb		(wbr_stb),
+    .wbr_we			(wbr_we),
+	 .wbr_addr		(wbr_addr),
+    .wbr_dat_i		(wbr_dat_i),
+    .wbr_ack		(wbr_ack),
+    .wbr_dat_o		(wbr_dat_a),
+	 // 	trace back a few bits from csr
+	 .fifo_rst		(fifo_rst),
+	 .mcb_rst		(sft_rst),
+	 .en_debug		(en_debug),
+	 // interface with recieving FIFOs
+	 .want			(arb_wants),
+	 .datfromfifo	(dattoarb),
+	 .have			(fifo_have),
+	 .missed			(fifo_missed),
+	 // inteface with MIG
+	 .cmd_enable	(p2_enable),		// MIG port cmd fifo enable
+	 .cmd_full		(p2_full),			// MIG port cmd fifo full
+	 .blen			(p2_blen),			// MIG port current burst length
+	 .wr_enable		(w2_enable),		// MIG port write fifo enable
+	 .wr_full		(w2_full),			// MIG port write fifo full
+	 .adr_rcv		(adr_rcv),			// MIG address within recieving area
+	 .dattomcb		(datfromarb)		// MIG port write data
+    );
+
 
 endmodule
