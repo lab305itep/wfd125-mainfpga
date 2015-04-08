@@ -310,7 +310,6 @@ package vme64x_pack is
       Am             : in  std_logic_vector(5 downto 0);
       XAm            : in  std_logic_vector(7 downto 0);
       BAR_i          : in  std_logic_vector(4 downto 0);
-		Addr_HI_i      : in  STD_LOGIC_VECTOR (1 downto 0);   
       AddrWidth      : in  std_logic_vector(1 downto 0);
       Base_Addr      : out std_logic_vector(63 downto 0);
       CardSel        : out std_logic

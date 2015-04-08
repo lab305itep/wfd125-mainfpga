@@ -12,11 +12,11 @@
 -- Only A32 and A64 access is considered, all AM's
 -- 2e transfers are not supported yet
 --		A64:	512 MByte window for memory access
---				VME base addr: zero(27:0) & Addr_Hi(1:0) & GA(4:0) & zero(28:0)
+--				VME base addr: AAAAAAGGxxxxxxxx
 --				mapped to local WB addresses 0-1FFFFFFF
---		A32:	1 Mbyte window for register space
---				VME base addr: zero(4:0) & Addr_Hi(1:0) & GA(4:0) & zero(19:0)
---				mapped to local WB addresses 20000000-200FFFFF
+--		A32:	64 Kbyte window for register space
+--				VME base addr: AAGGxxxx
+--				mapped to local WB addresses 20000000-2000FFFF
 --+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 --________________________________________________________________________________________
 -- Authors:                                     
@@ -44,7 +44,6 @@ entity VME_Access_Decode is
           Am              : in  STD_LOGIC_VECTOR (5 downto 0);
           XAm             : in  STD_LOGIC_VECTOR (7 downto 0);		-- not used so far
           BAR_i           : in  STD_LOGIC_VECTOR (4 downto 0);
-			 Addr_HI_i       : in  STD_LOGIC_VECTOR (1 downto 0);   
 			 AddrWidth       : in  STD_LOGIC_VECTOR (1 downto 0);		-- not used so far
           Base_Addr       : out  STD_LOGIC_VECTOR (63 downto 0);
           CardSel         : out  std_logic
@@ -74,24 +73,23 @@ begin
 					 (Am = c_A32_BLT_sup) or 		-- hex code 0x0f
 					 (Am = c_A32_MBLT) or			-- hex code 0x08
 					 (Am = c_A32_MBLT_sup)) and	-- hex code 0x0c
-					Addr(31 downto 27) = "00000" and
-					Addr(26 downto 25) = Addr_HI_i and
-					Addr(24 downto 20) = BAR_i then 
+					Addr(31 downto 21) = (x"AA" & "000") and
+					Addr(20 downto 16) = BAR_i then
 						CardSel <= '1';
-                  Base_Addr(63 downto 28) <= x"FFFFFFFFE";
-                  Base_Addr(27 downto 20) <= '0' & Addr_HI_i & BAR_i;
-                  Base_Addr(19 downto 0)  <= (others => '0');                
+                  Base_Addr(63 downto 21) <= (x"000000008A" & "000");
+                  Base_Addr(20 downto 16) <= BAR_i;
+                  Base_Addr(15 downto 0)  <= (others => '0');                
 				end if;
 				if	((Am = c_A64) or					-- hex code 0x01
 					 (Am = c_A64_BLT) or		  		-- hex code 0x03
 					 (Am = c_A64_MBLT)) and			-- hex code 0x00
-					Addr(63 downto 36) = x"0000000" and
-					Addr(35 downto 34) = Addr_HI_i and
-					Addr(33 downto 29) = BAR_i then 
+					Addr(63 downto 37) = (x"AAAAAA" & "000") and
+					Addr(36 downto 32) = BAR_i and
+					Addr(31 downto 29) = "000" then 
 						CardSel <= '1';
-                  Base_Addr(63 downto 36) <= (others => '0');
-                  Base_Addr(35 downto 29) <= Addr_HI_i & BAR_i;
-                  Base_Addr(28 downto 0)  <= (others => '0');                
+                  Base_Addr(63 downto 37) <= (x"AAAAAA" & "000");
+                  Base_Addr(36 downto 32) <= BAR_i;
+                  Base_Addr(31 downto 0)  <= (others => '0');                
 				end if;
 			end if;
 		end if;

@@ -75,8 +75,7 @@ use work.vme64x_pack.all;
 entity VME_bus is
   generic(g_clock         : integer := c_clk_period;
           g_wb_data_width : integer := c_width;
-          g_wb_addr_width : integer := c_addr_width;
-			 g_addr_hi		  : integer := 0		-- two most significant address bits
+          g_wb_addr_width : integer := c_addr_width
           );
   port(
     clk_i           : in  std_logic;
@@ -1062,7 +1061,6 @@ Inst_Access_Decode : VME_Access_Decode port map(
   Am             => s_AMlatched,
   XAm            => std_logic_vector(s_XAM),
   BAR_i          => BAR_i,
-  Addr_HI_i		  => std_logic_vector(TO_UNSIGNED(g_addr_hi, 2)),
   AddrWidth      => s_addrWidth,
   Base_Addr      => s_nx_base_addr,
   CardSel        => s_cardSel

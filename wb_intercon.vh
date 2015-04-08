@@ -26,19 +26,6 @@ wire        wb_s2m_sdram_ack;
 wire        wb_s2m_sdram_err;
 wire        wb_s2m_sdram_stall;
 wire        wb_s2m_sdram_rty;
-wire [31:0] wb_m2s_reg_fifo_adr;
-wire [31:0] wb_m2s_reg_fifo_dat;
-wire  [3:0] wb_m2s_reg_fifo_sel;
-wire        wb_m2s_reg_fifo_we;
-wire        wb_m2s_reg_fifo_cyc;
-wire        wb_m2s_reg_fifo_stb;
-wire  [2:0] wb_m2s_reg_fifo_cti;
-wire  [1:0] wb_m2s_reg_fifo_bte;
-wire [31:0] wb_s2m_reg_fifo_dat;
-wire        wb_s2m_reg_fifo_ack;
-wire        wb_s2m_reg_fifo_err;
-wire        wb_s2m_reg_fifo_stall;
-wire        wb_s2m_reg_fifo_rty;
 wire [31:0] wb_m2s_reg_csr_adr;
 wire [31:0] wb_m2s_reg_csr_dat;
 wire  [3:0] wb_m2s_reg_csr_sel;
@@ -52,6 +39,19 @@ wire        wb_s2m_reg_csr_ack;
 wire        wb_s2m_reg_csr_err;
 wire        wb_s2m_reg_csr_stall;
 wire        wb_s2m_reg_csr_rty;
+wire [31:0] wb_m2s_triggen_adr;
+wire [31:0] wb_m2s_triggen_dat;
+wire  [3:0] wb_m2s_triggen_sel;
+wire        wb_m2s_triggen_we;
+wire        wb_m2s_triggen_cyc;
+wire        wb_m2s_triggen_stb;
+wire  [2:0] wb_m2s_triggen_cti;
+wire  [1:0] wb_m2s_triggen_bte;
+wire [31:0] wb_s2m_triggen_dat;
+wire        wb_s2m_triggen_ack;
+wire        wb_s2m_triggen_err;
+wire        wb_s2m_triggen_stall;
+wire        wb_s2m_triggen_rty;
 wire [31:0] wb_m2s_icx_spi_adr;
 wire [31:0] wb_m2s_icx_spi_dat;
 wire  [3:0] wb_m2s_icx_spi_sel;
@@ -78,19 +78,45 @@ wire        wb_s2m_dac_spi_ack;
 wire        wb_s2m_dac_spi_err;
 wire        wb_s2m_dac_spi_stall;
 wire        wb_s2m_dac_spi_rty;
-wire [31:0] wb_m2s_triggen_adr;
-wire [31:0] wb_m2s_triggen_dat;
-wire  [3:0] wb_m2s_triggen_sel;
-wire        wb_m2s_triggen_we;
-wire        wb_m2s_triggen_cyc;
-wire        wb_m2s_triggen_stb;
-wire  [2:0] wb_m2s_triggen_cti;
-wire  [1:0] wb_m2s_triggen_bte;
-wire [31:0] wb_s2m_triggen_dat;
-wire        wb_s2m_triggen_ack;
-wire        wb_s2m_triggen_err;
-wire        wb_s2m_triggen_stall;
-wire        wb_s2m_triggen_rty;
+wire [31:0] wb_m2s_i2c_ms_cbuf_adr;
+wire [31:0] wb_m2s_i2c_ms_cbuf_dat;
+wire  [3:0] wb_m2s_i2c_ms_cbuf_sel;
+wire        wb_m2s_i2c_ms_cbuf_we;
+wire        wb_m2s_i2c_ms_cbuf_cyc;
+wire        wb_m2s_i2c_ms_cbuf_stb;
+wire  [2:0] wb_m2s_i2c_ms_cbuf_cti;
+wire  [1:0] wb_m2s_i2c_ms_cbuf_bte;
+wire [31:0] wb_s2m_i2c_ms_cbuf_dat;
+wire        wb_s2m_i2c_ms_cbuf_ack;
+wire        wb_s2m_i2c_ms_cbuf_err;
+wire        wb_s2m_i2c_ms_cbuf_stall;
+wire        wb_s2m_i2c_ms_cbuf_rty;
+wire [31:0] wb_m2s_reg_fifo_adr;
+wire [31:0] wb_m2s_reg_fifo_dat;
+wire  [3:0] wb_m2s_reg_fifo_sel;
+wire        wb_m2s_reg_fifo_we;
+wire        wb_m2s_reg_fifo_cyc;
+wire        wb_m2s_reg_fifo_stb;
+wire  [2:0] wb_m2s_reg_fifo_cti;
+wire  [1:0] wb_m2s_reg_fifo_bte;
+wire [31:0] wb_s2m_reg_fifo_dat;
+wire        wb_s2m_reg_fifo_ack;
+wire        wb_s2m_reg_fifo_err;
+wire        wb_s2m_reg_fifo_stall;
+wire        wb_s2m_reg_fifo_rty;
+wire [31:0] wb_m2s_reg_ver_adr;
+wire [31:0] wb_m2s_reg_ver_dat;
+wire  [3:0] wb_m2s_reg_ver_sel;
+wire        wb_m2s_reg_ver_we;
+wire        wb_m2s_reg_ver_cyc;
+wire        wb_m2s_reg_ver_stb;
+wire  [2:0] wb_m2s_reg_ver_cti;
+wire  [1:0] wb_m2s_reg_ver_bte;
+wire [31:0] wb_s2m_reg_ver_dat;
+wire        wb_s2m_reg_ver_ack;
+wire        wb_s2m_reg_ver_err;
+wire        wb_s2m_reg_ver_stall;
+wire        wb_s2m_reg_ver_rty;
 wire [31:0] wb_m2s_regA_adr;
 wire [31:0] wb_m2s_regA_dat;
 wire  [3:0] wb_m2s_regA_sel;
@@ -143,19 +169,6 @@ wire        wb_s2m_regD_ack;
 wire        wb_s2m_regD_err;
 wire        wb_s2m_regD_stall;
 wire        wb_s2m_regD_rty;
-wire [31:0] wb_m2s_i2c_ms_cbuf_adr;
-wire  [7:0] wb_m2s_i2c_ms_cbuf_dat;
-wire  [3:0] wb_m2s_i2c_ms_cbuf_sel;
-wire        wb_m2s_i2c_ms_cbuf_we;
-wire        wb_m2s_i2c_ms_cbuf_cyc;
-wire        wb_m2s_i2c_ms_cbuf_stb;
-wire  [2:0] wb_m2s_i2c_ms_cbuf_cti;
-wire  [1:0] wb_m2s_i2c_ms_cbuf_bte;
-wire  [7:0] wb_s2m_i2c_ms_cbuf_dat;
-wire        wb_s2m_i2c_ms_cbuf_ack;
-wire        wb_s2m_i2c_ms_cbuf_err;
-wire        wb_s2m_i2c_ms_cbuf_stall;
-wire        wb_s2m_i2c_ms_cbuf_rty;
 wire [31:0] wb_m2s_fifoA_adr;
 wire [31:0] wb_m2s_fifoA_dat;
 wire  [3:0] wb_m2s_fifoA_sel;
@@ -238,19 +251,6 @@ wb_intercon wb_intercon0
     .wb_sdram_err_i            (wb_s2m_sdram_err),
     .wb_sdram_stall_i          (wb_s2m_sdram_stall),
     .wb_sdram_rty_i            (wb_s2m_sdram_rty),
-    .wb_reg_fifo_adr_o         (wb_m2s_reg_fifo_adr),
-    .wb_reg_fifo_dat_o         (wb_m2s_reg_fifo_dat),
-    .wb_reg_fifo_sel_o         (wb_m2s_reg_fifo_sel),
-    .wb_reg_fifo_we_o          (wb_m2s_reg_fifo_we),
-    .wb_reg_fifo_cyc_o         (wb_m2s_reg_fifo_cyc),
-    .wb_reg_fifo_stb_o         (wb_m2s_reg_fifo_stb),
-    .wb_reg_fifo_cti_o         (wb_m2s_reg_fifo_cti),
-    .wb_reg_fifo_bte_o         (wb_m2s_reg_fifo_bte),
-    .wb_reg_fifo_dat_i         (wb_s2m_reg_fifo_dat),
-    .wb_reg_fifo_ack_i         (wb_s2m_reg_fifo_ack),
-    .wb_reg_fifo_err_i         (wb_s2m_reg_fifo_err),
-    .wb_reg_fifo_stall_i       (wb_s2m_reg_fifo_stall),
-    .wb_reg_fifo_rty_i         (wb_s2m_reg_fifo_rty),
     .wb_reg_csr_adr_o          (wb_m2s_reg_csr_adr),
     .wb_reg_csr_dat_o          (wb_m2s_reg_csr_dat),
     .wb_reg_csr_sel_o          (wb_m2s_reg_csr_sel),
@@ -264,6 +264,19 @@ wb_intercon wb_intercon0
     .wb_reg_csr_err_i          (wb_s2m_reg_csr_err),
     .wb_reg_csr_stall_i        (wb_s2m_reg_csr_stall),
     .wb_reg_csr_rty_i          (wb_s2m_reg_csr_rty),
+    .wb_triggen_adr_o          (wb_m2s_triggen_adr),
+    .wb_triggen_dat_o          (wb_m2s_triggen_dat),
+    .wb_triggen_sel_o          (wb_m2s_triggen_sel),
+    .wb_triggen_we_o           (wb_m2s_triggen_we),
+    .wb_triggen_cyc_o          (wb_m2s_triggen_cyc),
+    .wb_triggen_stb_o          (wb_m2s_triggen_stb),
+    .wb_triggen_cti_o          (wb_m2s_triggen_cti),
+    .wb_triggen_bte_o          (wb_m2s_triggen_bte),
+    .wb_triggen_dat_i          (wb_s2m_triggen_dat),
+    .wb_triggen_ack_i          (wb_s2m_triggen_ack),
+    .wb_triggen_err_i          (wb_s2m_triggen_err),
+    .wb_triggen_stall_i        (wb_s2m_triggen_stall),
+    .wb_triggen_rty_i          (wb_s2m_triggen_rty),
     .wb_icx_spi_adr_o          (wb_m2s_icx_spi_adr),
     .wb_icx_spi_dat_o          (wb_m2s_icx_spi_dat),
     .wb_icx_spi_sel_o          (wb_m2s_icx_spi_sel),
@@ -290,19 +303,45 @@ wb_intercon wb_intercon0
     .wb_dac_spi_err_i          (wb_s2m_dac_spi_err),
     .wb_dac_spi_stall_i        (wb_s2m_dac_spi_stall),
     .wb_dac_spi_rty_i          (wb_s2m_dac_spi_rty),
-    .wb_triggen_adr_o          (wb_m2s_triggen_adr),
-    .wb_triggen_dat_o          (wb_m2s_triggen_dat),
-    .wb_triggen_sel_o          (wb_m2s_triggen_sel),
-    .wb_triggen_we_o           (wb_m2s_triggen_we),
-    .wb_triggen_cyc_o          (wb_m2s_triggen_cyc),
-    .wb_triggen_stb_o          (wb_m2s_triggen_stb),
-    .wb_triggen_cti_o          (wb_m2s_triggen_cti),
-    .wb_triggen_bte_o          (wb_m2s_triggen_bte),
-    .wb_triggen_dat_i          (wb_s2m_triggen_dat),
-    .wb_triggen_ack_i          (wb_s2m_triggen_ack),
-    .wb_triggen_err_i          (wb_s2m_triggen_err),
-    .wb_triggen_stall_i        (wb_s2m_triggen_stall),
-    .wb_triggen_rty_i          (wb_s2m_triggen_rty),
+    .wb_i2c_ms_cbuf_adr_o      (wb_m2s_i2c_ms_cbuf_adr),
+    .wb_i2c_ms_cbuf_dat_o      (wb_m2s_i2c_ms_cbuf_dat),
+    .wb_i2c_ms_cbuf_sel_o      (wb_m2s_i2c_ms_cbuf_sel),
+    .wb_i2c_ms_cbuf_we_o       (wb_m2s_i2c_ms_cbuf_we),
+    .wb_i2c_ms_cbuf_cyc_o      (wb_m2s_i2c_ms_cbuf_cyc),
+    .wb_i2c_ms_cbuf_stb_o      (wb_m2s_i2c_ms_cbuf_stb),
+    .wb_i2c_ms_cbuf_cti_o      (wb_m2s_i2c_ms_cbuf_cti),
+    .wb_i2c_ms_cbuf_bte_o      (wb_m2s_i2c_ms_cbuf_bte),
+    .wb_i2c_ms_cbuf_dat_i      (wb_s2m_i2c_ms_cbuf_dat),
+    .wb_i2c_ms_cbuf_ack_i      (wb_s2m_i2c_ms_cbuf_ack),
+    .wb_i2c_ms_cbuf_err_i      (wb_s2m_i2c_ms_cbuf_err),
+    .wb_i2c_ms_cbuf_stall_i    (wb_s2m_i2c_ms_cbuf_stall),
+    .wb_i2c_ms_cbuf_rty_i      (wb_s2m_i2c_ms_cbuf_rty),
+    .wb_reg_fifo_adr_o         (wb_m2s_reg_fifo_adr),
+    .wb_reg_fifo_dat_o         (wb_m2s_reg_fifo_dat),
+    .wb_reg_fifo_sel_o         (wb_m2s_reg_fifo_sel),
+    .wb_reg_fifo_we_o          (wb_m2s_reg_fifo_we),
+    .wb_reg_fifo_cyc_o         (wb_m2s_reg_fifo_cyc),
+    .wb_reg_fifo_stb_o         (wb_m2s_reg_fifo_stb),
+    .wb_reg_fifo_cti_o         (wb_m2s_reg_fifo_cti),
+    .wb_reg_fifo_bte_o         (wb_m2s_reg_fifo_bte),
+    .wb_reg_fifo_dat_i         (wb_s2m_reg_fifo_dat),
+    .wb_reg_fifo_ack_i         (wb_s2m_reg_fifo_ack),
+    .wb_reg_fifo_err_i         (wb_s2m_reg_fifo_err),
+    .wb_reg_fifo_stall_i       (wb_s2m_reg_fifo_stall),
+    .wb_reg_fifo_rty_i         (wb_s2m_reg_fifo_rty),
+    .wb_reg_ver_adr_o          (wb_m2s_reg_ver_adr),
+    .wb_reg_ver_dat_o          (wb_m2s_reg_ver_dat),
+    .wb_reg_ver_sel_o          (wb_m2s_reg_ver_sel),
+    .wb_reg_ver_we_o           (wb_m2s_reg_ver_we),
+    .wb_reg_ver_cyc_o          (wb_m2s_reg_ver_cyc),
+    .wb_reg_ver_stb_o          (wb_m2s_reg_ver_stb),
+    .wb_reg_ver_cti_o          (wb_m2s_reg_ver_cti),
+    .wb_reg_ver_bte_o          (wb_m2s_reg_ver_bte),
+    .wb_reg_ver_dat_i          (wb_s2m_reg_ver_dat),
+    .wb_reg_ver_ack_i          (wb_s2m_reg_ver_ack),
+    .wb_reg_ver_err_i          (wb_s2m_reg_ver_err),
+    .wb_reg_ver_stall_i        (wb_s2m_reg_ver_stall),
+    .wb_reg_ver_rty_i          (wb_s2m_reg_ver_rty),
     .wb_regA_adr_o             (wb_m2s_regA_adr),
     .wb_regA_dat_o             (wb_m2s_regA_dat),
     .wb_regA_sel_o             (wb_m2s_regA_sel),
@@ -355,19 +394,6 @@ wb_intercon wb_intercon0
     .wb_regD_err_i             (wb_s2m_regD_err),
     .wb_regD_stall_i           (wb_s2m_regD_stall),
     .wb_regD_rty_i             (wb_s2m_regD_rty),
-    .wb_i2c_ms_cbuf_adr_o      (wb_m2s_i2c_ms_cbuf_adr),
-    .wb_i2c_ms_cbuf_dat_o      (wb_m2s_i2c_ms_cbuf_dat),
-    .wb_i2c_ms_cbuf_sel_o      (wb_m2s_i2c_ms_cbuf_sel),
-    .wb_i2c_ms_cbuf_we_o       (wb_m2s_i2c_ms_cbuf_we),
-    .wb_i2c_ms_cbuf_cyc_o      (wb_m2s_i2c_ms_cbuf_cyc),
-    .wb_i2c_ms_cbuf_stb_o      (wb_m2s_i2c_ms_cbuf_stb),
-    .wb_i2c_ms_cbuf_cti_o      (wb_m2s_i2c_ms_cbuf_cti),
-    .wb_i2c_ms_cbuf_bte_o      (wb_m2s_i2c_ms_cbuf_bte),
-    .wb_i2c_ms_cbuf_dat_i      (wb_s2m_i2c_ms_cbuf_dat),
-    .wb_i2c_ms_cbuf_ack_i      (wb_s2m_i2c_ms_cbuf_ack),
-    .wb_i2c_ms_cbuf_err_i      (wb_s2m_i2c_ms_cbuf_err),
-    .wb_i2c_ms_cbuf_stall_i    (wb_s2m_i2c_ms_cbuf_stall),
-    .wb_i2c_ms_cbuf_rty_i      (wb_s2m_i2c_ms_cbuf_rty),
     .wb_fifoA_adr_o            (wb_m2s_fifoA_adr),
     .wb_fifoA_dat_o            (wb_m2s_fifoA_dat),
     .wb_fifoA_sel_o            (wb_m2s_fifoA_sel),

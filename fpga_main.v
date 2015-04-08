@@ -140,7 +140,10 @@ module fpga_main(
 
 	wire			 wb_clk;
 	wire         wb_rst;
+	
 `include "wb_intercon.vh"
+
+`include "version.vh"
 
 	wire CLK125;
 	wire CLKMCB;
@@ -223,6 +226,22 @@ module fpga_main(
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
 
+	inoutreg reg_ver (
+		.wb_clk (wb_clk), 
+		.wb_cyc (wb_m2s_reg_ver_cyc), 
+		.wb_stb (wb_m2s_reg_ver_stb), 
+		.wb_adr (wb_m2s_reg_ver_adr[2]), 
+		.wb_we  (wb_m2s_reg_ver_we), 
+		.wb_dat_i (wb_m2s_reg_ver_dat), 
+		.wb_dat_o (wb_s2m_reg_ver_dat), 
+		.wb_ack (wb_s2m_reg_ver_ack),
+		.reg_o   (),
+		.reg_i	(VERSION)
+	);
+	assign wb_s2m_reg_ver_rty = 0;
+	assign wb_s2m_reg_ver_err = 0;
+
+
 	gtprcv4 # (.WB_DIVIDE(2), .WB_MULTIPLY(2))	// 125 MHz for wishbone
 	UGTP (
 		.rxpin	({RX3, RX2, RX1, RX0}),	// input data pins
@@ -262,10 +281,9 @@ VME64xCore_Top #(
     .g_clock (13), 	    		// clock period (ns)
     .g_wb_data_width (32),		// WB data width:
     .g_wb_addr_width (32),		// WB address width:
-	 .g_endian        (0),		// no swap
+	 .g_endian        (3),		// Swap Word+ Swap Byte   eg: 01234567 become 32107654
 	 .g_IRQ_level     (0),		// no IRQ so far, range 1-7
-	 .g_IRQ_vector    (0),		// no IRQ so far
-	 .g_addr_hi			(0)		// two most significant address bits
+	 .g_IRQ_vector    (0)		// no IRQ so far
 )
 vme (
 	.clk_i(wb_clk),
@@ -339,8 +357,8 @@ endgenerate
 		.wb_rst_i  (wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
 		.wb_adr_i  (wb_m2s_i2c_ms_cbuf_adr[4:2]), 
-		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat), 
-		.wb_dat_o  (wb_s2m_i2c_ms_cbuf_dat),
+		.wb_dat_i  (wb_m2s_i2c_ms_cbuf_dat[7:0]), 
+		.wb_dat_o  (wb_s2m_i2c_ms_cbuf_dat[7:0]),
 		.wb_we_i   (wb_m2s_i2c_ms_cbuf_we),
 		.wb_stb_i  (wb_m2s_i2c_ms_cbuf_stb),
 		.wb_cyc_i  (wb_m2s_i2c_ms_cbuf_cyc), 
@@ -356,6 +374,7 @@ endgenerate
 
    assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
    assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+	assign wb_s2m_i2c_ms_cbuf_dat[31:8] = 0;		// pad high data with zeroes
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 

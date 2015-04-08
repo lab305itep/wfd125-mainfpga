@@ -111,8 +111,7 @@ entity VME64xCore_Top is
     g_wb_addr_width  : integer := c_addr_width;  -- 64 or less
 	 g_endian         : integer := 0;					-- no swap by default 
 	 g_IRQ_level      : integer := 0;					-- no IRQ by default, range 1-7
-	 g_IRQ_vector     : integer := 0;					-- no IRQ by default
-	 g_addr_hi			: integer := 0						-- two most significant address bits
+	 g_IRQ_vector     : integer := 0						-- no IRQ by default
     );
   port(
     clk_i   : in std_logic;
@@ -298,8 +297,7 @@ s_ModuleEnable <= s_odd_parity and (not s_BARerror);
     generic map(
       g_clock         => g_clock,
       g_wb_data_width => g_wb_data_width,
-      g_wb_addr_width => g_wb_addr_width,
-		g_addr_hi		 => g_addr_hi		-- two most significant address bits
+      g_wb_addr_width => g_wb_addr_width
       )
     port map(
       clk_i           => clk_i,

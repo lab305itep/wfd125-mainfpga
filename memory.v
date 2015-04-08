@@ -17,7 +17,7 @@
 //	Registers:	actually they are in arbitter module(bits not mentioned are not used)
 //		0: 	CSR (RW)
 //				CSR31	Recieve FIFO enable/reset, when 0 fifos do not accept data and
-//						no arbitration is performed, at rising edge all pointers are initialized
+//						no arbitration is performed, all pointers are kept initialized
 //				CSR30	Full reset of the module (MCB, WBRAM fsm, FIFOs) -- auto cleared
 //				CSR29	MCB and WBRAM fsm reset -- auto cleared
 //				CSR28	enable debug, when 1 WADR reads debug lines rather than last written block addr
@@ -104,7 +104,7 @@ module memory # (
 
 	// port 0 : MIG to WB interface and fsm signals
 	wire  		mem_rst;			// external reset or command from register
-	wire  		sft_rst;			// mcb and fsm reset from CSR
+	wire  		mcb_rst;			// mcb and fsm reset from CSR
 	wire			fifo_rst;		// recieving fifo reset from CSR
 	wire  		w0_full;			// port 0 write fifo full
 	wire  		w0_enable;	   // port 0 write fifo enable
@@ -124,10 +124,10 @@ module memory # (
 
 	// gtp recievers and arbitter
 	localparam 				NFIFO		= 5;
-	wire [NFIFO*32-1:0] 	dattoarb;						// data from gtp FIFOs to arbitter
-	wire 						fifo_have [NFIFO-1:0];		// ready from FIFOs to arbitter
-	wire 						arb_wants [NFIFO-1:0];		// get from arbitter to FIFOs
-	wire 						fifo_missed[NFIFO-1:0];		// error pulse from fifo when it's full to accept
+	wire [NFIFO*32-1:0] 	dattoarb;			// data from gtp FIFOs to arbitter
+	wire [NFIFO-1:0]		fifo_have;			// ready from FIFOs to arbitter
+	wire [NFIFO-1:0]		arb_wants;			// get from arbitter to FIFOs
+	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept
 
 	// port 2 : arbitter to MIG interface
 	wire			p2_enable;		// port 2 cmd fifo enable
@@ -159,7 +159,7 @@ module memory # (
 	// We always write to wr_fifo if it's not full, otherwise we signal STALL
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
 	assign wbm_stall = w0_full | p0_full;
-	assign mem_rst = wb_rst | sft_rst;
+	assign mem_rst = wb_rst | mcb_rst;
 
 // MIG to WB state machine
 	reg [2:0] state;
@@ -397,7 +397,7 @@ u_memcntr (
    .c1_p1_rd_count                         (),
    .c1_p1_rd_overflow                      (),
    .c1_p1_rd_error                         (),
-// port 2 write only
+// port 2 write only	!!! on gtp_clk
    .c1_p2_cmd_clk                          (gtp_clk),
    .c1_p2_cmd_en                           (p2_enable),
    .c1_p2_cmd_instr                        (3'b010),		// always write with autoprecharge
@@ -469,8 +469,8 @@ u_memcntr (
    genvar i;
    generate
       for (i=0; i < 4; i=i+1) 
-      begin: rcvfifo
-			gtpfifo(
+      begin : gfifo
+			gtpfifo rcvfifo(
 				.gtp_clk		(gtp_clk),
 				.gtp_dat    (gtp_dat[i*16+15:i*16]),
 				.gtp_vld		(gtp_vld[i]),
@@ -483,7 +483,7 @@ u_memcntr (
       end
    endgenerate
 
-//	fifth fifo keeps trigger information for triggers, generated in this module
+//	fifth fifo keeps information for triggers, generated in this module
 	assign dattoarb[159:128] = 0;
 	assign fifo_have[4] = 0;
 	assign fifo_missed[4] = 0;
@@ -494,6 +494,8 @@ rcv_arb #(
 	 .NFIFO		(5)
 )
 arbitter (
+	 .wb_clk			(wb_clk),
+	 .wb_rst			(wb_rst),
    // Register WishBone
     .wbr_cyc		(wbr_cyc),
     .wbr_stb		(wbr_stb),
@@ -503,10 +505,11 @@ arbitter (
     .wbr_ack		(wbr_ack),
     .wbr_dat_o		(wbr_dat_a),
 	 // 	trace back a few bits from csr
-	 .fifo_rst		(fifo_rst),
-	 .mcb_rst		(sft_rst),
+	 .fifo_rst		(fifo_rst),			//	~CSR31 or CSR30 (autoclear) or wb_rst
+	 .mcb_rst		(mcb_rst),			// autoclear bits CSR29 or CSR30
 	 .en_debug		(en_debug),
 	 // interface with recieving FIFOs
+	 .gtp_clk		(gtp_clk),
 	 .want			(arb_wants),
 	 .datfromfifo	(dattoarb),
 	 .have			(fifo_have),
