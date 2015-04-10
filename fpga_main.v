@@ -412,7 +412,10 @@ endgenerate
 	wire [15:0] fifo_cnt_C;
 	wire [15:0] fifo_cnt_D;
 
-rcvfifo fifoA (
+rcvfifo #(
+	.MBITS(12)
+)
+fifoA (
 		.wb_stb		(wb_m2s_fifoA_stb),
 		.wb_cyc		(wb_m2s_fifoA_cyc),
 		.wb_ack		(wb_s2m_fifoA_ack),
@@ -429,7 +432,10 @@ rcvfifo fifoA (
 	assign wb_s2m_fifoA_err = 0;
 	assign wb_s2m_fifoA_rty = 0;	
 
-rcvfifo fifoB(
+rcvfifo #(
+	.MBITS(12)
+)
+fifoB (
 		.wb_stb		(wb_m2s_fifoB_stb),
 		.wb_cyc		(wb_m2s_fifoB_cyc),
 		.wb_ack		(wb_s2m_fifoB_ack),
@@ -446,7 +452,10 @@ rcvfifo fifoB(
 	assign wb_s2m_fifoB_err = 0;
 	assign wb_s2m_fifoB_rty = 0;	
 
-rcvfifo fifoC(
+rcvfifo # (
+	.MBITS(12)
+)
+fifoC (
 		.wb_stb		(wb_m2s_fifoC_stb),
 		.wb_cyc		(wb_m2s_fifoC_cyc),
 		.wb_ack		(wb_s2m_fifoC_ack),
@@ -463,7 +472,10 @@ rcvfifo fifoC(
 	assign wb_s2m_fifoC_err = 0;
 	assign wb_s2m_fifoC_rty = 0;	
 
-rcvfifo fifoD(
+rcvfifo # (
+	.MBITS(12)
+)
+fifoD (
 		.wb_stb		(wb_m2s_fifoD_stb),
 		.wb_cyc		(wb_m2s_fifoD_cyc),
 		.wb_ack		(wb_s2m_fifoD_ack),

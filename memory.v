@@ -14,31 +14,7 @@
 //		Supports full pipelined block transfer interface for Wishbone
 //		assumes only sequential addresses in a single block transfers
 //
-//	Registers:	actually they are in arbitter module(bits not mentioned are not used)
-//		0: 	CSR (RW)
-//				CSR31	Recieve FIFO enable/reset, when 0 fifos do not accept data and
-//						no arbitration is performed, all pointers are kept initialized
-//				CSR30	Full reset of the module (MCB, WBRAM fsm, FIFOs) -- auto cleared
-//				CSR29	MCB and WBRAM fsm reset -- auto cleared
-//				CSR28	enable debug, when 1 WADR reads debug lines rather than last written block addr
-//				CSR7	SDRAM GTP area full -  no more blocks can be written from GTP
-//				CSR6	SDRAM GTP area emty -  no new data available for read
-//				CSR4	OR of CSR[3:0]
-//				CSR[3:0] (sticky) Recieve FIFO 3-0 overflow - packet missed, only cleared by asserting CSR30
-//
-//		4:		RADR	(RW)
-//				RADR[28:2]	must be set by readout procedure to indicate the last physical address that was already read by it
-//				RADR[1:0]	will be ignored and 00 used instead
-//
-//		8:		LIMR	(RW)
-//				LIMR[31:16]	upper 16bit of the address of the first 8K block following the recieving area
-//				LIMR[15:0]	upper 16bit of the address of the first 8K block of the recieving area
-//
-//		C:		WADR	(R)
-//				WADR[28:2]	physical addres of the first free cell after recieved block is written
-//				WADR[1:0]	always reads 00
-//
-//				with CSR28=1 reads debug lines as indicated below
+//		with CSR28=1, WADR reads debug lines as indicated below
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
@@ -124,7 +100,7 @@ module memory # (
 
 	// gtp recievers and arbitter
 	localparam 				NFIFO		= 5;
-	wire [NFIFO*32-1:0] 	dattoarb;			// data from gtp FIFOs to arbitter
+	wire [31:0] 			dattoarb;			// data from gtp FIFOs to arbitter (common "tri-state")
 	wire [NFIFO-1:0]		fifo_have;			// ready from FIFOs to arbitter
 	wire [NFIFO-1:0]		arb_wants;			// get from arbitter to FIFOs
 	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept
@@ -135,6 +111,7 @@ module memory # (
 	wire [5:0]	p2_blen;			// port 2 current burst length
 	wire			w2_enable;		// port 2 write fifo enable
 	wire			w2_full;			// port 2 write fifo full
+	wire			w2_empty;		// port 2 write fifo empty
 	wire [28:0]	adr_rcv;			// port 2 address within recieving area
 	wire [31:0]	datfromarb;		// port 2 write data from arbitter
 
@@ -410,7 +387,7 @@ u_memcntr (
    .c1_p2_wr_mask                          (4'b0000),		// always all 4 bytes
    .c1_p2_wr_data                          (datfromarb),
    .c1_p2_wr_full                          (w2_full),
-   .c1_p2_wr_empty                         (),
+   .c1_p2_wr_empty                         (w2_empty),
    .c1_p2_wr_count                         (),
    .c1_p2_wr_underrun                      (),
    .c1_p2_wr_error                         (),
@@ -470,13 +447,16 @@ u_memcntr (
    generate
       for (i=0; i < 4; i=i+1) 
       begin : gfifo
-			gtpfifo rcvfifo(
+			gtpfifo # (
+				.MBITS(12)
+			) 
+			rcvfifo(
 				.gtp_clk		(gtp_clk),
 				.gtp_dat    (gtp_dat[i*16+15:i*16]),
 				.gtp_vld		(gtp_vld[i]),
 				.rst			(fifo_rst),
 				.give			(arb_wants[i]),
-				.data			(dattoarb[i*32+31:i*32]),
+				.data			(dattoarb),
 				.have			(fifo_have[i]),
 				.missed		(fifo_missed[i])
 			);
@@ -484,7 +464,6 @@ u_memcntr (
    endgenerate
 
 //	fifth fifo keeps information for triggers, generated in this module
-	assign dattoarb[159:128] = 0;
 	assign fifo_have[4] = 0;
 	assign fifo_missed[4] = 0;
 	
@@ -520,6 +499,7 @@ arbitter (
 	 .blen			(p2_blen),			// MIG port current burst length
 	 .wr_enable		(w2_enable),		// MIG port write fifo enable
 	 .wr_full		(w2_full),			// MIG port write fifo full
+	 .wr_empty		(w2_empty),			// MIG port write fifo empty
 	 .adr_rcv		(adr_rcv),			// MIG address within recieving area
 	 .dattomcb		(datfromarb)		// MIG port write data
     );
