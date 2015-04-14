@@ -331,7 +331,7 @@ vme (
 
 	.INT_ack_o        (),
 	.IRQ_i            (1'b0),
-	.debug            (debug)
+	.debug            (debug)		// debug[0] is card_sel: access from VME decoded
 );
 
 	assign wb_m2s_VME64xCore_Top_cti = 0;

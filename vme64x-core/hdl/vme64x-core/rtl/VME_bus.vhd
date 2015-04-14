@@ -1175,7 +1175,7 @@ leds(5) <= s_led5;
 leds(4) <= not s_errorflag;
 leds(1) <= '1';
 leds(3) <= '1';
-leds(0) <= '0';
+leds(0) <= s_cardSel;
 
 -------------------------------------------------------------------------------------------  
 -- This process implements a simple 26 bit counter. If the bitstream file has been downloaded

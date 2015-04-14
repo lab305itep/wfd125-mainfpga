@@ -103,7 +103,10 @@ module memory # (
 	wire [31:0] 			dattoarb;			// data from gtp FIFOs to arbitter (common "tri-state")
 	wire [NFIFO-1:0]		fifo_have;			// ready from FIFOs to arbitter
 	wire [NFIFO-1:0]		arb_wants;			// get from arbitter to FIFOs
-	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept
+	wire [NFIFO-1:0]		fifo_empty;			// empty flag from fifos
+	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept a block
+	wire [NFIFO-1:0]		fifo_ovr;			// error pulse from fifo when it expects CW but doesn't get it
+	wire [NFIFO-1:0]		fifo_undr;			// error pulse from fifo when it gets unexpected CW
 
 	// port 2 : arbitter to MIG interface
 	wire			p2_enable;		// port 2 cmd fifo enable
@@ -492,7 +495,10 @@ arbitter (
 	 .want			(arb_wants),
 	 .datfromfifo	(dattoarb),
 	 .have			(fifo_have),
-	 .missed			(fifo_missed),
+	 .fifo_empty	(fifo_empty),
+	 .fifo_ovr		(fifo_ovr),
+	 .fifo_undr		(fifo_undr),
+	 .fifo_missed	(fifo_missed),
 	 // inteface with MIG
 	 .cmd_enable	(p2_enable),		// MIG port cmd fifo enable
 	 .cmd_full		(p2_full),			// MIG port cmd fifo full

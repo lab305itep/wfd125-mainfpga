@@ -19,12 +19,18 @@
 //				CSR30	(RWC) Full reset of the module (MCB, WBRAM fsm, FIFOs) -- auto cleared
 //				CSR29	(RWC) MCB and WBRAM fsm reset -- auto cleared
 //				CSR28	(RW)  enable debug, when 1 WADR reads debug lines rather than last written block addr
-//				CSR8	(R)   SDRAM GTP area full -  no more blocks can be written from GTP
-//				CSR7	(R)   SDRAM GTP area emty -  no new data available for read
-//				CSR6	(R)	underrun error: CW recieved earlier than expected, recieving stopped
-//				CSR5	(R)	overrunrun error: no CW recieved when expected, recieving stopped
-//				CSR4	(R)   OR of CSR[3:0]
-//				CSR[3:0](R) (sticky) Recieve FIFO 3-0 overflow - packet missed, only cleared by asserting CSR30
+//				CSR[23:20] (R)  same as CSR[7:4] for fifo 4
+//				CSR[19:16] (R)  same as CSR[7:4] for fifo 3
+//				CSR[15:12] (R)  same as CSR[7:4] for fifo 2
+//				CSR[11:8]  (R)  same as CSR[7:4] for fifo 1
+//				CSR7	(R)	(sticky) fifo 0 underrun error: CW recieved when not expected
+//				CSR6	(R)	(sticky) fifo 0 overrun error: no CW recieved when expected
+//				CSR5	(R)	(sticky) fifo 0 missed a block because it's full
+//				CSR4	(R)	fifo 0 empty
+//				CSR3	(R)	arbitter underrun error: CW recieved earlier than expected, RECIEVING STOPPED
+//				CSR2	(R)	arbitter overrunrun error: no CW recieved when expected, RECIEVING STOPPED
+//				CSR1	(R)   SDRAM GTP area full -  no more blocks can be written from GTP
+//				CSR0	(R)   SDRAM GTP area emty -  no new data available for read
 //
 //		4:		RADR	(RW)
 //				RADR[28:2]	must be set by readout procedure to indicate the last physical address that was already read by it
@@ -65,7 +71,10 @@ module rcv_arb #(
 	 output [NFIFO-1:0]	want,
 	 input [31:0]			datfromfifo,	// common "tri-state"
 	 input [NFIFO-1:0]	have,
-	 input [NFIFO-1:0]	missed,
+	 input [NFIFO-1:0]	fifo_empty,
+	 input [NFIFO-1:0]	fifo_ovr,
+	 input [NFIFO-1:0]	fifo_undr,
+	 input [NFIFO-1:0]	fifo_missed,
 	 // inteface with MIG
 	 output reg				cmd_enable,		// MIG port cmd fifo enable
 	 input					cmd_full,		// MIG port cmd fifo full
@@ -125,7 +134,7 @@ module rcv_arb #(
 			// reset
 			rr_cnt <= 0;								// rest RR counter
 			waddr <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
-			csr[4:0] <= 0;								// clear error bits
+			csr[NFIFO*4+3:4] <= 0;					// clear sticky error bits
 			blen <= 0;
 			towrite <= 0;
 			err_undr <= 0;
@@ -171,11 +180,20 @@ module rcv_arb #(
 			end		// fifo have
 		end		// not reset
 
+		// empty flag
+		for (j = 0; j < NFIFO; j=j+1) begin
+				csr[j*4+0] <= fifo_empty;
+		end
 		// sticky errors
-		for (j = 0; j < 4; j=j+1) begin
-			if (missed[j]) begin
-				csr[j] <= 1;
-				csr[4] <= 1;
+		for (j = 0; j < NFIFO; j=j+1) begin
+			if (fifo_missed[j]) begin
+				csr[j*4+1] <= 1;
+			end
+			if (fifo_ovr[j]) begin
+				csr[j*4+2] <= 1;
+			end
+			if (fifo_undr[j]) begin
+				csr[j*4+3] <= 1;
 			end
 		end
 
@@ -201,7 +219,7 @@ module rcv_arb #(
 		// read regs
 		if (wbr_cyc & wbr_stb & ~wbr_we) begin;
 			case (wbr_addr)
-			2'b00:	wbr_dat_o <= {csr[31:9], mem_full, mem_empty, err_undr, err_ovr, csr[4:0]};
+			2'b00:	wbr_dat_o <= {csr[31:4], err_undr, err_ovr, mem_full, mem_empty};
 			2'b01:	wbr_dat_o <= radr;
 			2'b10:	wbr_dat_o <= limr;
 			2'b11:	wbr_dat_o <= wadr;

@@ -32,7 +32,10 @@ module gtpfifo(
 		input 			give,
 		output[31:0]	data,
 		output 	 		have,
-		output reg 		missed
+		output			empty,
+		output reg		err_ovr,
+		output reg		err_undr,
+		output reg 		missed	
    );
 
 	parameter MBITS = 13;
@@ -47,17 +50,23 @@ module gtpfifo(
 	reg					writing = 0;	// if we are now writing the body of a block
 	reg					align = 0;		// if we need to add filler after the odd number of words
 	reg 					odd = 0;			// next word is odd
+	reg 					first = 0;		// 1 when we expect to find CW
 	reg [15:0] 			evendat = 0;	// holder for even words
 	reg [31:0] 			rdata = 0;		// read fifo output
+	wire [15:0]			gtp_dat_tr;		// reciever data with no high bit
 
 	assign len = {{(MBITS-8){1'b0}}, gtp_dat[8:1]} + 1;		// total number of 32-bit words to write (from CW)	
 	assign graddr = (give) ? (raddr + 1) : raddr;
 	assign have = give & (raddr != waddrb);
+	assign empty = (raddr == waddr);
 	assign data = (have) ? rdata : 32'hZZZZZZZZ;
+	assign gtp_dat_tr = {1'b0, gtp_dat[14:0]};
 
 	always @ (posedge gtp_clk) begin
 		// defaults
 		missed <= 0;
+		err_ovr <= 0;
+		err_undr <= 0;
 		if (rst) begin
 			waddr <= 0;
 			waddrb <= 0;
@@ -82,44 +91,54 @@ module gtpfifo(
 							// no space for this block
 							missed <= 1;						// indicate missed block, stay here to wait for next CW
 						end
+					end else if (first) begin
+						// CW expected, but nor recieved
+						err_ovr <= 1;
 					end
+					first <= 0;
 				end else begin
 					// writing the body of block
 					if ( |towrite ) begin
 						// not the last Dword
 						if (odd) begin
 							// this is odd word, write together with previous
-							fifo[waddr] <= {gtp_dat, evendat};		// write
+							fifo[waddr] <= {gtp_dat_tr, evendat};		// write
 							waddr <= waddr + 1;							// incremnt write addr
 							towrite <= towrite - 1;						// decrement goal
 							odd <= 0;										// indicate next word is even
 						end else begin
 							// this is even word, just memorize it for further writing
-							evendat <= gtp_dat;							// memorize data
+							evendat <= gtp_dat_tr;						// memorize data
 							odd <= 1;										// indicate next word is odd
 						end
 					end else begin
 						// this is the last Dword
 						if (odd) begin
 							// we can only be here if no alignment was necessary, just finish
-							fifo[waddr] <= {gtp_dat, evendat};		// write
+							fifo[waddr] <= {gtp_dat_tr, evendat};		// write
 							waddr <= waddr + 1;							// incremnt write addr
 							waddrb <= waddr + 1;							// move block write pointer
 							writing <= 0;									// finished with this block
+							first <= 1;										// CW should come next
 						end else begin
 							// this is last even word
 							if (align) begin
 								// if we need alignment, do it and finish
-								fifo[waddr] <= {16'h8000, gtp_dat};		// write with alighnment
+								fifo[waddr] <= {16'h8000, gtp_dat_tr};		// write with alighnment
 								waddr <= waddr + 1;							// incremnt write addr
 								waddrb <= waddr + 1;							// move block write pointer
 								writing <= 0;									// finished with this block
+								first <= 1;										// CW should come next
 							end else begin
 								// like rgular even word, just memorize it for further writing
-								evendat <= gtp_dat;							// memorize data
+								evendat <= gtp_dat_tr;						// memorize data
 								odd <= 1;										// indicate next word is odd
 							end
 						end
+					end
+					if (gtp_dat[15]) begin
+						// check that we do't encounter CW inside the block
+						err_undr <= 1;
 					end
 				end
 			end	// write fifo
