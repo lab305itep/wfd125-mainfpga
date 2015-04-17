@@ -78,7 +78,7 @@ module rcv_arb #(
 	 // inteface with MIG
 	 output reg				cmd_enable,		// MIG port cmd fifo enable
 	 input					cmd_full,		// MIG port cmd fifo full
-	 output reg [5:0]		blen,				// MIG port current burst length
+	 output [5:0]			blen,				// MIG port current burst length
 	 output					wr_enable,		// MIG port write fifo enable
 	 input					wr_full,			// MIG port write fifo full
 	 input					wr_empty,		// MIG port write fifo empty
@@ -92,8 +92,10 @@ module rcv_arb #(
 	wire		mem_full;				// recieving area of memory is full
 	wire		mem_empty;				// recieving area of memory is empty
 	wire		nextf;					// force increment of RR counter (after block is fully read)
+	wire		radr_invalid;			// reading process provided radr beyond boundaries
 	reg [28:0] waddr;					// current address for MIG write
 	reg [7:0] towrite;				// length of current block
+	reg [5:0] blen_c;					//	counter for burst length
 	reg err_undr = 0;					// underrun error
 	reg err_ovr = 0;					// overrun error
 
@@ -116,10 +118,13 @@ module rcv_arb #(
 	
 	assign	fifohave = |have;
 	assign	dattomcb = datfromfifo;
+	assign	blen = waddr[28:2] - adr_rcv[28:2] - 1;
 	assign	wr_enable = fifohave;
+	assign   radr_invalid = (radr[28:13] < limr[15:0]) || (radr[28:13] >= limr[31:16]);
 	assign	mem_empty = (radr[28:0] == waddr);
-	assign	mem_full = ((radr[28:0] - waddr) <= {{20{1'b0}}, 9'd8}) & ~mem_empty; // 2 dwords are always reserved just for fun
-	assign	pause = wr_full | cmd_full | mem_full | err_undr | err_ovr;
+	assign	mem_full =  (radr[28:0]  == (waddr + 4)) || 
+					((radr[28:0] == {limr[15:0], 13'h0000}) && ((waddr + 4) == {limr[31:16], 13'h0000}));
+	assign	pause = wr_full | cmd_full | mem_full | err_undr | err_ovr | radr_invalid;
 	assign	nextf = (towrite == 1);
 	
 	assign	en_debug = csr[28];
@@ -134,8 +139,9 @@ module rcv_arb #(
 			// reset
 			rr_cnt <= 0;								// rest RR counter
 			waddr <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
+			wadr <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
 			csr[NFIFO*4+3:4] <= 0;					// clear sticky error bits
-			blen <= 0;
+			blen_c <= 0;
 			towrite <= 0;
 			err_undr <= 0;
 			err_ovr <= 0;
@@ -149,52 +155,60 @@ module rcv_arb #(
 				end
 			end
 			// latch waddr when MIG data fifo is empty
-			if (wr_empty)	wadr <= waddr;
+//			if (wr_empty)	wadr <= waddr;
+			wadr <= waddr;
+			// next burst always starts at this address
+			if (cmd_enable) begin
+				adr_rcv <= waddr;
+			end
 			// if we are writing this word
 			if (fifohave) begin
-				if ( waddr == {limr[31:16], 13'h1FFC} ) begin
+				if ( (waddr + 4) == {limr[31:16], 13'h0000} ) begin
 					waddr <= {limr[15:0], 13'b0};
 				end else begin
 					waddr <= waddr + 4;
 				end
+				blen_c <= blen_c + 1;						// default behavior
 				if (|towrite) towrite <= towrite - 1;	// default behavior
-				if (blen < 31) blen <= blen + 1;			// default behavior
 				if (datfromfifo[15]) begin
 					// this is CW
 					towrite <= datfromfifo[8:1];		// number of dwords to write -1
-					blen <= 0;								// this is start of burst
+					blen_c <= 1;							// this is start of burst
 					adr_rcv <= waddr;						// and this is burst starting address
-					if (datfromfifo[8:1] == 0 || waddr == {limr[31:16], 13'h1FFC}) begin
+					if (datfromfifo[8:1] == 0 || (waddr + 4) == {limr[31:16], 13'h0000}) begin
 						// if we are writing exactly 1 word
 						cmd_enable <= 1;
+						blen_c <= 0;
 					end
 					if (|towrite) err_undr <= 1;	// must accept next CW with towrite=0, otherwize it's too early
 				end else begin
 					// issue command if: end of block, blen=32 or last address
-					if (towrite == 1 || blen == 30 || waddr == {limr[31:16], 13'h1FFC}) begin
+					if (towrite == 1 || blen_c == 31 || (waddr + 4) == {limr[31:16], 13'h0000}) begin
 						cmd_enable <= 1;
-						blen <= 0;
+						blen_c <= 0;
 					end
 					if (~(|towrite)) err_ovr <= 1;	// must have accepted CW with towrite=0, otherwize it's too late
 				end
 			end		// fifo have
+
+			// sticky errors
+			for (j = 0; j < NFIFO; j=j+1) begin
+				if (fifo_missed[j]) begin
+					csr[j*4+5] <= 1;
+				end
+				if (fifo_ovr[j]) begin
+					csr[j*4+6] <= 1;
+				end
+				if (fifo_undr[j]) begin
+					csr[j*4+7] <= 1;
+				end
+			end
+
 		end		// not reset
 
-		// empty flag
+		// empty flag (overrides reset)
 		for (j = 0; j < NFIFO; j=j+1) begin
-				csr[j*4+0] <= fifo_empty;
-		end
-		// sticky errors
-		for (j = 0; j < NFIFO; j=j+1) begin
-			if (fifo_missed[j]) begin
-				csr[j*4+1] <= 1;
-			end
-			if (fifo_ovr[j]) begin
-				csr[j*4+2] <= 1;
-			end
-			if (fifo_undr[j]) begin
-				csr[j*4+3] <= 1;
-			end
+				csr[j*4+4] <= fifo_empty;
 		end
 
 	end		// posedge gtp_clk
@@ -219,7 +233,7 @@ module rcv_arb #(
 		// read regs
 		if (wbr_cyc & wbr_stb & ~wbr_we) begin;
 			case (wbr_addr)
-			2'b00:	wbr_dat_o <= {csr[31:4], err_undr, err_ovr, mem_full, mem_empty};
+			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[26:4], err_undr, err_ovr, mem_full, mem_empty};
 			2'b01:	wbr_dat_o <= radr;
 			2'b10:	wbr_dat_o <= limr;
 			2'b11:	wbr_dat_o <= wadr;

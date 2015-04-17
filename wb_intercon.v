@@ -227,8 +227,8 @@ module wb_intercon
 
 wb_mux
   #(.num_slaves (16),
-    .MATCH_ADDR ({32'h00000000, 32'h20000000, 32'h20000008, 32'h20000010, 32'h20000018, 32'h20000020, 32'h20000040, 32'h20000050, 32'h20010040, 32'h20010050, 32'h20010060, 32'h20010070, 32'h20040000, 32'h20060000, 32'h20080000, 32'h200a0000}),
-    .MATCH_MASK ({32'he0000000, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hffffffe0, 32'hfffffff0, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffe0000, 32'hfffe0000, 32'hfffe0000, 32'hfffe0000}))
+    .MATCH_ADDR ({32'h00000000, 32'h20000000, 32'h20000008, 32'h20000010, 32'h20000018, 32'h20000020, 32'h20000040, 32'h20000050, 32'h20000100, 32'h20000108, 32'h20000110, 32'h20000118, 32'h20004000, 32'h20006000, 32'h20008000, 32'h2000a000}),
+    .MATCH_MASK ({32'he0000000, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hffffffe0, 32'hfffffff0, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hfffffff8, 32'hffffe000, 32'hffffe000, 32'hffffe000, 32'hffffe000}))
  wb_mux_VME64xCore_Top
    (.wb_clk_i    (wb_clk_i),
     .wb_rst_i    (wb_rst_i),

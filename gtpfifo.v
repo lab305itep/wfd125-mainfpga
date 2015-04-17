@@ -55,7 +55,8 @@ module gtpfifo(
 	reg [31:0] 			rdata = 0;		// read fifo output
 	wire [15:0]			gtp_dat_tr;		// reciever data with no high bit
 
-	assign len = {{(MBITS-8){1'b0}}, gtp_dat[8:1]} + 1;		// total number of 32-bit words to write (from CW)	
+//	assign len = {{(MBITS-8){1'b0}}, gtp_dat[8:1]} + 1;		// total number of 32-bit words to write (from CW)	
+	assign len = gtp_dat[8:1] + 1;		// total number of 32-bit words to write (from CW)	
 	assign graddr = (give) ? (raddr + 1) : raddr;
 	assign have = give & (raddr != waddrb);
 	assign empty = (raddr == waddr);
@@ -73,6 +74,7 @@ module gtpfifo(
 			raddr <= 0;
 			odd <= 0;
 			writing <= 0;
+			first <= 0;
 		end else begin
 			// write fifo
 			if (gtp_vld) begin

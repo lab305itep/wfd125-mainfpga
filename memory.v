@@ -461,6 +461,9 @@ u_memcntr (
 				.give			(arb_wants[i]),
 				.data			(dattoarb),
 				.have			(fifo_have[i]),
+				.empty		(fifo_empty[i]),
+				.err_ovr		(fifo_ovr[i]),
+				.err_undr	(fifo_undr[i]),
 				.missed		(fifo_missed[i])
 			);
       end
