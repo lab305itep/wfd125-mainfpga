@@ -85,11 +85,11 @@ module fpga_main(
 	// Indication LEDS (LED0 - Yellow)
     output [3:0] LED,
 	// Front panel pairs (even-odd)
-    input [5:0] FP,
+    inout [5:0] FP,
 	// Back panel
 	// 0-2, 1-3, 7-9 : "next-by-next" BP pair, X-pair, board pair
 	// 6-5 : "real" BP pair, X-pair, but NOT board pair
-    input [9:0] USRDEF,
+    inout [9:0] USRDEF,
 	// FLASH/Config interface
     input INIT,
     input [1:0] M,
@@ -203,15 +203,10 @@ module fpga_main(
    assign BDACC = 1'bz;
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
-   assign ECLKSEL = 1'bz;
-   assign OCLKSEL = 1'bz;
-   assign CLKENFP = 1'bz;
-   assign CLKENBP = 1'bz;
-   assign CLKENBFP = 1'bz;
 	
-	wire [31:0] main_csr;
-	assign ICX[5] = main_csr[31];	// WB reset to channel FPGA
-	inoutreg reg_csr (
+	wire [19:0] main_csr;
+	assign ICX[5] = main_csr[19];	// WB reset to channel FPGA
+	csreg reg_csr (
 		.wb_clk (wb_clk), 
 		.wb_cyc (wb_m2s_reg_csr_cyc), 
 		.wb_stb (wb_m2s_reg_csr_stb), 
@@ -220,9 +215,28 @@ module fpga_main(
 		.wb_dat_i (wb_m2s_reg_csr_dat), 
 		.wb_dat_o (wb_s2m_reg_csr_dat), 
 		.wb_ack (wb_s2m_reg_csr_ack),
-		.reg_o   (main_csr),
-		.reg_i	(~main_csr)
+		.gen_o   (main_csr),
+		.gen_i	(),
+		// inputs from triggen
+		.trig		(0),
+		.inh		(0),
+		// front panel signals
+		.trig_FP	(FP[1:0]),
+		.inh_FP	(FP[3:2]),
+		// back panel signals
+		.trig_BP	(USRDEF[5] & USRDEF[6]),
+		.inh_BP	(USRDEF[2] & USRDEF[0]),
+		// signals to peripheral X's
+		.trig_ICX	(ICX[1:0]),
+		.inh_ICX		(ICX[6]),
+		// outputs to drive CLK muxes
+		.ECLKSEL		(ECLKSEL),
+		.OCLKSEL		(OCLKSEL),
+		.CLKENFP		(CLKENFP),
+		.CLKENBP		(CLKENBP),
+		.CLKENBFP	(CLKENBFP)
 	);
+	
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
 

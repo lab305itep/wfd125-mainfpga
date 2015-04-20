@@ -19,6 +19,8 @@
 //				CSR30	(RWC) Full reset of the module (MCB, WBRAM fsm, FIFOs) -- auto cleared
 //				CSR29	(RWC) MCB and WBRAM fsm reset -- auto cleared
 //				CSR28	(RW)  enable debug, when 1 WADR reads debug lines rather than last written block addr
+//				CSR27	(R)	arbitter paused because of errors or memory full
+//				CSR26	(R)	RADR invalid: specified RADR is beyond limits set by LIMR
 //				CSR[23:20] (R)  same as CSR[7:4] for fifo 4
 //				CSR[19:16] (R)  same as CSR[7:4] for fifo 3
 //				CSR[15:12] (R)  same as CSR[7:4] for fifo 2
@@ -233,7 +235,7 @@ module rcv_arb #(
 		// read regs
 		if (wbr_cyc & wbr_stb & ~wbr_we) begin;
 			case (wbr_addr)
-			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[26:4], err_undr, err_ovr, mem_full, mem_empty};
+			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[25:4], err_undr, err_ovr, mem_full, mem_empty};
 			2'b01:	wbr_dat_o <= radr;
 			2'b10:	wbr_dat_o <= limr;
 			2'b11:	wbr_dat_o <= wadr;
