@@ -48,6 +48,10 @@ module memory # (
     input [63:0]  gtp_dat,
 	// recieved data valid (not a comma) from 4 recievers
     input [3:0]   gtp_vld,
+	// trigger data from triggen module
+	 input [15:0]	trg_dat,
+	// trigger data valid
+	 input			trg_vld,
 	// SDRAM interface
 	 input         mcb_clk,
 	// Address
@@ -469,14 +473,28 @@ u_memcntr (
       end
    endgenerate
 
-//	fifth fifo keeps information for triggers, generated in this module
-	assign fifo_have[4] = 0;
-	assign fifo_missed[4] = 0;
+//	fifth fifo keeps information for triggers, generated in this wfd
+			gtpfifo # (
+				.MBITS(12)
+			) 
+			trgfifo(
+				.gtp_clk		(gtp_clk),
+				.gtp_dat    (trg_dat),
+				.gtp_vld		(trg_vld),
+				.rst			(fifo_rst),
+				.give			(arb_wants[4]),
+				.data			(dattoarb),
+				.have			(fifo_have[4]),
+				.empty		(fifo_empty[4]),
+				.err_ovr		(fifo_ovr[4]),
+				.err_undr	(fifo_undr[4]),
+				.missed		(fifo_missed[4])
+			);
 	
 // arbitter
 	
 rcv_arb #(
-	 .NFIFO		(5)
+	 .NFIFO		(NFIFO)
 )
 arbitter (
 	 .wb_clk			(wb_clk),
