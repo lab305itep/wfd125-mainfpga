@@ -177,15 +177,17 @@ module fpga_main(
 	wire         CBUFSDA_en;
 	wire			 CBUFSCL_en;
 	
-	wire [63:0]  gtp_data_o;
-	wire [3:0]   gtp_kchar_o;
-	wire [63:0]  gtp_data_i;
-	wire [3:0]   gtp_kchar_i;
+	wire [63:0]  gtp_data_o;	// data from GTP reciever
+	wire [3:0]   gtp_kchar_o;	// k-char signature from GTP reciever
+	wire [15:0]	 trg_data;		// data from triggen to trigger block fifo in memory
+	wire			 trg_valid;		// valid accompanying the above
+	wire			 trigger;		// master trigger from triggen to commutation in csreg
+	wire			 inhibit;		// inhibit from triggen to commutation in csreg
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
 
 	always @ (posedge CLK125) begin
-		tpdebug[5] <= gtp_kchar_i[0];
+		tpdebug[5] <= 0;
 		tpdebug[4] <= gtp_data_o[63] & gtp_kchar_o[3];
 		tpdebug[3] <= gtp_data_o[47] & gtp_kchar_o[2];
 		tpdebug[2] <= gtp_data_o[31] & gtp_kchar_o[1];
@@ -218,8 +220,8 @@ module fpga_main(
 		.gen_o   (main_csr),
 		.gen_i	(),
 		// inputs from triggen
-		.trig		(0),
-		.inh		(0),
+		.trig		(trigger),
+		.inh		(inhibit),
 		// front panel signals
 		.trig_FP	(FP[1:0]),
 		.inh_FP	(FP[3:2]),
@@ -267,8 +269,8 @@ module fpga_main(
 //			Do remapping here
 		.data_o		({gtp_data_o[15:0], gtp_data_o[31:16], gtp_data_o[47:32], gtp_data_o[63:48]}),	// data received
 		.charisk_o	({gtp_kchar_o[0], gtp_kchar_o[1], gtp_kchar_o[2], gtp_kchar_o[3]}), 		// K-char signature received
-		.data_i		({gtp_data_i[15:0], gtp_data_i[31:16], gtp_data_i[47:32], gtp_data_i[63:48]}),	// data received
-		.charisk_i	({gtp_kchar_i[0], gtp_kchar_i[1], gtp_kchar_i[2], gtp_kchar_i[3]}), 		// K-char signature received
+		.data_i		({4{16'h00BC}}),		// data for sending	(always comma)
+		.charisk_i	(4'b1111), 				// K-char signature for sending
 		.locked  ()
     );
 
@@ -351,20 +353,6 @@ vme (
 	assign wb_m2s_VME64xCore_Top_cti = 0;
 	assign wb_m2s_VME64xCore_Top_bte = 0;
 
-//		LEDs
-genvar i;
-generate
-	for (i = 0; i < 4; i = i + 1) begin : GLED
-		ledengine ULED
-		(
-			.clk	(CLK125),
-			.led  (LED[i]),
-			.trig (trig[i])
-		);
-	end
-endgenerate
-
-
 //		clock buffer control
    i2c_master_slave UI2C (
 		.wb_clk_i  (wb_clk), 
@@ -392,29 +380,28 @@ endgenerate
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 
-//		Trigger processing
-	wire [15:0] trg2gtp;
-	wire kchar2gtp;
 	
-	assign gtp_data_i = {trg2gtp, trg2gtp, trg2gtp, trg2gtp};
-	assign gtp_kchar_i = {kchar2gtp, kchar2gtp, kchar2gtp, kchar2gtp};
-	
-   triggen UTRIG (
+   gentrig UTRIG (
+		// GTP reciever data and k-char info
+		.gtp_clk		(CLK125),
+		.gtp_dat		(gtp_data_o),
+		.kchar		(gtp_kchar_o),
+		// intrface to memory fifo
+		.trg_dat		(trg_data),
+		.trg_vld		(trg_valid),
+		// WB
 		.wb_clk  	(wb_clk), 
 		.wb_rst  	(wb_rst), 
-		.wb_adr  	(wb_m2s_triggen_adr[2]), 
+		.wb_cyc  	(wb_m2s_triggen_cyc), 
+		.wb_stb  	(wb_m2s_triggen_stb),
+		.wb_adr  	(wb_m2s_triggen_adr[3:2]), 
+		.wb_we   	(wb_m2s_triggen_we),
+		.wb_ack  	(wb_s2m_triggen_ack), 
 		.wb_dat_i  	(wb_m2s_triggen_dat), 
 		.wb_dat_o  	(wb_s2m_triggen_dat),
-		.wb_we   	(wb_m2s_triggen_we),
-		.wb_stb  	(wb_m2s_triggen_stb),
-		.wb_cyc  	(wb_m2s_triggen_cyc), 
-		.wb_ack  	(wb_s2m_triggen_ack), 
-		.trg_data_i	(gtp_data_o),
-		.trg_data_o (trg2gtp),
-		.clk			(CLK125),
-		.kchar_i		(gtp_kchar_o),
-		.kchar_o		(kchar2gtp),
-		.trg_ext(1'b0)
+		// trigger and inhibit
+		.trigger		(trigger),
+		.inhibit		(inhibit)
 	);
 
 	assign wb_s2m_triggen_err = 0;
@@ -567,13 +554,6 @@ fifoD (
 	assign wb_s2m_regD_rty = 0;
 	assign wb_s2m_regD_err = 0;
 
-//		Global counter
-	always @(posedge CLK125) begin
-		if (!once) greset <= !C2X[7];
-		CNT <= CNT + 1;
-		if (CNT == 1000000) once = 0;
-	end;
-
 //		SPI to DAC
 wire [6:0] empty_spi_csa;
 xspi_master  #(
@@ -651,6 +631,10 @@ sdram (
     .gtp_dat	(gtp_data_o),
 	// recieved data valid (not a comma)
     .gtp_vld	(~gtp_kchar_o),
+	// trigger data from triggen module
+	 .trg_dat	(trg_data),
+	// trigger data valid
+	 .trg_vld	(trg_valid),
 	// SDRAM interface
 	 .mcb_clk		(CLKMCB),
 	// Address
@@ -683,5 +667,26 @@ sdram (
 	assign	wb_s2m_sdram_rty = 0;
 	assign	wb_s2m_reg_fifo_err = 0;
 	assign	wb_s2m_reg_fifo_rty = 0;
+
+//		Global counter
+	always @(posedge CLK125) begin
+		if (!once) greset <= !C2X[7];
+		CNT <= CNT + 1;
+		if (CNT == 1000000) once = 0;
+	end;
+
+//		LEDs
+genvar i;
+generate
+	for (i = 0; i < 4; i = i + 1) begin : GLED
+		ledengine ULED
+		(
+			.clk	(CLK125),
+			.led  (LED[i]),
+			.trig (trig[i])
+		);
+	end
+endgenerate
+
 
 endmodule
