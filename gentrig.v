@@ -21,8 +21,9 @@
 //		Registers:
 //		0 CSR (RW):
 //			3:0   - corrsponding chan FPGA trigger enable
-//			15:4  - trigger block time (125MHz ticks), actual blocking time 
-//						cannot be less than token transmission time
+//			6:4	- 1 + time in clocks to accumulate OR of all trigger sources
+//			15:7  - 1 + trigger blocking time (125MHz ticks), actual blocking time 
+//						cannot be less than token transmission time 14*TOKEN_CLKDIV clocks
 //			30:16 - user word to be put to the trigger block to memory
 //			31		- inhibit, set on power on
 //		1 TRGCNT	(R) :
@@ -37,13 +38,15 @@
 //
 //		Block sent to memory fifo
 //		0	10SC CCCL LLLL LLLL - S - soft trigger, CCCC - channel mask which produced the trigger, 
-//										 L - data length in 16-bit words not including CW 
+//										 L=7 - data length in 16-bit words not including CW 
 // 	1	0ttt pnnn nnnn nnnn - ttt - trigger block type (3'b010 = 2 - trigger info block)
 //										 n - 11-bit trigger token = trigger number LSB, p - token parity = NOT (xor n)
 //		2	0uuu uuuu uuuu uuuu - user word
 //		3	0 GTIME[14:0]		  - lower GTIME
 //		4	0 GTIME[29:15]		  - middle GTIME
 //		5	0 GTIME[44:30]		  - higher GTIME
+//		6  0 TRIGCNT[14:0]	  - lower trigger counter, 11 LSB coinside with token
+//		7  0 TRIGCNT[29:15]	  - higher trigger counter
 //
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -70,8 +73,8 @@ module gentrig # (
 		input [31:0] 		wb_dat_i,
 		output reg [31:0]	wb_dat_o,
 		// trigger and inhibit
-		output reg			trigger,
-		output reg			inhibit
+		output 				trigger,
+		output 				inhibit
    );
 
 	localparam	CH_COMMA = 16'h00BC;		// comma K28.5
@@ -88,26 +91,31 @@ module gentrig # (
 	reg [31:0]	cnt_dat = 0;
 	
 	integer j;
-	wire [3:0]  STRG = 0;
-	wire			blk;				// sum of all blocking signals
+	wire [3:0]  CTRG;
 
-	reg [13:0]	ser_trg = 0;
-	reg [3:0]	ser_cnt = 0;
-	reg [3:0]	ser_div = 0;
+	reg [13:0]	ser_trg = 0;	// shift reg for serial token
+	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
+	reg [3:0]	ser_div = 0;	// conter of frq divider for token transmission
+	reg [3:0]	mem_cnt = 0;	// counter for words transmitted to memory
+	reg [4:0]	or_trg = 0;		//	to accumulate triggers from different sources
+	reg [2:0]	or_cnt = 0;		// to count time to accumulate triggers from different sources
+	reg [8:0]	blk_cnt = 0;	// blocking time count
+	wire			blk;				// sum of all blocking signals
 
 	// Inhibit and trigger outputs
 	assign inhibit = CSR[31];
 	assign trigger = ser_trg[0];
 	
+	// trigger blocking
+	assign blk = (|ser_cnt) | (|mem_cnt) | (|blk_cnt);
+
 	// Make trigger signals from channels
 	genvar i;
 	generate
-		for (i=0; i<4; i=i+1) begin: USTRG
-			assign STRG[i] = CSR[i] & kchar[i] & (gtp_dat[16*i+15:16*i] == CH_TRIG);
+		for (i=0; i<4; i=i+1) begin: UCTRG
+			assign CTRG[i] = ~CSR[31] & CSR[i] & kchar[i] & (gtp_dat[16*i+15:16*i] == CH_TRIG);
 		end	
 	endgenerate
-	
-	assign blk = (|ser_cnt);		// and more
 
 //		WishBone, assuming that WB clock is not faster than gtp_clk
 //		i.e. 1 wb_clk signals will always be seen at gtp_clk
@@ -161,25 +169,79 @@ module gentrig # (
 	end	// posedge wb_clk
 
 	always @ (posedge gtp_clk) begin
+		trg_vld <= 0;		// default
 		// Sending trigger token (immediately on first appearing trigger from channels)
-		if ((((|STRIG) & ~CSR[31]) | soft_trig) & ~blk) begin
+		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
+		if (((|CTRG) | soft_trig) & ~blk) begin
 			// start sending token on first trig in group if not inhibited or soft trigger
-			ser_trg <= {1'b0, TRGCNT[10:0], 1'b1};
+			ser_trg <= {1'b0, ~(^TRGCNT[10:0]), TRGCNT[10:0], 1'b1};
 			ser_div <= TOKEN_CLKDIV - 1;
-			ser_cnt <= 14;
+			ser_cnt <= 13;
 		end else begin
 			if (|ser_div) begin
+				// just skip clocks
 				ser_div <= ser_div - 1;
-			end else begin
+			end else if (|ser_cnt) begin
+				// shift serial reg
 				ser_div <= TOKEN_CLKDIV - 1;
 				ser_trg <= {1'b0, ser_trg[13:1]};
-				if (|ser_cnt) ser_cnt <= ser_cnt - 1;
+				ser_cnt <= ser_cnt - 1;
 			end
 		end
 		
-		// Sending trigger block to memory fifo
-		
-		// count time
+		// Sending trigger block to memory fifo (parallely with token)
+		if (((|CTRG) | soft_trig) & ~blk) begin
+			// initialize and catch first trigger to OR
+			mem_cnt <= 9;
+			or_trg <= soft_trig | CTRG;
+			or_cnt <= CSR[6:4];
+		end else begin
+			if (mem_cnt == 9) begin
+				// stay here during trigger catching time
+				if (|or_cnt) begin
+					or_trg <= or_trg | {1'b0, CTRG};
+					or_cnt <= or_cnt - 1;
+				end else begin
+					mem_cnt <= mem_cnt - 1;
+				end
+			end else begin
+				if (|mem_cnt) begin
+					// send trig info words one by one
+					case (mem_cnt)
+						//		0	10SC CCCL LLLL LLLL 	CW
+						8 : trg_dat <= {2'b10, or_trg, 9'h007};	//	 L=7 
+						// 	1	0ttt pnnn nnnn nnnn - ttt=2 - trigger info block, token
+						7 : trg_dat <= {4'b0010, ~(^TRGCNT[10:0]), TRGCNT[10:0]};
+						//		2	0uuu uuuu uuuu uuuu - user word
+						6 : trg_dat <= {1'b0, CSR[30:15]}; 
+						//		3	0 GTIME[14:0]		  - lower GTIME
+						5 : trg_dat <= {1'b0, GTIME[14:0]}; 
+						//		4	0 GTIME[29:15]		  - middle GTIME
+						4 : trg_dat <= {1'b0, GTIME[29:15]}; 
+						//		5	0 GTIME[44:30]		  - higher GTIME
+						3 : trg_dat <= {1'b0, GTIME[44:30]}; 
+						//		6  0 TRIGCNT[14:0]	  - lower trigger counter, 11 LSB coinside with token
+						2 : trg_dat <= {1'b0, TRGCNT[14:0]}; 
+						//		7  0 TRIGCNT[29:15]	  - higher trigger counter
+						1 : begin
+							trg_dat <= {1'b0, TRGCNT[29:15]};
+							TRGCNT <= TRGCNT + 1;		//	increment trigger counter here, not used anymore with this trigger
+						end
+					endcase
+					trg_vld <= 1;				// acknowledge trigger data
+					mem_cnt <= mem_cnt - 1;	// to the next word
+				end
+			end
+		end
+
+		// additional blocking
+		if (((|CTRG) | soft_trig) & ~blk) begin
+			blk_cnt <= CSR[15:7];
+		end else if (|blk_cnt) begin
+			blk_cnt <= blk_cnt - 1;
+		end
+
+		// count global time
 		if (~CSR[31]) begin
 			GTIME <= GTIME + 1;
 		end
