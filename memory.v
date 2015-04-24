@@ -77,7 +77,7 @@ module memory # (
     output        MEMZIO,
     output        MEMRZQ,
 	// current status
-    output [31:0] status
+    output  		status
     );
 
 //======= SIGNALS ==============
@@ -528,7 +528,9 @@ arbitter (
 	 .wr_full		(w2_full),			// MIG port write fifo full
 	 .wr_empty		(w2_empty),			// MIG port write fifo empty
 	 .adr_rcv		(adr_rcv),			// MIG address within recieving area
-	 .dattomcb		(datfromarb)		// MIG port write data
+	 .dattomcb		(datfromarb),		// MIG port write data
+	 // error
+	 .status			(status)
     );
 
 

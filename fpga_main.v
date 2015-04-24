@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: ITEP
-// Engineer: SvirLex
+// Company: 		 ITEP
+// Engineer: 		 SvirLex
 // 
 // Create Date:    19:11:52 09/15/2014 
 // Design Name:    fpga_main
@@ -12,6 +12,19 @@
 // Revision 0.01 - File Created
 // Additional Comments: 
 //
+//		FP connectors (top to bottom):
+//			Ethernet (not used)
+//			FP pairs
+//			Input0, chans 0-15
+//			Input1, chans 16-31
+//			Input2, chans 32-47
+//			Input3, chans 48-63
+//		
+//		LED assignments (top to bottom):
+//		0 (YEL)	memory error or full or token recieving error
+//		1 (GRN)	VME access, either to main FPGA or to CPLD
+//		2 (GRN)	module recieved master trigger
+//		3 (GRN)	lit when module feels NO inhibit
 //
 //
 //////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +160,7 @@ module fpga_main(
 
 	wire CLK125;
 	wire CLKMCB;
-	wire [3:0] trig;
+	wire [3:0] ledp;
 	reg once = 1;
 	reg greset = 1;
 	
@@ -179,10 +192,15 @@ module fpga_main(
 	
 	wire [63:0]  gtp_data_o;	// data from GTP reciever
 	wire [3:0]   gtp_kchar_o;	// k-char signature from GTP reciever
+	wire [15:0]  gtp_token;		// token data and status to channels
 	wire [15:0]	 trg_data;		// data from triggen to trigger block fifo in memory
 	wire			 trg_valid;		// valid accompanying the above
 	wire			 trigger;		// master trigger from triggen to commutation in csreg
 	wire			 inhibit;		// inhibit from triggen to commutation in csreg
+	wire [9:0]	 token;			// 10 bit token of recieved trigger
+	wire			 tok_rdy;		// token recieved
+	wire			 tok_err;		// token error
+	wire			 mem_status;	// memory errors
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
 
@@ -218,7 +236,7 @@ module fpga_main(
 		.wb_dat_o (wb_s2m_reg_csr_dat), 
 		.wb_ack (wb_s2m_reg_csr_ack),
 		.gen_o   (main_csr),
-		.gen_i	(),
+		.gen_i	({22'h0, token}),
 		// inputs from triggen
 		.trig		(trigger),
 		.inh		(inhibit),
@@ -241,7 +259,7 @@ module fpga_main(
 	
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
-
+	
 	inoutreg reg_ver (
 		.wb_clk (wb_clk), 
 		.wb_cyc (wb_m2s_reg_ver_cyc), 
@@ -257,6 +275,7 @@ module fpga_main(
 	assign wb_s2m_reg_ver_rty = 0;
 	assign wb_s2m_reg_ver_err = 0;
 
+	assign gtp_token = (tok_rdy) ? {5'b10000, tok_err, token} : 16'h00BC;
 
 	gtprcv4 # (.WB_DIVIDE(2), .WB_MULTIPLY(2))	// 125 MHz for wishbone
 	UGTP (
@@ -269,8 +288,8 @@ module fpga_main(
 //			Do remapping here
 		.data_o		({gtp_data_o[15:0], gtp_data_o[31:16], gtp_data_o[47:32], gtp_data_o[63:48]}),	// data received
 		.charisk_o	({gtp_kchar_o[0], gtp_kchar_o[1], gtp_kchar_o[2], gtp_kchar_o[3]}), 		// K-char signature received
-		.data_i		({4{16'h00BC}}),		// data for sending	(always comma)
-		.charisk_i	(4'b1111), 				// K-char signature for sending
+		.data_i		({4{gtp_token}}),		// data for sending, token with its status when token recieved
+		.charisk_i	({4{~tok_rdy}}),		// K-char signature for sending, not k-char when token recieved
 		.locked  ()
     );
 
@@ -427,7 +446,7 @@ fifoA (
 		.gtp_dat		(gtp_data_o[15:0]),
 		.gtp_vld		(!gtp_kchar_o[0]),
 		.fifocnt		(fifo_cnt_A),
-		.overflow	(trig[0])
+		.overflow	()
    );
 
 	assign wb_s2m_fifoA_err = 0;
@@ -447,7 +466,7 @@ fifoB (
 		.gtp_dat		(gtp_data_o[31:16]),
 		.gtp_vld		(!gtp_kchar_o[1]),
 		.fifocnt		(fifo_cnt_B),
-		.overflow	(trig[1])
+		.overflow	()
    );
 
 	assign wb_s2m_fifoB_err = 0;
@@ -467,7 +486,7 @@ fifoC (
 		.gtp_dat		(gtp_data_o[47:32]),
 		.gtp_vld		(!gtp_kchar_o[2]),
 		.fifocnt		(fifo_cnt_C),
-		.overflow	(trig[2])
+		.overflow	()
     );
 
 	assign wb_s2m_fifoC_err = 0;
@@ -487,7 +506,7 @@ fifoD (
 		.gtp_dat		(gtp_data_o[63:48]),
 		.gtp_vld		(!gtp_kchar_o[3]),
 		.fifocnt		(fifo_cnt_D),
-		.overflow	(trig[3])
+		.overflow	()
    );
 
 	assign wb_s2m_fifoD_err = 0;
@@ -504,7 +523,7 @@ fifoD (
 		.wb_dat_o (wb_s2m_regA_dat), 
 		.wb_ack (wb_s2m_regA_ack),
 		.reg_o   (),
-		.reg_i	({trig[0], 15'h0000, fifo_cnt_A})
+		.reg_i	({16'h0000, fifo_cnt_A})
 	);
 	assign wb_s2m_regA_rty = 0;
 	assign wb_s2m_regA_err = 0;
@@ -519,7 +538,7 @@ fifoD (
 		.wb_dat_o (wb_s2m_regB_dat), 
 		.wb_ack (wb_s2m_regB_ack),
 		.reg_o   (),
-		.reg_i	({trig[1], 15'h0000, fifo_cnt_B})
+		.reg_i	({16'h0000, fifo_cnt_B})
 	);
 	assign wb_s2m_regB_rty = 0;
 	assign wb_s2m_regB_err = 0;
@@ -534,7 +553,7 @@ fifoD (
 		.wb_dat_o (wb_s2m_regC_dat), 
 		.wb_ack (wb_s2m_regC_ack),
 		.reg_o   (),
-		.reg_i	({trig[2], 15'h0000, fifo_cnt_C})
+		.reg_i	({16'h0000, fifo_cnt_C})
 	);
 	assign wb_s2m_regC_rty = 0;
 	assign wb_s2m_regC_err = 0;
@@ -549,7 +568,7 @@ fifoD (
 		.wb_dat_o (wb_s2m_regD_dat), 
 		.wb_ack (wb_s2m_regD_ack),
 		.reg_o   (),
-		.reg_i	({trig[3], 15'h0000, fifo_cnt_D})
+		.reg_i	({16'h0000, fifo_cnt_D})
 	);
 	assign wb_s2m_regD_rty = 0;
 	assign wb_s2m_regD_err = 0;
@@ -660,7 +679,7 @@ sdram (
     .MEMZIO			(MEMZIO),
     .MEMRZQ			(MEMRZQ),
 	// current status
-    .status			()
+    .status			(mem_status)
     );
 	
 	assign	wb_s2m_sdram_err = 0;
@@ -675,18 +694,32 @@ sdram (
 		if (CNT == 1000000) once = 0;
 	end;
 
+// serial trigger capture
+	trigrcv trigcap (
+    .clk			(CLK125),
+    .ser_trig	(ICX[0]),
+    .token		(token),
+    .tok_rdy	(tok_rdy),
+    .tok_err	(tok_err)
+    );
+
+
 //		LEDs
-genvar i;
-generate
-	for (i = 0; i < 4; i = i + 1) begin : GLED
-		ledengine ULED
-		(
-			.clk	(CLK125),
-			.led  (LED[i]),
-			.trig (trig[i])
-		);
-	end
-endgenerate
+	assign ledp[0] = mem_status | wb_rst | tok_err;	// memory errors or trigger recieving error
+	assign ledp[1] = debug[0] | C2X[6];					// VME access to this card or to CPLD
+	assign ledp[2] = tok_rdy;								// master trigger recieved
+	assign ledp[3] = ~ICX[6];								// not INH
+
+	genvar i;
+	generate
+		for (i = 0; i < 4; i = i + 1) begin : GLED
+			ledengine ULED (
+				.clk	(CLK125),
+				.led  (LED[i]),
+				.trig (ledp[i])
+			);
+		end
+	endgenerate
 
 
 endmodule

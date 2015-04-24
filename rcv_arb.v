@@ -85,7 +85,9 @@ module rcv_arb #(
 	 input					wr_full,			// MIG port write fifo full
 	 input					wr_empty,		// MIG port write fifo empty
 	 output reg [28:0]	adr_rcv,			// MIG address within recieving area
-	 output [31:0]			dattomcb			// MIG port write data
+	 output [31:0]			dattomcb,		// MIG port write data
+	 // total error or full
+	 output 					status
     );
 
 	integer 	rr_cnt = 0;				// counter for Round Robbin arbitration
@@ -109,6 +111,8 @@ module rcv_arb #(
 	reg [5:0]	rst_cnt = 0;			// autoclear counter
 	
 	integer j;
+
+	assign status = |(csr & 32'h04EEEEEE);	// full, missed, undr, ovr or "radr invalid"
 
 	genvar i;
    generate
@@ -210,7 +214,7 @@ module rcv_arb #(
 
 		// empty flag (overrides reset)
 		for (j = 0; j < NFIFO; j=j+1) begin
-				csr[j*4+4] <= fifo_empty;
+				csr[j*4+4] <= fifo_empty[j];
 		end
 
 	end		// posedge gtp_clk
@@ -244,7 +248,8 @@ module rcv_arb #(
 		// autoclear reset bits
 		if ( |rst_cnt ) begin
 			rst_cnt <= rst_cnt - 1;
-		end else if (rst_cnt == 1) begin
+		end 
+		if (rst_cnt == 1) begin
 			csr[30:29] <= 0;
 		end
 		if (fifo_rst) radr <= {limr[15:0], {13{1'b0}}};
