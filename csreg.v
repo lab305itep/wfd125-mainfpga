@@ -27,8 +27,9 @@
 //			in addition, programming of CDCUN required:
 //			for modes 0-3 IN1 of CDCUN must be selected
 //			for modes 4-7 IN2 of CDCUN must be selected
-//		CSR[11]	 unused, some clocks are always on (if connected)
-//		CSR[31:12]	are general outputs to the upper hierarchy, CSR[31] is used for peripheral WB reset
+//		CSR[15:11]	 general purpose CSR outputs
+//		CSR[30:16]	 user word to be put to trigger block written to memory	 
+//		CSR[31] 		 peripheral WB reset
 //		CSR+4 [31:0] are general inputs from the upper hierarchy, unused so far
 //
 //////////////////////////////////////////////////////////////////////////////////
@@ -42,9 +43,12 @@ module csreg(
     output reg wb_ack,
     input wb_stb,
 	 input wb_adr,
-	 // reg outputs for other purposes
-    output [19:0]		gen_o,
+	 // reg outputs/inputs for general purposes
+    output [4:0]		gen_o,
     input [31:0] 		gen_i,
+	 // assigned outputs
+	 output				pwb_rst,		// peripheral wishbone reset
+	 output [14:0]		usr_word,	// user word to be put to trigger memory block
 	 // inputs from triggen
 	 input				trig,
 	 input				inh,
@@ -92,9 +96,12 @@ module csreg(
 	wire	inh_to_ICX;
 	reg [1:0] inh_ICX_sel;
 
+	assign gen_o = csr[15:11];
+	assign pwb_rst = csr[31];
+	assign usr_word = csr[30:16];
+
 	// WB protocol
 	assign wb_dat_o = (wb_adr) ? reg_i : csr;
-	assign gen_o = csr[31:12];
 
 	always @ (posedge wb_clk) begin
 		wb_ack <= wb_cyc & wb_stb;
@@ -160,7 +167,7 @@ module csreg(
 `else
       .DIFF_TERM("FALSE"),   	  // Differential Termination
 `endif
-      .IOSTANDARD("LVDS_25")    // Specify the I/O standard
+      .IOSTANDARD("BLVDS_25")   // Specify the I/O standard
    ) trig_bp (
       .O(trig_from_BP),    // Buffer output
       .IO(trig_BP[0]),   	// Diff_p inout (connect directly to top-level port)
@@ -262,7 +269,7 @@ module csreg(
 `else
       .DIFF_TERM("FALSE"),   	  // Differential Termination
 `endif
-      .IOSTANDARD("LVDS_25")    // Specify the I/O standard
+      .IOSTANDARD("BLVDS_25")   // Specify the I/O standard
    ) inh_bp (
       .O(inh_from_BP),    // Buffer output
       .IO(inh_BP[0]),   	// Diff_p inout (connect directly to top-level port)

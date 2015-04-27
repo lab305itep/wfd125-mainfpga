@@ -112,7 +112,7 @@ module rcv_arb #(
 	
 	integer j;
 
-	assign status = |(csr & 32'h04EEEEEE);	// full, missed, undr, ovr or "radr invalid"
+	assign status = (|(csr & 32'h00EEEEE0)) | radr_invalid | err_undr | err_ovr | mem_full; // full, missed, undr, ovr or "radr invalid"	
 
 	genvar i;
    generate

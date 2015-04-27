@@ -24,7 +24,8 @@
 //			6:4	- 1 + time in clocks to accumulate OR of all trigger sources
 //			15:7  - 1 + trigger blocking time (125MHz ticks), actual blocking time 
 //						cannot be less than token transmission time 14*TOKEN_CLKDIV clocks
-//			30:16 - user word to be put to the trigger block to memory
+//			28:16 - period in ms of the soft trigger generation, zero value means no periodical soft trigger, not generated on INH
+//			30:29 - unused
 //			31		- inhibit, set on power on
 //		1 TRGCNT	(R) :
 //			counts issued master triggers when not inhibited, 11 LSB are used as trigger token
@@ -37,7 +38,7 @@
 //			Any write to GTIME or MISCNT cases reset of all 3 counters
 //
 //		Block sent to memory fifo
-//		0	10SC CCCL LLLL LLLL - S - soft trigger, CCCC - channel mask which produced the trigger, 
+//		0	1PSC CCCL LLLL LLLL - S - soft trigger, P - periodical trigger, CCCC - channel mask which produced the trigger, 
 //										 L=7 - data length in 16-bit words not including CW 
 // 	1	0ttt penn nnnn nnnn - ttt - trigger block type (3'b010 = 2 - trigger info block)
 //										 n - 10-bit trigger token = trigger number LSB, e - token error (always zero here)
@@ -63,6 +64,8 @@ module gentrig # (
 		// intrface to memory fifo
 		output reg [15:0]	trg_dat,
 		output reg			trg_vld,
+		// user word from CSR
+		input [14:0] 		usr_word,
 		// WB signals
 		input 				wb_clk,
 		input 				wb_rst,
@@ -90,6 +93,8 @@ module gentrig # (
 	
 	reg 			cnt_reset = 0;				// counters reset
 	reg 			soft_trig = 0;				// soft trigger
+	reg			st_req = 0;					// soft trigger request from WB
+	reg			st_done = 0;				// soft trigger ack
 	reg [2:0]	rd_sel = 0;					//	prepare counters for readout through WB
 	reg			rd_rdy = 0;					// selected counter ready for readout
 	reg [31:0]	cnt_dat = 0;				// selected counter data for readout
@@ -101,12 +106,16 @@ module gentrig # (
 	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
 	reg [3:0]	ser_div = 0;	// conter of frq divider for token transmission
 	reg [3:0]	mem_cnt = 0;	// counter for words transmitted to memory
-	reg [4:0]	or_trg = 0;		//	to accumulate triggers from different sources
+	reg [5:0]	or_trg = 0;		//	to accumulate triggers from different sources
 	reg [2:0]	or_cnt = 0;		// to count time to accumulate triggers from different sources
 	wire [10:0]	tok_mem;			// 11-bit token part of fifo block (strictly 11 bit)
 	reg [8:0]	blk_cnt = 0;	// blocking time count
 	wire			blk;				// sum of all blocking signals
 	wire			missed_sense;	// if 1, we are sensitive to missed triggers
+	wire			ms_p;				// about 1 ms single clk pulse
+	reg			per_trig = 0;	// periodical soft trigger
+	reg [13:0]	per_cnt = 0;	// periodical soft trigger period counter
+	wire 			any_trig;		// or of all reigger sources
 
 	// Inhibit and trigger outputs
 	assign inhibit = CSR[31];
@@ -118,7 +127,11 @@ module gentrig # (
 	assign missed_senese = blk & (mem_cnt < (MEM_WORDS+1));
 	// token to memory (no error, will be padded to 11 bits)
 	assign tok_mem = {1'b0, TRGCNT[TOKEN_LENGTH-1:0]};
-
+	// millisecond pulse
+	assign ms_p = (&GTIME[16:0]) & ~CSR[31];
+	// trigger OR
+	assign any_trig = (|CTRG) | soft_trig | per_trig;
+	
 	// Make trigger signals from channels
 	genvar i;
 	generate
@@ -131,11 +144,11 @@ module gentrig # (
 //		i.e. 1 wb_clk signals will always be seen at gtp_clk
 	always @ (posedge wb_clk) begin
 		cnt_reset <= 0;
-		soft_trig <= 0;
 		wb_ack <= 0;
 		if (wb_rst) begin
 			cnt_reset <= 1;
 			rd_sel <= 0;
+			st_req <= 0;
 		end else begin
 			if (wb_cyc & wb_stb) begin
 				if (wb_we) begin
@@ -146,7 +159,7 @@ module gentrig # (
 							CSR <= wb_dat_i;
 						end
 						2'b01: begin
-							soft_trig <= 1;
+							st_req <= 1;
 						end
 						2'b10: begin
 							cnt_reset <= 1;
@@ -175,6 +188,9 @@ module gentrig # (
 					wb_ack <= 1;	// ack only once
 				end
 			end
+			if (st_done) begin
+				st_req <= 0;
+			end
 		end	// not WB reset
 	end	// posedge wb_clk
 
@@ -184,7 +200,7 @@ module gentrig # (
 		trg_vld <= 0;		// default
 		// Sending trigger token (immediately on first appearing trigger from channels)
 		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
-		if (((|CTRG) | soft_trig) & ~blk) begin
+		if (any_trig & ~blk) begin
 			// start sending token on first trig in group if not inhibited or soft trigger
 			ser_trg <= {1'b0, ~(^TRGCNT[TOKEN_LENGTH-1:0]), TRGCNT[TOKEN_LENGTH-1:0], 1'b1};
 			ser_div <= TOKEN_CLKDIV - 1;
@@ -202,16 +218,16 @@ module gentrig # (
 		end
 		
 		// Sending trigger block to memory fifo (parallely with token)
-		if (((|CTRG) | soft_trig) & ~blk) begin
+		if (any_trig & ~blk) begin
 			// initialize and catch first trigger to OR
 			mem_cnt <= MEM_WORDS + 1;
-			or_trg <= {soft_trig, CTRG};
+			or_trg <= {per_trig, soft_trig, CTRG};
 			or_cnt <= CSR[6:4];
 		end else begin
 			if (mem_cnt == (MEM_WORDS + 1)) begin
 				// stay here during trigger catching time
 				if (|or_cnt) begin
-					or_trg <= or_trg | {1'b0, CTRG};
+					or_trg <= or_trg | {2'b00, CTRG};
 					or_cnt <= or_cnt - 1;
 				end else begin
 					mem_cnt <= mem_cnt - 1;
@@ -221,11 +237,11 @@ module gentrig # (
 					// send trig info words one by one
 					case (mem_cnt)
 						//		0	10SC CCCL LLLL LLLL 	CW
-						MEM_WORDS   : trg_dat <= {2'b10, or_trg, MEM_LEN};	//	 L=7 
+						MEM_WORDS   : trg_dat <= {1'b1, or_trg, MEM_LEN};	//	 L=7 
 						// 	1	0ttt pnnn nnnn nnnn - ttt=2 - trigger info block, token
 						MEM_WORDS-1 : trg_dat <= {4'b0010, TRGCNT[0], tok_mem};
 						//		2	0uuu uuuu uuuu uuuu - user word
-						MEM_WORDS-2 : trg_dat <= {1'b0, CSR[30:16]}; 
+						MEM_WORDS-2 : trg_dat <= {1'b0, usr_word}; 
 						//		3	0 GTIME[14:0]		  - lower GTIME
 						MEM_WORDS-3 : trg_dat <= {1'b0, GTIME[14:0]}; 
 						//		4	0 GTIME[29:15]		  - middle GTIME
@@ -247,14 +263,14 @@ module gentrig # (
 		end
 
 		// additional blocking
-		if (((|CTRG) | soft_trig) & ~blk) begin
+		if (any_trig & ~blk) begin
 			blk_cnt <= CSR[15:7];
 		end else if (|blk_cnt) begin
 			blk_cnt <= blk_cnt - 1;
 		end
 		
 		// counting missed triggers
-		if (((|CTRG) | soft_trig) & missed_sense) begin
+		if (any_trig & missed_sense) begin
 			MISCNT <= MISCNT + 1;
 		end
 
@@ -262,6 +278,29 @@ module gentrig # (
 		if (~CSR[31]) begin
 			GTIME <= GTIME + 1;
 		end
+		
+		// periodical trigger
+		per_trig <= 0;
+		if (ms_p & (|CSR[28:16])) begin
+			if (~(|per_cnt)) begin
+				per_cnt <= CSR[28:16] - 1;
+				per_trig <= 1;
+			end else begin
+				per_cnt <= per_cnt - 1;
+			end
+		end
+		
+		// process soft trigger request
+		soft_trig <= 0;
+		if (st_req) begin
+			if (~st_done) begin
+				soft_trig <= 1;
+			end
+			st_done <= 1;
+		end else begin
+			st_done <= 0;
+		end
+		
 		// latch counters for reading
 		case (rd_sel)
 			3'b001: begin

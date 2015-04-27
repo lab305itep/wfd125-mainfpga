@@ -26,6 +26,30 @@
 //		2 (GRN)	module recieved master trigger
 //		3 (GRN)	lit when module feels NO inhibit
 //
+//		Front panel RJ 10P
+//		Pin#	Net		Assignment		Term
+//		1		GND
+//		2,3	FP0/FP1	Triger P/N		Yes
+//		4,5	FP2/FP3	Inhibit P/N		Yes
+//		6,7	FP4/FP5	unused			No
+//		8,9	FP6/FP7	Clock P/N		Yes
+//		10		GND
+//
+//		Back panel USERDEF (P2 connector)
+//		Pin#		Net				Assignment		Term
+//		A1,A2		UDEF0, UDEF2	Inhibit P/N		No
+//		C1,C2		UDEF1, UDEF3	unused P/N		No
+//		A4,C3 	UDEF6, UDEF5	Trigger P/N		No
+//		C4,C5		UDEF7, UDEF9	unused P/N		No
+//		A3			UDEF4				unused			N/A
+//		A5			UDEF8				unused			N/A
+//
+//		CPLD to Xilinx lines (all this direction)
+//		C2X[5:0]	GA[5:0] noninverted
+//		C2X[6]	CPLD access from VME
+//		C2X[7]	Global reset, active LOW
+//
+//		
 //
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -195,6 +219,7 @@ module fpga_main(
 	wire [15:0]  gtp_token;		// token data and status to channels
 	wire [15:0]	 trg_data;		// data from triggen to trigger block fifo in memory
 	wire			 trg_valid;		// valid accompanying the above
+	wire [14:0]  usr_word;		// user word from CSR to be put to trigger block in memory
 	wire			 trigger;		// master trigger from triggen to commutation in csreg
 	wire			 inhibit;		// inhibit from triggen to commutation in csreg
 	wire [9:0]	 token;			// 10 bit token of recieved trigger
@@ -224,8 +249,7 @@ module fpga_main(
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
 	
-	wire [19:0] main_csr;
-	assign ICX[5] = main_csr[19];	// WB reset to channel FPGA
+
 	csreg reg_csr (
 		.wb_clk (wb_clk), 
 		.wb_cyc (wb_m2s_reg_csr_cyc), 
@@ -235,8 +259,12 @@ module fpga_main(
 		.wb_dat_i (wb_m2s_reg_csr_dat), 
 		.wb_dat_o (wb_s2m_reg_csr_dat), 
 		.wb_ack (wb_s2m_reg_csr_ack),
-		.gen_o   (main_csr),
+		//
+		.gen_o   (),
 		.gen_i	({22'h0, token}),
+		// assigned outputs
+		.pwb_rst	(ICX[5]),		// peripheral wishbone reset
+	 	.usr_word	(usr_word),	// user word to be put to trigger memory block
 		// inputs from triggen
 		.trig		(trigger),
 		.inh		(inhibit),
@@ -244,8 +272,8 @@ module fpga_main(
 		.trig_FP	(FP[1:0]),
 		.inh_FP	(FP[3:2]),
 		// back panel signals
-		.trig_BP	(USRDEF[5] & USRDEF[6]),
-		.inh_BP	(USRDEF[2] & USRDEF[0]),
+		.trig_BP	({USRDEF[5], USRDEF[6]}),
+		.inh_BP	({USRDEF[2], USRDEF[0]}),
 		// signals to peripheral X's
 		.trig_ICX	(ICX[1:0]),
 		.inh_ICX		(ICX[6]),
@@ -256,6 +284,8 @@ module fpga_main(
 		.CLKENBP		(CLKENBP),
 		.CLKENBFP	(CLKENBFP)
 	);
+	
+	assign FP[5:4] = 2'bZZ;
 	
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
@@ -408,6 +438,8 @@ vme (
 		// intrface to memory fifo
 		.trg_dat		(trg_data),
 		.trg_vld		(trg_valid),
+		// user word from CSR
+		.usr_word	(usr_word),
 		// WB
 		.wb_clk  	(wb_clk), 
 		.wb_rst  	(wb_rst), 
