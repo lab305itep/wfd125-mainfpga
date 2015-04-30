@@ -43,11 +43,15 @@
 //		C4,C5		UDEF7, UDEF9	unused P/N		No
 //		A3			UDEF4				unused			N/A
 //		A5			UDEF8				unused			N/A
+//		A24,C24	VCLKP, VCLKN	Clock P/N		Yes
 //
 //		CPLD to Xilinx lines (all this direction)
 //		C2X[5:0]	GA[5:0] noninverted
 //		C2X[6]	CPLD access from VME
 //		C2X[7]	Global reset, active LOW
+//
+//		InterXilinx communication
+//
 //
 //		
 //
@@ -457,153 +461,6 @@ vme (
 
 	assign wb_s2m_triggen_err = 0;
 	assign wb_s2m_triggen_rty = 0;
-
-//		Fifo memory
-	wire [15:0] fifo_cnt_A;
-	wire [15:0] fifo_cnt_B;
-	wire [15:0] fifo_cnt_C;
-	wire [15:0] fifo_cnt_D;
-
-rcvfifo #(
-	.MBITS(12)
-)
-fifoA (
-		.wb_stb		(wb_m2s_fifoA_stb),
-		.wb_cyc		(wb_m2s_fifoA_cyc),
-		.wb_ack		(wb_s2m_fifoA_ack),
-		.wb_dat_o	(wb_s2m_fifoA_dat),
-		.wb_we		(wb_m2s_fifoA_we),
-		.wb_clk		(wb_clk),
-		.gtp_clk		(CLK125),
-		.gtp_dat		(gtp_data_o[15:0]),
-		.gtp_vld		(!gtp_kchar_o[0]),
-		.fifocnt		(fifo_cnt_A),
-		.overflow	()
-   );
-
-	assign wb_s2m_fifoA_err = 0;
-	assign wb_s2m_fifoA_rty = 0;	
-
-rcvfifo #(
-	.MBITS(12)
-)
-fifoB (
-		.wb_stb		(wb_m2s_fifoB_stb),
-		.wb_cyc		(wb_m2s_fifoB_cyc),
-		.wb_ack		(wb_s2m_fifoB_ack),
-		.wb_dat_o	(wb_s2m_fifoB_dat),
-		.wb_we		(wb_m2s_fifoB_we),
-		.wb_clk		(wb_clk),
-		.gtp_clk		(CLK125),
-		.gtp_dat		(gtp_data_o[31:16]),
-		.gtp_vld		(!gtp_kchar_o[1]),
-		.fifocnt		(fifo_cnt_B),
-		.overflow	()
-   );
-
-	assign wb_s2m_fifoB_err = 0;
-	assign wb_s2m_fifoB_rty = 0;	
-
-rcvfifo # (
-	.MBITS(12)
-)
-fifoC (
-		.wb_stb		(wb_m2s_fifoC_stb),
-		.wb_cyc		(wb_m2s_fifoC_cyc),
-		.wb_ack		(wb_s2m_fifoC_ack),
-		.wb_dat_o	(wb_s2m_fifoC_dat),
-		.wb_we		(wb_m2s_fifoC_we),
-		.wb_clk		(wb_clk),
-		.gtp_clk		(CLK125),
-		.gtp_dat		(gtp_data_o[47:32]),
-		.gtp_vld		(!gtp_kchar_o[2]),
-		.fifocnt		(fifo_cnt_C),
-		.overflow	()
-    );
-
-	assign wb_s2m_fifoC_err = 0;
-	assign wb_s2m_fifoC_rty = 0;	
-
-rcvfifo # (
-	.MBITS(12)
-)
-fifoD (
-		.wb_stb		(wb_m2s_fifoD_stb),
-		.wb_cyc		(wb_m2s_fifoD_cyc),
-		.wb_ack		(wb_s2m_fifoD_ack),
-		.wb_dat_o	(wb_s2m_fifoD_dat),
-		.wb_we		(wb_m2s_fifoD_we),
-		.wb_clk		(wb_clk),
-		.gtp_clk		(CLK125),
-		.gtp_dat		(gtp_data_o[63:48]),
-		.gtp_vld		(!gtp_kchar_o[3]),
-		.fifocnt		(fifo_cnt_D),
-		.overflow	()
-   );
-
-	assign wb_s2m_fifoD_err = 0;
-	assign wb_s2m_fifoD_rty = 0;	
-
-//		Registers	
-	inoutreg regA (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wb_m2s_regA_cyc), 
-		.wb_stb (wb_m2s_regA_stb), 
-		.wb_adr (wb_m2s_regA_adr[2]), 
-		.wb_we  (wb_m2s_regA_we), 
-		.wb_dat_i (wb_m2s_regA_dat), 
-		.wb_dat_o (wb_s2m_regA_dat), 
-		.wb_ack (wb_s2m_regA_ack),
-		.reg_o   (),
-		.reg_i	({16'h0000, fifo_cnt_A})
-	);
-	assign wb_s2m_regA_rty = 0;
-	assign wb_s2m_regA_err = 0;
-
-	inoutreg regB (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wb_m2s_regB_cyc), 
-		.wb_stb (wb_m2s_regB_stb), 
-		.wb_adr (wb_m2s_regB_adr[2]), 
-		.wb_we  (wb_m2s_regB_we), 
-		.wb_dat_i (wb_m2s_regB_dat), 
-		.wb_dat_o (wb_s2m_regB_dat), 
-		.wb_ack (wb_s2m_regB_ack),
-		.reg_o   (),
-		.reg_i	({16'h0000, fifo_cnt_B})
-	);
-	assign wb_s2m_regB_rty = 0;
-	assign wb_s2m_regB_err = 0;
-
-	inoutreg regC (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wb_m2s_regC_cyc), 
-		.wb_stb (wb_m2s_regC_stb), 
-		.wb_adr (wb_m2s_regC_adr[2]), 
-		.wb_we  (wb_m2s_regC_we), 
-		.wb_dat_i (wb_m2s_regC_dat), 
-		.wb_dat_o (wb_s2m_regC_dat), 
-		.wb_ack (wb_s2m_regC_ack),
-		.reg_o   (),
-		.reg_i	({16'h0000, fifo_cnt_C})
-	);
-	assign wb_s2m_regC_rty = 0;
-	assign wb_s2m_regC_err = 0;
-
-	inoutreg regD (
-		.wb_clk (wb_clk), 
-		.wb_cyc (wb_m2s_regD_cyc), 
-		.wb_stb (wb_m2s_regD_stb), 
-		.wb_adr (wb_m2s_regD_adr[2]), 
-		.wb_we  (wb_m2s_regD_we), 
-		.wb_dat_i (wb_m2s_regD_dat), 
-		.wb_dat_o (wb_s2m_regD_dat), 
-		.wb_ack (wb_s2m_regD_ack),
-		.reg_o   (),
-		.reg_i	({16'h0000, fifo_cnt_D})
-	);
-	assign wb_s2m_regD_rty = 0;
-	assign wb_s2m_regD_err = 0;
 
 //		SPI to DAC
 wire [6:0] empty_spi_csa;

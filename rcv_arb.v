@@ -135,7 +135,7 @@ module rcv_arb #(
 	
 	assign	en_debug = csr[28];
 	assign	fifo_rst = ~csr[31] | csr[30];
-	assign	mcb_rst = csr[29];
+	assign	mcb_rst = csr[29] | csr[30];
 
 	always @ (posedge gtp_clk) begin
 		// defaults
@@ -161,8 +161,7 @@ module rcv_arb #(
 				end
 			end
 			// latch waddr when MIG data fifo is empty
-//			if (wr_empty)	wadr <= waddr;
-			wadr <= waddr;
+			if (wr_empty)	wadr <= waddr;
 			// next burst always starts at this address
 			if (cmd_enable) begin
 				adr_rcv <= waddr;
