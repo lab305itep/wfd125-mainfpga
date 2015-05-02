@@ -90,18 +90,19 @@ module rcv_arb #(
 	 output 					status
     );
 
-	integer 	rr_cnt = 0;				// counter for Round Robbin arbitration
-	wire 		fifohave;				// OR of dvalids from gtpfifos, actually have from currently selected fifo
-	wire 		pause;					// pause gtpfifo readout
-	wire		mem_full;				// recieving area of memory is full
-	wire		mem_empty;				// recieving area of memory is empty
-	wire		nextf;					// force increment of RR counter (after block is fully read)
-	wire		radr_invalid;			// reading process provided radr beyond boundaries
-	reg [28:0] waddr;					// current address for MIG write
-	reg [7:0] towrite;				// length of current block
-	reg [5:0] blen_c;					//	counter for burst length
-	reg err_undr = 0;					// underrun error
-	reg err_ovr = 0;					// overrun error
+	integer 		rr_cnt = 0;				// counter for Round Robbin arbitration
+	wire 			fifohave;				// OR of dvalids from gtpfifos, actually have from currently selected fifo
+	wire 			pause;					// pause gtpfifo readout
+	wire			mem_full;				// recieving area of memory is full
+	wire			mem_empty;				// recieving area of memory is empty
+	wire			nextf;					// force increment of RR counter (after block is fully read)
+	wire			radr_invalid;			// reading process provided radr beyond boundaries
+	reg [28:0] 	waddr;					// current address for MIG write
+	reg [7:0] 	towrite;					// length of current block
+	reg [5:0] 	blen_c;					//	counter for burst length
+	reg 			err_undr = 0;			// underrun error
+	reg 			err_ovr = 0;			// overrun error
+	reg			wr_empty_d	= 1;		// delayed empty from wr fifo
 
 	// registers
 	reg [31:0]	csr = 0;					// control and status
@@ -109,6 +110,8 @@ module rcv_arb #(
 	reg [31:0]	limr = 32'h00010000;	// limits of the recieving area, def. 8k starting @0
 	reg [31:0]	wadr = 0;				// write address as diplayed to the user
 	reg [5:0]	rst_cnt = 0;			// autoclear counter
+	
+	reg [31:0] debug;
 	
 	integer j;
 
@@ -161,7 +164,8 @@ module rcv_arb #(
 				end
 			end
 			// latch waddr when MIG data fifo is empty
-			if (wr_empty)	wadr <= waddr;
+			wr_empty_d <= wr_empty;
+			if (wr_empty & ~wr_empty_d)	wadr <= waddr;
 			// next burst always starts at this address
 			if (cmd_enable) begin
 				adr_rcv <= waddr;
@@ -185,7 +189,10 @@ module rcv_arb #(
 						cmd_enable <= 1;
 						blen_c <= 0;
 					end
-					if (|towrite) err_undr <= 1;	// must accept next CW with towrite=0, otherwize it's too early
+					if (|towrite) begin
+						err_undr <= 1;	// must accept next CW with towrite=0, otherwize it's too early
+						if (~err_undr) debug <= {datfromfifo[15:0], cmd_full, wr_full, blen_c , towrite};
+					end
 				end else begin
 					// issue command if: end of block, blen=32 or last address
 					if (towrite == 1 || blen_c == 31 || (waddr + 4) == {limr[31:16], 13'h0000}) begin
@@ -240,7 +247,7 @@ module rcv_arb #(
 			case (wbr_addr)
 			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[25:4], err_undr, err_ovr, mem_full, mem_empty};
 			2'b01:	wbr_dat_o <= radr;
-			2'b10:	wbr_dat_o <= limr;
+			2'b10:	wbr_dat_o <= (err_undr) ? debug : limr;
 			2'b11:	wbr_dat_o <= wadr;
 			endcase
 		end
