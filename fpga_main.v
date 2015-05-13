@@ -188,7 +188,7 @@ module fpga_main(
 
 	wire CLK125;
 	wire CLKMCB;
-	wire [3:0] ledp;
+	reg [3:0] ledp;
 	reg once = 1;
 	reg greset = 1;
 	
@@ -594,10 +594,12 @@ sdram (
 
 
 //		LEDs
-	assign ledp[0] = mem_status | wb_rst | tok_err;	// memory errors or trigger recieving error
-	assign ledp[1] = debug[0] | C2X[6];					// VME access to this card or to CPLD
-	assign ledp[2] = tok_rdy;								// master trigger recieved
-	assign ledp[3] = ~ICX[6];								// not INH
+	always @(posedge CLK125) begin
+		ledp[0] <= mem_status | wb_rst | tok_err;	// memory errors or trigger recieving error
+		ledp[1] <= debug[0] | C2X[6];					// VME access to this card or to CPLD
+		ledp[2] <= tok_rdy;								// master trigger recieved
+		ledp[3] <= ~ICX[6];								// not INH
+	end
 
 	genvar i;
 	generate

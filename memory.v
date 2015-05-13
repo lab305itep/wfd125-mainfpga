@@ -115,6 +115,7 @@ module memory # (
 	// port 2 : arbitter to MIG interface
 	wire			p2_enable;		// port 2 cmd fifo enable
 	wire			p2_full;			// port 2 cmd fifo full
+	wire			p2_empty;		// port 2 cmd fifo empty
 	wire [5:0]	p2_blen;			// port 2 current burst length
 	wire			w2_enable;		// port 2 write fifo enable
 	wire			w2_full;			// port 2 write fifo full
@@ -387,7 +388,7 @@ u_memcntr (
    .c1_p2_cmd_instr                        (3'b010),		// always write with autoprecharge
    .c1_p2_cmd_bl                           (p2_blen),
    .c1_p2_cmd_byte_addr                    ({1'b0, adr_rcv}),
-   .c1_p2_cmd_empty                        (),
+   .c1_p2_cmd_empty                        (p2_empty),
    .c1_p2_cmd_full                         (p2_full),
    .c1_p2_wr_clk                           (gtp_clk),
    .c1_p2_wr_en                            (w2_enable),
@@ -523,6 +524,7 @@ arbitter (
 	 // inteface with MIG
 	 .cmd_enable	(p2_enable),		// MIG port cmd fifo enable
 	 .cmd_full		(p2_full),			// MIG port cmd fifo full
+	 .cmd_empty		(p2_empty),			// MIG port cmd fifo full
 	 .blen			(p2_blen),			// MIG port current burst length
 	 .wr_enable		(w2_enable),		// MIG port write fifo enable
 	 .wr_full		(w2_full),			// MIG port write fifo full

@@ -80,6 +80,7 @@ module rcv_arb #(
 	 // inteface with MIG
 	 output reg				cmd_enable,		// MIG port cmd fifo enable
 	 input					cmd_full,		// MIG port cmd fifo full
+	 input					cmd_empty,		// MIG port cmd fifo empty
 	 output [5:0]			blen,				// MIG port current burst length
 	 output					wr_enable,		// MIG port write fifo enable
 	 input					wr_full,			// MIG port write fifo full
@@ -164,8 +165,8 @@ module rcv_arb #(
 				end
 			end
 			// latch waddr when MIG data fifo is empty
-			wr_empty_d <= wr_empty;
-			if (wr_empty & ~wr_empty_d)	wadr <= waddr;
+			wr_empty_d <= wr_empty & cmd_empty;
+			if (wr_empty & cmd_empty & ~wr_empty_d)	wadr <= waddr;
 			// next burst always starts at this address
 			if (cmd_enable) begin
 				adr_rcv <= waddr;
