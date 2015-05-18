@@ -509,7 +509,8 @@ xspi_master  #(
 	assign wb_s2m_icx_spi_dat[31:16] = 0;	
 
 memory # (
-    .READ_BURST_LEN(8)
+	 .FIFO_MBITS		(12),
+    .READ_BURST_LEN	(8)
 )
 sdram (
     .wb_clk		(wb_clk),

@@ -100,7 +100,7 @@ module gentrig # (
 	reg [31:0]	cnt_dat = 0;				// selected counter data for readout
 	
 	integer j;
-	wire [3:0]  CTRG;				// current mask of triggers from channel sources, if enabled and not inhibited
+	reg [3:0]  CTRG;				// current mask of triggers from channel sources, if enabled and not inhibited
 
 	reg [TOKEN_LENGTH+2:0]	ser_trg = 0;	// shift reg for serial token, 3 bits longer than token length
 	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
@@ -133,12 +133,12 @@ module gentrig # (
 	assign any_trig = (|CTRG) | soft_trig | per_trig;
 	
 	// Make trigger signals from channels
-	genvar i;
-	generate
-		for (i=0; i<4; i=i+1) begin: UCTRG
-			assign CTRG[i] = ~CSR[31] & CSR[i] & kchar[i] & (gtp_dat[16*i+15:16*i] == CH_TRIG);
-		end	
-	endgenerate
+//	genvar i;
+//	generate
+//		for (i=0; i<4; i=i+1) begin: UCTRG
+//			assign CTRG[i] = ~CSR[31] & CSR[i] & kchar[i] & (gtp_dat[16*i+15:16*i] == CH_TRIG);
+//		end	
+//	endgenerate
 
 //		WishBone, assuming that WB clock is not faster than gtp_clk
 //		i.e. 1 wb_clk signals will always be seen at gtp_clk
@@ -198,6 +198,11 @@ module gentrig # (
 	// Global time is maintained by the master trigger source in terms of its gtp_clk
 	always @ (posedge gtp_clk) begin
 		trg_vld <= 0;		// default
+		// reclock trigger from X's
+		for (j=0; j<4; j=j+1) begin
+			CTRG[j] <= ~CSR[31] & CSR[j] & kchar[j] & (gtp_dat[16*j +:16] == CH_TRIG);
+		end	
+
 		// Sending trigger token (immediately on first appearing trigger from channels)
 		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
 		if (any_trig & ~blk) begin

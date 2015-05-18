@@ -251,7 +251,7 @@ module csreg(
 	// INH propagation
 	
 	// Front panel input is always terminated
-   IOBUFDS #(
+	IOBUFDS #(
       .DIFF_TERM("TRUE"),   	  // Differential Termination
       .IOSTANDARD("LVDS_25")    // Specify the I/O standard
    ) inh_fp (

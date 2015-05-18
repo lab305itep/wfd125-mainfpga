@@ -5,7 +5,7 @@
 // 
 // Create Date:    04/06/2015 
 // Design Name: 	 main_fpga
-// Module Name:    myblkram 
+// Module Name:    gtpfifo 
 // Project Name: 	 wfd125
 // Target Devices: 
 // Revision: 
@@ -24,7 +24,10 @@
 //		Assumes that arbitter will read full block based on its length
 //		
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-module gtpfifo(
+module gtpfifo # (
+		parameter MBITS = 13
+	)
+	(
 		input 			gtp_clk,
 		input [15:0] 	gtp_dat,
 		input 			gtp_vld,
@@ -37,8 +40,6 @@ module gtpfifo(
 		output reg		err_undr,
 		output reg 		missed	
    );
-
-	parameter MBITS = 13;
 
 	reg [31:0] 			fifo [2**MBITS-1:0];
 	reg [MBITS-1:0] 	waddr = 0;		// current fifo write pointer
@@ -55,7 +56,6 @@ module gtpfifo(
 	reg [31:0] 			rdata = 0;		// read fifo output
 	wire [15:0]			gtp_dat_tr;		// reciever data with no high bit
 
-//	assign len = {{(MBITS-8){1'b0}}, gtp_dat[8:1]} + 1;		// total number of 32-bit words to write (from CW)	
 	assign len = gtp_dat[8:1] + 1;		// total number of 32-bit words to write (from CW)	
 	assign graddr = (give) ? (raddr + 1) : raddr;
 	assign have = give & (raddr != waddrb);

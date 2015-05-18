@@ -51,6 +51,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 module rcv_arb #(
+	 parameter MBITS = 13,
 	 parameter NFIFO = 5
 )
 (
@@ -91,19 +92,35 @@ module rcv_arb #(
 	 output 					status
     );
 
-	integer 		rr_cnt = 0;				// counter for Round Robbin arbitration
-	wire 			fifohave;				// OR of dvalids from gtpfifos, actually have from currently selected fifo
-	wire 			pause;					// pause gtpfifo readout
-	wire			mem_full;				// recieving area of memory is full
-	wire			mem_empty;				// recieving area of memory is empty
-	wire			nextf;					// force increment of RR counter (after block is fully read)
-	wire			radr_invalid;			// reading process provided radr beyond boundaries
-	reg [28:0] 	waddr;					// current address for MIG write
-	reg [7:0] 	towrite;					// length of current block
-	reg [5:0] 	blen_c;					//	counter for burst length
-	reg 			err_undr = 0;			// underrun error
-	reg 			err_ovr = 0;			// overrun error
-	reg			wr_empty_d	= 1;		// delayed empty from wr fifo
+	// arbitration
+	reg [3:0]			rr_cnt = 0;			// counter for Round Robbin arbitration
+	wire 					fifohave;			// OR of dvalids from gtpfifos, actually have from currently selected fifo
+	wire 					pause;				// pause gtpfifo readout
+	wire					nextf;				// force increment of RR counter (after block is fully read)
+	// intermediate fifo
+	reg [31:0] 			afifo [2**MBITS-1:0];
+	reg [31:0]			af_data;				// intermediate fifo output data
+	reg [MBITS-1:0] 	af_waddr = 0;		// current fifo write pointer
+	reg [MBITS-1:0] 	af_raddr = 0;		// current fifo read pointer
+	wire [MBITS-1:0]	af_graddr;			// fifo read addr for get operation for MIG
+	reg  [7:0]			af_towrite = 0;	// number of Dwords to write - 1
+	wire 					af_full;				// intermediate fifo full
+	wire 					af_empty;			// intermediate fifo empty
+	wire					af_have;				// immediate answer to af_give
+	reg 					af_undr = 0;		// underrun error
+	reg 					af_ovr = 0;			// overrun error
+	// MIG interface
+	wire					mem_give;			// request for data from memory
+	reg					mem_full;			// recieving area of memory is full
+	wire					mem_empty;			// recieving area of memory is empty
+	reg					radr_invalid;		// reading process provided radr beyond boundaries
+	reg [28:0] 			waddr;				// current address for MIG write
+	reg [7:0] 			towrite;				// length of current block
+	reg [5:0] 			blen_c;				//	counter for burst length
+	reg 					err_undr = 0;		// underrun error
+	reg 					err_ovr = 0;		// overrun error
+	reg					wr_empty_d	= 1;	// delayed empty from wr fifo
+	
 
 	// registers
 	reg [31:0]	csr = 0;					// control and status
@@ -122,20 +139,26 @@ module rcv_arb #(
    generate
       for (i=0; i<NFIFO; i=i+1) 
       begin: gwant
-         assign want[i] = ((rr_cnt == i) & ~pause) ? 1'b1 : 1'b0;
+         assign want[i] = ((rr_cnt == i) & ~pause);
       end
    endgenerate
 	
+	// RR arbitration and intermediate fifo
 	assign	fifohave = |have;
-	assign	dattomcb = datfromfifo;
+	assign	pause = af_full | af_undr | af_ovr ;
+	assign	nextf = (af_towrite == 1);
+	assign 	af_graddr = (mem_give) ? (af_raddr + 1) : af_raddr;
+	assign	af_empty = (af_waddr == af_raddr);
+	assign	af_full = ((af_waddr + 1) == af_raddr);
+	assign	af_have = mem_give & ~(af_empty);
+	// memory interface
+	assign	dattomcb = af_data;
+	assign	wr_enable = af_have;
+	assign	mem_give = ~(mem_full | wr_full | cmd_full | radr_invalid);	
 	assign	blen = waddr[28:2] - adr_rcv[28:2] - 1;
-	assign	wr_enable = fifohave;
-	assign   radr_invalid = (radr[28:13] < limr[15:0]) || (radr[28:13] >= limr[31:16]);
 	assign	mem_empty = (radr[28:0] == waddr);
-	assign	mem_full =  (radr[28:0]  == (waddr + 4)) || 
-					((radr[28:0] == {limr[15:0], 13'h0000}) && ((waddr + 4) == {limr[31:16], 13'h0000}));
-	assign	pause = wr_full | cmd_full | mem_full | err_undr | err_ovr | radr_invalid;
-	assign	nextf = (towrite == 1);
+//	assign	mem_full =  (radr[28:0]  == (waddr + 4)) || 
+//					((radr[28:0] == {limr[15:0], 13'h0000}) && ((waddr + 4) == {limr[31:16], 13'h0000}));
 	
 	assign	en_debug = csr[28];
 	assign	fifo_rst = ~csr[31] | csr[30];
@@ -150,6 +173,11 @@ module rcv_arb #(
 			rr_cnt <= 0;								// rest RR counter
 			waddr <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
 			wadr <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
+			af_waddr <= 0;								// init intermediate fifo pointers
+			af_raddr <= 0;								// init intermediate fifo pointers
+			af_towrite <= 0;							
+			af_undr <= 0;
+			af_ovr <= 0;
 			csr[NFIFO*4+3:4] <= 0;					// clear sticky error bits
 			blen_c <= 0;
 			towrite <= 0;
@@ -164,6 +192,28 @@ module rcv_arb #(
 					rr_cnt <= rr_cnt + 1;
 				end
 			end
+			// intermediate fifo
+			// if we are writing this word from gtp to intermediate fifo
+			if (fifohave) begin
+				afifo[af_waddr] <= datfromfifo;
+				af_waddr <= af_waddr + 1;
+				// we only need to follow block structure to switch to the next gtp fifo
+				if (datfromfifo[15]) begin
+					// this is CW
+					af_towrite <= datfromfifo[8:1];		// number of dwords to write -1
+					if (|af_towrite) begin
+						af_undr <= 1;	// must accept next CW with towrite=0, otherwize it's too early
+					end
+				end else begin
+					if (|af_towrite) af_towrite <= af_towrite - 1;
+					else af_ovr <= 1;	// must have accepted CW with towrite=0, otherwize it's too late
+				end
+			end	// fifohave
+			af_data <= afifo[af_graddr];
+			if (af_have) begin
+				af_raddr <= af_raddr + 1;
+			end
+			// memory interface
 			// latch waddr when MIG data fifo is empty
 			wr_empty_d <= wr_empty & cmd_empty;
 			if (wr_empty & cmd_empty & ~wr_empty_d)	wadr <= waddr;
@@ -171,28 +221,31 @@ module rcv_arb #(
 			if (cmd_enable) begin
 				adr_rcv <= waddr;
 			end
-			// if we are writing this word
-			if (fifohave) begin
+			if (af_have) begin
+				// increment and wrap waddr
 				if ( (waddr + 4) == {limr[31:16], 13'h0000} ) begin
 					waddr <= {limr[15:0], 13'b0};
 				end else begin
 					waddr <= waddr + 4;
 				end
+				// forecast full condition for the next cycle
+				mem_full <=  (radr[28:0]  == (waddr + 8)) | 
+								((radr[28:0] == {limr[15:0], 13'h0004}) & ((waddr + 4) == {limr[31:16], 13'h0000})) |
+								((radr[28:0] == {limr[15:0], 13'h0000}) & ((waddr + 8) == {limr[31:16], 13'h0000}));
 				blen_c <= blen_c + 1;						// default behavior
 				if (|towrite) towrite <= towrite - 1;	// default behavior
-				if (datfromfifo[15]) begin
+				if (af_data[15]) begin
 					// this is CW
-					towrite <= datfromfifo[8:1];		// number of dwords to write -1
+					towrite <= af_data[8:1];			// number of dwords to write -1
 					blen_c <= 1;							// this is start of burst
 					adr_rcv <= waddr;						// and this is burst starting address
-					if (datfromfifo[8:1] == 0 || (waddr + 4) == {limr[31:16], 13'h0000}) begin
+					if (af_data[8:1] == 0 || (waddr + 4) == {limr[31:16], 13'h0000}) begin
 						// if we are writing exactly 1 word
 						cmd_enable <= 1;
 						blen_c <= 0;
 					end
 					if (|towrite) begin
 						err_undr <= 1;	// must accept next CW with towrite=0, otherwize it's too early
-						if (~err_undr) debug <= {datfromfifo[15:0], cmd_full, wr_full, blen_c , towrite};
 					end
 				end else begin
 					// issue command if: end of block, blen=32 or last address
@@ -202,7 +255,7 @@ module rcv_arb #(
 					end
 					if (~(|towrite)) err_ovr <= 1;	// must have accepted CW with towrite=0, otherwize it's too late
 				end
-			end		// fifo have
+			end		// af_have
 
 			// sticky errors
 			for (j = 0; j < NFIFO; j=j+1) begin
@@ -237,9 +290,16 @@ module rcv_arb #(
 				csr[31:28] <= wbr_dat_i[31:28];
 				if ( |wbr_dat_i[30:29]) rst_cnt <= 6'hFF;
 			end
-			2'b01:	radr[28:2] <= wbr_dat_i[28:2];
+			2'b01:	begin
+				radr[28:2] <= wbr_dat_i[28:2];
+				// check raddr is within limits
+				radr_invalid <= (wbr_dat_i[28:13] < limr[15:0]) || (wbr_dat_i[28:13] >= limr[31:16]);
+			end
 			2'b10:	begin
-				if (~csr[31]) limr <= wbr_dat_i;
+				if (~csr[31]) begin
+					limr <= wbr_dat_i;
+					radr_invalid <= (radr[28:13] < wbr_dat_i[15:0]) || (radr[28:13] >= wbr_dat_i[31:16]);
+				end
 			end
 			endcase
 		end
@@ -260,6 +320,7 @@ module rcv_arb #(
 			csr[30:29] <= 0;
 		end
 		if (fifo_rst) radr <= {limr[15:0], {13{1'b0}}};
+
 	end		// posedge wb_clk
 
 endmodule

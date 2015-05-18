@@ -18,6 +18,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
+	 parameter FIFO_MBITS = 13,
     parameter READ_BURST_LEN = 8
 )
 (
@@ -456,7 +457,7 @@ u_memcntr (
       for (i=0; i < 4; i=i+1) 
       begin : gfifo
 			gtpfifo # (
-				.MBITS(12)
+				.MBITS(FIFO_MBITS)
 			) 
 			rcvfifo(
 				.gtp_clk		(gtp_clk),
@@ -476,7 +477,7 @@ u_memcntr (
 
 //	fifth fifo keeps information for triggers, generated in this wfd
 			gtpfifo # (
-				.MBITS(12)
+				.MBITS(FIFO_MBITS)
 			) 
 			trgfifo(
 				.gtp_clk		(gtp_clk),
@@ -495,6 +496,7 @@ u_memcntr (
 // arbitter
 	
 rcv_arb #(
+	 .MBITS		(FIFO_MBITS),
 	 .NFIFO		(NFIFO)
 )
 arbitter (
