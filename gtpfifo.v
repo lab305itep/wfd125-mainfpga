@@ -57,7 +57,7 @@ module gtpfifo # (
 	wire [15:0]			gtp_dat_tr;		// reciever data with no high bit
 
 	assign len = gtp_dat[8:1] + 1;		// total number of 32-bit words to write (from CW)	
-	assign graddr = (give) ? (raddr + 1) : raddr;
+	assign graddr = (have) ? (raddr + 1) : raddr;
 	assign have = give & (raddr != waddrb);
 	assign empty = (raddr == waddr);
 	assign data = (have) ? rdata : 32'hZZZZZZZZ;

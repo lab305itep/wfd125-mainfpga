@@ -32,7 +32,7 @@
 //				CSR3	(R)	arbitter underrun error: CW recieved earlier than expected, RECIEVING STOPPED
 //				CSR2	(R)	arbitter overrunrun error: no CW recieved when expected, RECIEVING STOPPED
 //				CSR1	(R)   SDRAM GTP area full -  no more blocks can be written from GTP
-//				CSR0	(R)   SDRAM GTP area emty -  no new data available for read
+//				CSR0	(R)   SDRAM GTP area empty -  no new data available for read
 //
 //		4:		RADR	(RW)
 //				RADR[28:2]	must be set by readout procedure to indicate the last physical address that was already read by it
@@ -66,8 +66,8 @@ module rcv_arb #(
     output reg    		wbr_ack,
     output reg [31:0]	wbr_dat_o,
 	 // 	trace back a few bits from csr
-	 output 					fifo_rst,
-	 output 					mcb_rst,
+	 output reg				fifo_rst,
+	 output reg				mcb_rst,
 	 output 					en_debug,
 	 // interface with recieving FIFOs
 	 input					gtp_clk,			// all arbitration and MIG writes are on this clock
@@ -101,6 +101,7 @@ module rcv_arb #(
 	reg [31:0] 			afifo [2**MBITS-1:0];
 	reg [31:0]			af_data;				// intermediate fifo output data
 	reg [MBITS-1:0] 	af_waddr = 0;		// current fifo write pointer
+	reg [MBITS-1:0] 	af_waddr_b = 0;	// end of block fifo write pointer
 	reg [MBITS-1:0] 	af_raddr = 0;		// current fifo read pointer
 	wire [MBITS-1:0]	af_graddr;			// fifo read addr for get operation for MIG
 	reg  [7:0]			af_towrite = 0;	// number of Dwords to write - 1
@@ -144,22 +145,21 @@ module rcv_arb #(
 	assign	fifohave = |have;
 	assign	pause = af_full | af_undr | af_ovr ;
 	assign	nextf = (af_towrite == 1);
-	assign 	af_graddr = (mem_give) ? (af_raddr + 1) : af_raddr;
-	assign	af_empty = (af_waddr == af_raddr);
+	assign 	af_graddr = (af_have) ? (af_raddr + 1) : af_raddr;
+	assign	af_empty = (af_waddr_b == af_raddr);
 	assign	af_have = mem_give & ~(af_empty);
 	// memory interface
-//	assign	dattomcb = af_data;
-	assign	dattomcb = blen;
+	assign	dattomcb = af_data;
 	assign	wr_enable = af_have;
 	assign	mem_give = ~(mem_full | wr_full | cmd_full | radr_invalid);	
 	assign	blen = waddr[28:2] - adr_rcv[28:2] - 1;
 	assign	mem_empty = (radr[28:0] == waddr);
 	
 	assign	en_debug = csr[28];
-	assign	fifo_rst = ~csr[31] | csr[30];
-	assign	mcb_rst = csr[29] | csr[30];
 
 	always @ (posedge gtp_clk) begin
+		// reclock fifo_rst
+		fifo_rst <= ~csr[31] | csr[30];
 		// defaults
 		cmd_enable <= 0;
 		
@@ -167,13 +167,16 @@ module rcv_arb #(
 			// reset
 			rr_cnt <= 0;									// rest RR counter
 			af_waddr <= 0;									// init intermediate fifo pointers
+			af_waddr_b <= 0;								// init intermediate fifo pointers
 			af_raddr <= 0;									// init intermediate fifo pointers
-			af_towrite <= 0;							
+			af_towrite <= 0;								// init intermediate fifo pointers
+			af_full <= 0;
 			af_undr <= 0;
 			af_ovr <= 0;
 			waddr <= {limr[15:0], {13{1'b0}}};		// init MIG pointers
 			wadr <= {limr[15:0], {13{1'b0}}};		// init MIG pointers
 			adr_rcv <= {limr[15:0], {13{1'b0}}};	// init MIG pointers
+			mem_full <= 0;
 			blen_c <= 0;
 			csr[NFIFO*4+3:4] <= 0;						// clear sticky error bits
 		end else begin
@@ -189,7 +192,6 @@ module rcv_arb #(
 			// if we are writing this word from gtp to intermediate fifo
 			if (fifohave) begin
 				afifo[af_waddr] <= datfromfifo;
-//				afifo[af_waddr] <= af_waddr;
 				af_waddr <= af_waddr + 1;
 				// forecast full condition for the next cycle
 				af_full <= ((af_waddr + 2) == af_raddr);
@@ -204,6 +206,8 @@ module rcv_arb #(
 					if (|af_towrite) af_towrite <= af_towrite - 1;
 					else af_ovr <= 1;	// must have accepted CW with towrite=0, otherwize it's too late
 				end
+				// writing last word of the block on this clk
+				if (af_towrite == 1) af_waddr_b <= af_waddr + 1;
 			end	// fifohave
 			af_data <= afifo[af_graddr];
 			if (af_have) begin
@@ -304,7 +308,10 @@ module rcv_arb #(
 		if (rst_cnt == 1) begin
 			csr[30:29] <= 0;
 		end
-		if (fifo_rst) radr <= {limr[15:0], {13{1'b0}}};
+		// fifo_rst @ wb_clk
+		if (~csr[31] | csr[30]) radr <= {limr[15:0], {13{1'b0}}};
+		// mcb reset is asyncronous, can be wb_clk timed
+		mcb_rst <= csr[29] | csr[30];
 
 	end		// posedge wb_clk
 
