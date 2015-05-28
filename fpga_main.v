@@ -176,7 +176,7 @@ module fpga_main(
     output MEMZIO,
     output MEMRZQ,
 	// Test points
-    output reg [5:1] TP
+    output [5:1] TP
     );
 
 	wire			 wb_clk;
@@ -239,7 +239,7 @@ module fpga_main(
 		tpdebug[3] <= gtp_data_o[47] & gtp_kchar_o[2];
 		tpdebug[2] <= gtp_data_o[31] & gtp_kchar_o[1];
 		tpdebug[1] <= gtp_data_o[15] & gtp_kchar_o[0];
-		TP <= tpdebug;
+//		TP <= tpdebug;
 	end
 
 	assign IACKPASS = 1'bz;
@@ -569,7 +569,8 @@ sdram (
     .MEMZIO			(MEMZIO),
     .MEMRZQ			(MEMRZQ),
 	// current status
-    .status			(mem_status)
+    .status			(mem_status),
+	 .tp				(TP[5:1])
     );
 	
 	assign	wb_s2m_sdram_err = 0;

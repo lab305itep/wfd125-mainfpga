@@ -127,8 +127,6 @@ module rcv_arb #(
 	reg [31:0]	wadr = 0;				// write address as diplayed to the user
 	reg [5:0]	rst_cnt = 0;			// autoclear counter
 	
-	reg [31:0] debug;
-	
 	integer j;
 
 	assign status = (|(csr & 32'h00EEEEE0)) | radr_invalid | af_undr | af_ovr | mem_full; // full, missed, undr, ovr or "radr invalid"	
@@ -309,7 +307,10 @@ module rcv_arb #(
 			csr[30:29] <= 0;
 		end
 		// fifo_rst @ wb_clk
-		if (~csr[31] | csr[30]) radr <= {limr[15:0], {13{1'b0}}};
+		if (~csr[31] | csr[30]) begin 
+			radr <= {limr[15:0], {13{1'b0}}};
+			radr_invalid <= 0;
+		end
 		// mcb reset is asyncronous, can be wb_clk timed
 		mcb_rst <= csr[29] | csr[30];
 
