@@ -85,7 +85,7 @@ module memory # (
 //======= SIGNALS ==============
 
 	// port 0 : MIG to WB interface and fsm signals
-	localparam	inv_time = 16;// time in wb_clk to make readahead invalid (~1 us @ 125 MHz)
+	localparam	inv_time = 63;// time in wb_clk to make readahead invalid (~1 us @ 125 MHz)
 	wire  		mem_rst;			// external reset or command from register
 	wire  		mcb_rst;			// mcb and fsm reset from CSR
 	wire			fifo_rst;		// recieving fifo reset from CSR
