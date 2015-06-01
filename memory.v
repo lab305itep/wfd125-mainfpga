@@ -103,8 +103,10 @@ module memory # (
 	reg [6:0] 	ack_cnt;			// read wbm_ack counter for one block transfer
 	reg [28:0] 	adr_beg;			// burst beginning address
 	reg [28:0] 	adr_next;		// next address available in read fifo
-	reg			rd_active;		// flag to show read burst in progress
-	reg [6:0]	inv_cnt = 0;	// invalidate counter
+	reg [6:0]	rd_left;			// number of dwords in fifo (after burst execution)
+	reg [6:0]	inv_cnt = 0;	// number of dwords to take  out from fifo for invalidation
+	reg			inv_nz_d = 0;	// nonzero inv_cnt delayed
+	wire			invld;			// fifo under invalidation
 
 	// gtp recievers and arbitter
 	localparam 				NFIFO		= 5;
@@ -115,6 +117,7 @@ module memory # (
 	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept a block
 	wire [NFIFO-1:0]		fifo_ovr;			// error pulse from fifo when it expects CW but doesn't get it
 	wire [NFIFO-1:0]		fifo_undr;			// error pulse from fifo when it gets unexpected CW
+	wire						arb_invld;			// wadr read from arbitter -- invalidate WB fifo
 
 	// port 2 : arbitter to MIG interface
 	wire			p2_enable;		// port 2 cmd fifo enable
@@ -146,8 +149,8 @@ module memory # (
 	assign debug[25] = p0_full;
 	assign debug[31:28] = 0;
 	
-	assign tp[0] = rd_active;
-	assign tp[1] = wbm_cyc;
+	assign tp[0] = |rd_left;
+	assign tp[1] = invld;
 	assign tp[2] = p0_enable;
 	assign tp[3] = r0_enable;
 	assign tp[4] = r0_empty;
@@ -156,6 +159,8 @@ module memory # (
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
 	assign wbm_stall = w0_full | p0_full;
 	assign mem_rst = wb_rst | mcb_rst;
+	
+	assign invld = inv_nz_d | (|inv_cnt);
 
 // MIG to WB state machine
 	reg [2:0] state;
@@ -175,15 +180,17 @@ module memory # (
 		end
 		p0_enable <= 0;
 		r0_enable <= 0;
-		// signal end of read burst
-		if (~r0_empty) rd_active <= 0;
-		// decrement invalidation counter
-		if (|inv_cnt) begin
-			if (~rd_active) inv_cnt <= inv_cnt - 1;
-		end else begin
-			// Dummy read from rd fifo
-			r0_enable <= 1;
+		// check invalidation req from arbitter
+		if (arb_invld) begin
+			inv_cnt <= rd_left;
+			rd_left <= 0;
 		end
+		// service invalidate request: take out data from rd fifo when allowed by r0_empty
+		if (|inv_cnt & ~r0_empty) begin
+			r0_enable <= 1;
+			inv_cnt <= inv_cnt - 1;
+		end
+		inv_nz_d <= |inv_cnt;
 		// main state machine
 		if (mem_rst) begin
          state <= ST_RST;
@@ -193,8 +200,8 @@ module memory # (
 					// We are here at the end of reset pulse and always with mcb_reset (no need to clear fifos)
 					// Wait for end of current cycle here
 					if (~wbm_cyc) begin
-						rd_active <= 0;
 						inv_cnt <= 0;
+						rd_left <= 0;
 						state <= ST_IDLE;
 					end
 				end
@@ -210,14 +217,17 @@ module memory # (
 							state <= ST_WR_FIFO;
 						end else begin
 							// Read operation
-							inv_cnt <= inv_time;				// start counting invalidation time
-							if ((wbm_addr == adr_next) & ~r0_empty & (|inv_cnt)) begin	// adr_next is always valid if read fifo is not empty
+							if ((wbm_addr == adr_next) & |rd_left & ~invld) begin	// adr_next is always valid if read fifo is not empty
+								// we may have data in fifo ready immediately
+								if (~r0_empty) begin
 								// we have reqired data in read fifo
-								r0_enable <= 1;
-								wbm_ack <= 1;
-								wbm_dat_o <= r0_data;
-								ack_cnt <= 1;
-								adr_next <= adr_next + 4;
+									r0_enable <= 1;
+									rd_left <= rd_left - 1;
+									wbm_ack <= 1;
+									wbm_dat_o <= r0_data;
+									ack_cnt <= 1;
+									adr_next <= adr_next + 4;
+								end
 								state <= ST_RD_FIFO;
 							end else begin
 								// otherwise start new burst and read out dummy data if necessary
@@ -225,12 +235,14 @@ module memory # (
 								p0_cmd <= 3'b011;			// read with autoprecharge
 								ack_cnt <= 0;
 								adr_next <= wbm_addr;	// this will become address of the first word in fifo after dummy readout
-								if (p0_full | ~r0_empty) begin
-									inv_cnt <= 0;
+								if (~invld) begin			// start invalidation if not already underway
+									inv_cnt <= rd_left;
+								end
+								rd_left <= READ_BURST_LEN;		// we will execute burst, immediately or not
+								if (p0_full) begin
 									state <= ST_RD_CMD;
 								end else begin 
 									p0_enable <= 1;		// execute instruction
-									rd_active <= 1;		// we are executing burst now
 									state <= ST_RD_FIFO;
 								end
 							end
@@ -242,7 +254,8 @@ module memory # (
 						// wr_fifo full or write cycle ended
 						p0_blen <= stb_cnt - 1;
 						p0_cmd <= 3'b010;			// write with autoprecharge
-						inv_cnt <= 0;				// invalidate read fifo (always on writes)
+						inv_cnt <= rd_left;		// invalidate read fifo (always on writes)
+						rd_left <= 0;
 						if (p0_full) begin
 							state <= ST_WR_CMD;
 						end else begin 
@@ -258,25 +271,27 @@ module memory # (
 					end
             end
             ST_RD_FIFO : begin
-					if (wbm_cyc & ((ack_cnt < stb_cnt) | wbm_stb) & ~rd_active) begin
-						inv_cnt <= inv_time;
-						if (~r0_empty) begin
+					if (wbm_cyc & ((ack_cnt < stb_cnt) | wbm_stb)) begin
+						if (|rd_left) begin 
+							if (~invld & ~r0_empty) begin
 							// we have data to read and junk already removed -- send
-							r0_enable <= 1;
-							wbm_ack <= 1;
-							wbm_dat_o <= r0_data;
-							ack_cnt <= ack_cnt + 1;
-							adr_next <= adr_next + 4;
+								r0_enable <= 1;
+								rd_left <= rd_left - 1;
+								wbm_ack <= 1;
+								wbm_dat_o <= r0_data;
+								ack_cnt <= ack_cnt + 1;
+								adr_next <= adr_next + 4;
+							end
 						end else begin
-							// this is not the first read and we need more data -- start new burst
+							// this is not the first read and we need more data -- start new burst with no invalidation
 							p0_blen <= READ_BURST_LEN - 1;
 							p0_cmd <= 3'b011;			// read with autoprecharge
-							adr_beg <= adr_next;	// this will become address of the first word in fifo after dummy readout
+							adr_beg <= adr_next;		// this will become address of the first word in fifo
+							rd_left <= READ_BURST_LEN;
 							if (p0_full) begin
 								state <= ST_RD_CMD;
 							end else begin 
 								p0_enable <= 1;		// execute instruction
-								rd_active <= 1;
 							end
 						end
 					end else if (~wbm_cyc) begin
@@ -284,10 +299,8 @@ module memory # (
 					end
             end
             ST_RD_CMD : begin
-					if (~p0_full & r0_empty) begin
-						inv_cnt <= inv_time;
+					if (~p0_full) begin
 						p0_enable <= 1;		// execute instruction (prepared in ST_IDLE)
-						rd_active <= 1;
 						state <= ST_RD_FIFO;
 					end
             end
@@ -517,6 +530,7 @@ arbitter (
     .wbr_dat_i		(wbr_dat_i),
     .wbr_ack		(wbr_ack),
     .wbr_dat_o		(wbr_dat_a),
+	 .rd_wadr		(arb_invld),
 	 // 	trace back a few bits from csr
 	 .fifo_rst		(fifo_rst),			//	~CSR31 or CSR30 (autoclear) or wb_rst
 	 .mcb_rst		(mcb_rst),			// autoclear bits CSR29 or CSR30

@@ -65,6 +65,7 @@ module rcv_arb #(
     input [31:0]  		wbr_dat_i,
     output reg    		wbr_ack,
     output reg [31:0]	wbr_dat_o,
+	 output reg				rd_wadr,
 	 // 	trace back a few bits from csr
 	 output reg				fifo_rst,
 	 output reg				mcb_rst,
@@ -291,12 +292,16 @@ module rcv_arb #(
 			endcase
 		end
 		// read regs
+		rd_wadr <= 0;		// default
 		if (wbr_cyc & wbr_stb & ~wbr_we) begin;
 			case (wbr_addr)
 			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[25:4], af_undr, af_ovr, mem_full, mem_empty};
 			2'b01:	wbr_dat_o <= radr;
 			2'b10:	wbr_dat_o <= limr;
-			2'b11:	wbr_dat_o <= wadr;
+			2'b11:	begin	
+					wbr_dat_o <= wadr;
+					rd_wadr <= 1;
+				end
 			endcase
 		end
 		// autoclear reset bits
