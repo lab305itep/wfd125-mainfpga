@@ -51,9 +51,13 @@
 //		C2X[7]	Global reset, active LOW
 //
 //		InterXilinx communication
-//
-//
-//		
+//		ICX[1:0]	pseudo-differential serial trigger to channels
+//		ICX[2]	SPI CS (frame, to channels)
+//		ICX[3]	SPI serial data (bidir)
+//		ICX[4]	SPI clocks (to channels)
+//		ICX[5]	prepheral wishbone reset (to channels)
+//		ICX[6]	INH to channels
+//		ICX[15:7]	not used
 //
 //////////////////////////////////////////////////////////////////////////////////
 
