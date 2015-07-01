@@ -106,7 +106,8 @@ module csreg(
 	always @ (posedge wb_clk) begin
 		wb_ack <= wb_cyc & wb_stb;
 		if (wb_cyc & wb_stb & wb_we & (~wb_adr)) csr <= wb_dat_i;
-		reg_i <= gen_i;
+		reg_i <= {2'b00, inh_ICX_sel, inh_FP_sel, inh_BP_sel, inh_en_FP, inh_en_BP,
+			2'b00, trig_ICX_sel, trig_FP_sel, trig_BP_sel, trig_en_FP, trig_en_BP, gen_i[15:0]};
 	end
 
 	// Clock control
@@ -157,7 +158,7 @@ module csreg(
       .IO(trig_FP[0]),   	// Diff_p inout (connect directly to top-level port)
       .IOB(trig_FP[1]), 	// Diff_n inout (connect directly to top-level port)
       .I(trig_to_FP),      // Buffer input
-      .T(trig_en_FP)       // 3-state enable input, high=input, low=output
+      .T(~trig_en_FP)      // 3-state enable input, high=input, low=output
    );
 	
    // Back panel input should be terminated only in the module last in crate
@@ -173,7 +174,7 @@ module csreg(
       .IO(trig_BP[0]),   	// Diff_p inout (connect directly to top-level port)
       .IOB(trig_BP[1]), 	// Diff_n inout (connect directly to top-level port)
       .I(trig_to_BP),      // Buffer input
-      .T(trig_en_BP)       // 3-state enable input, high=input, low=output
+      .T(~trig_en_BP)      // 3-state enable input, high=input, low=output
    );
 	
 	// no differential outputs on bank 3
@@ -207,25 +208,23 @@ module csreg(
 		// front and back panel transmitters are disabled by default
 		trig_en_FP <= 0;
 		trig_en_BP <= 0;
-		case (csr[2:0])
+		trig_FP_sel <= 0;
+		trig_BP_sel <= 0;
+		case (csr[3:0])
       3'b000 : begin		// internal trig to X's
                   trig_ICX_sel <= 0;
                end
       3'b001 : begin		// internal trig to X's and front panel
                   trig_ICX_sel <= 0;
-						trig_FP_sel <= 0;
 						trig_en_FP <= 1;
                end
       3'b010 : begin		// internal trig to X's and back panel
                   trig_ICX_sel <= 0;
-						trig_BP_sel <= 0;
 						trig_en_BP <= 1;
                end
       3'b011 : begin		// internal trig to X's, back and front panel
                   trig_ICX_sel <= 0;
-						trig_FP_sel <= 0;
 						trig_en_FP <= 1;
-						trig_BP_sel <= 0;
 						trig_en_BP <= 1;
                end
       3'b100 : begin		// front panel trig to X's
@@ -244,8 +243,10 @@ module csreg(
 						trig_FP_sel <= 1;
 						trig_en_FP <= 1;
                end
+		default: begin
+						trig_ICX_sel <= 3;	// disable trigger to X's
+					end
 		endcase
-		if (csr[3]) trig_ICX_sel <= 3;	// disable trigger to X's
 	end
 
 	// INH propagation
@@ -255,11 +256,11 @@ module csreg(
       .DIFF_TERM("TRUE"),   	  // Differential Termination
       .IOSTANDARD("LVDS_25")    // Specify the I/O standard
    ) inh_fp (
-      .O(inh_from_FP),    // Buffer output
+      .O(inh_from_FP),     // Buffer output
       .IO(inh_FP[0]),   	// Diff_p inout (connect directly to top-level port)
-      .IOB(inh_FP[1]), 	// Diff_n inout (connect directly to top-level port)
-      .I(inh_to_FP),      // Buffer input
-      .T(inh_en_FP)       // 3-state enable input, high=input, low=output
+      .IOB(inh_FP[1]), 	   // Diff_n inout (connect directly to top-level port)
+      .I(inh_to_FP),       // Buffer input
+      .T(~inh_en_FP)       // 3-state enable input, high=input, low=output
    );
 	
    // Back panel input should be terminated only in the module last in crate
@@ -271,11 +272,11 @@ module csreg(
 `endif
       .IOSTANDARD("BLVDS_25")   // Specify the I/O standard
    ) inh_bp (
-      .O(inh_from_BP),    // Buffer output
+      .O(inh_from_BP),     // Buffer output
       .IO(inh_BP[0]),   	// Diff_p inout (connect directly to top-level port)
-      .IOB(inh_BP[1]), 	// Diff_n inout (connect directly to top-level port)
-      .I(inh_to_BP),      // Buffer input
-      .T(inh_en_BP)       // 3-state enable input, high=input, low=output
+      .IOB(inh_BP[1]), 	   // Diff_n inout (connect directly to top-level port)
+      .I(inh_to_BP),       // Buffer input
+      .T(~inh_en_BP)       // 3-state enable input, high=input, low=output
    );
 	
 	// onboard INH is single ended

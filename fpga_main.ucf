@@ -186,12 +186,12 @@ NET "led<1>" LOC = A20;
 NET "led<2>" LOC = A19;
 NET "led<3>" LOC = B18;
 # Front panel pairs (even-odd)
-NET "FP<0>" LOC = E16;
-NET "FP<1>" LOC = F16;
-NET "FP<2>" LOC = H14;
-NET "FP<3>" LOC = G15;
-NET "FP<4>" LOC = D18;
-NET "FP<5>" LOC = D19;
+NET "FP<0>" LOC = E16 | DIFF_TERM = "TRUE";
+NET "FP<1>" LOC = F16 | DIFF_TERM = "TRUE";
+NET "FP<2>" LOC = H14 | DIFF_TERM = "TRUE";
+NET "FP<3>" LOC = G15 | DIFF_TERM = "TRUE";
+NET "FP<4>" LOC = D18 | DIFF_TERM = "TRUE";
+NET "FP<5>" LOC = D19 | DIFF_TERM = "TRUE";
 
 # Back panel
 # 0-2 - "next-by-next" BP pair, X-pair, board pair
