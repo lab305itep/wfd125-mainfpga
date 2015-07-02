@@ -21,7 +21,7 @@ module trigrcv # (
 )
 (
     input 							clk,
-    input 							ser_trig,
+    input 							ser_trig_in,
     output [TOKEN_LENGTH-1:0] token,
     output reg 					tok_rdy,
     output reg 					tok_err
@@ -29,14 +29,16 @@ module trigrcv # (
 
 	localparam BIT_SENS = TOKEN_CLKDIV - (TOKEN_CLKDIV/2 - 1);
 
+	reg 							ser_trig = 0;	// resampled input serial trigger
 	reg [TOKEN_LENGTH+2:0]	ser_trg = 0;	// shift reg for serial token, 3 bits longer than token length
-	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
-	reg [3:0]	ser_div = 0;	// conter of frq divider for token transmission
-	reg			ser_err = 0;	// error flag
+	reg [3:0]					ser_cnt = 0;	// counter of transmitted token bits
+	reg [3:0]					ser_div = 0;	// conter of frq divider for token transmission
+	reg							ser_err = 0;	// error flag
 	
 	assign	token = ser_trg[TOKEN_LENGTH:1];
 	
 	always @ (posedge clk) begin
+		ser_trig <= ser_trig_in;
 		tok_rdy <= 0;		// default
 		tok_err <= 0;		// default
 		if (ser_trig & ~(|ser_cnt)) begin

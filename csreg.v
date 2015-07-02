@@ -210,7 +210,7 @@ module csreg(
 		trig_en_BP <= 0;
 		trig_FP_sel <= 0;
 		trig_BP_sel <= 0;
-		case (csr[3:0])
+		case (csr[2:0])
       3'b000 : begin		// internal trig to X's
                   trig_ICX_sel <= 0;
                end
@@ -243,10 +243,8 @@ module csreg(
 						trig_FP_sel <= 1;
 						trig_en_FP <= 1;
                end
-		default: begin
-						trig_ICX_sel <= 3;	// disable trigger to X's
-					end
 		endcase
+		if (csr[3]) trig_ICX_sel <= 3;	// X's are insensitive to INH
 	end
 
 	// INH propagation
@@ -309,25 +307,23 @@ module csreg(
 		// front and back panel transmitters are disabled by default
 		inh_en_FP <= 0;
 		inh_en_BP <= 0;
+		inh_FP_sel <= 0;
+		inh_BP_sel <= 0;
 		case (csr[6:4])
       3'b000 : begin		// internal inh to X's
                   inh_ICX_sel <= 0;
                end
       3'b001 : begin		// internal inh to X's and front panel
                   inh_ICX_sel <= 0;
-						inh_FP_sel <= 0;
 						inh_en_FP <= 1;
                end
       3'b010 : begin		// internal inh to X's and back panel
                   inh_ICX_sel <= 0;
-						inh_BP_sel <= 0;
 						inh_en_BP <= 1;
                end
       3'b011 : begin		// internal inh to X's, back and front panel
                   inh_ICX_sel <= 0;
-						inh_FP_sel <= 0;
 						inh_en_FP <= 1;
-						inh_BP_sel <= 0;
 						inh_en_BP <= 1;
                end
       3'b100 : begin		// front panel inh to X's

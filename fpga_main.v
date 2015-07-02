@@ -591,11 +591,11 @@ sdram (
 
 // serial trigger capture
 	trigrcv trigcap (
-    .clk			(CLK125),
-    .ser_trig	(ICX[0]),
-    .token		(token),
-    .tok_rdy	(tok_rdy),
-    .tok_err	(tok_err)
+    .clk				(CLK125),
+    .ser_trig_in	(ICX[0]),
+    .token			(token),
+    .tok_rdy		(tok_rdy),
+    .tok_err		(tok_err)
     );
 
 
