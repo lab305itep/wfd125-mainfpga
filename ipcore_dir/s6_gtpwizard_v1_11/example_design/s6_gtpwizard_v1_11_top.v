@@ -135,10 +135,6 @@ module s6_gtpwizard_v1_11_top #
     wire    [1:0]   tile0_rxnotintable0_i;
     wire    [1:0]   tile0_rxnotintable1_i;
     //------------- Receive Ports - Comma Detection and Alignment --------------
-    wire            tile0_rxbyteisaligned0_i;
-    wire            tile0_rxbyteisaligned1_i;
-    wire            tile0_rxcommadet0_i;
-    wire            tile0_rxcommadet1_i;
     wire            tile0_rxenmcommaalign0_i;
     wire            tile0_rxenmcommaalign1_i;
     wire            tile0_rxenpcommaalign0_i;
@@ -146,6 +142,9 @@ module s6_gtpwizard_v1_11_top #
     //----------------- Receive Ports - RX Data Path interface -----------------
     wire    [15:0]  tile0_rxdata0_i;
     wire    [15:0]  tile0_rxdata1_i;
+    //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+    wire    [1:0]   tile0_rxeqmix0_i;
+    wire    [1:0]   tile0_rxeqmix1_i;
     //------------- Receive Ports - RX Loss-of-sync State Machine --------------
     wire    [1:0]   tile0_rxlossofsync0_i;
     wire    [1:0]   tile0_rxlossofsync1_i;
@@ -185,10 +184,6 @@ module s6_gtpwizard_v1_11_top #
     wire    [1:0]   tile1_rxnotintable0_i;
     wire    [1:0]   tile1_rxnotintable1_i;
     //------------- Receive Ports - Comma Detection and Alignment --------------
-    wire            tile1_rxbyteisaligned0_i;
-    wire            tile1_rxbyteisaligned1_i;
-    wire            tile1_rxcommadet0_i;
-    wire            tile1_rxcommadet1_i;
     wire            tile1_rxenmcommaalign0_i;
     wire            tile1_rxenmcommaalign1_i;
     wire            tile1_rxenpcommaalign0_i;
@@ -196,6 +191,9 @@ module s6_gtpwizard_v1_11_top #
     //----------------- Receive Ports - RX Data Path interface -----------------
     wire    [15:0]  tile1_rxdata0_i;
     wire    [15:0]  tile1_rxdata1_i;
+    //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+    wire    [1:0]   tile1_rxeqmix0_i;
+    wire    [1:0]   tile1_rxeqmix1_i;
     //------------- Receive Ports - RX Loss-of-sync State Machine --------------
     wire    [1:0]   tile1_rxlossofsync0_i;
     wire    [1:0]   tile1_rxlossofsync1_i;
@@ -471,10 +469,6 @@ module s6_gtpwizard_v1_11_top #
         .TILE0_RXNOTINTABLE0_OUT        (tile0_rxnotintable0_i),
         .TILE0_RXNOTINTABLE1_OUT        (tile0_rxnotintable1_i),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE0_RXBYTEISALIGNED0_OUT     (tile0_rxbyteisaligned0_i),
-        .TILE0_RXBYTEISALIGNED1_OUT     (tile0_rxbyteisaligned1_i),
-        .TILE0_RXCOMMADET0_OUT          (tile0_rxcommadet0_i),
-        .TILE0_RXCOMMADET1_OUT          (tile0_rxcommadet1_i),
         .TILE0_RXENMCOMMAALIGN0_IN      (tile0_rxenmcommaalign0_i),
         .TILE0_RXENMCOMMAALIGN1_IN      (tile0_rxenmcommaalign1_i),
         .TILE0_RXENPCOMMAALIGN0_IN      (tile0_rxenpcommaalign0_i),
@@ -487,6 +481,8 @@ module s6_gtpwizard_v1_11_top #
         .TILE0_RXUSRCLK20_IN            (tile0_txusrclk20_i),
         .TILE0_RXUSRCLK21_IN            (tile0_txusrclk20_i),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .TILE0_RXEQMIX0_IN              (tile0_rxeqmix0_i),
+        .TILE0_RXEQMIX1_IN              (tile0_rxeqmix1_i),
         .TILE0_RXN0_IN                  (RXN_IN[0]),
         .TILE0_RXN1_IN                  (RXN_IN[1]),
         .TILE0_RXP0_IN                  (RXP_IN[0]),
@@ -547,10 +543,6 @@ module s6_gtpwizard_v1_11_top #
         .TILE1_RXNOTINTABLE0_OUT        (tile1_rxnotintable0_i),
         .TILE1_RXNOTINTABLE1_OUT        (tile1_rxnotintable1_i),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE1_RXBYTEISALIGNED0_OUT     (tile1_rxbyteisaligned0_i),
-        .TILE1_RXBYTEISALIGNED1_OUT     (tile1_rxbyteisaligned1_i),
-        .TILE1_RXCOMMADET0_OUT          (tile1_rxcommadet0_i),
-        .TILE1_RXCOMMADET1_OUT          (tile1_rxcommadet1_i),
         .TILE1_RXENMCOMMAALIGN0_IN      (tile1_rxenmcommaalign0_i),
         .TILE1_RXENMCOMMAALIGN1_IN      (tile1_rxenmcommaalign1_i),
         .TILE1_RXENPCOMMAALIGN0_IN      (tile1_rxenpcommaalign0_i),
@@ -563,6 +555,8 @@ module s6_gtpwizard_v1_11_top #
         .TILE1_RXUSRCLK20_IN            (tile0_txusrclk20_i),
         .TILE1_RXUSRCLK21_IN            (tile0_txusrclk20_i),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .TILE1_RXEQMIX0_IN              (tile1_rxeqmix0_i),
+        .TILE1_RXEQMIX1_IN              (tile1_rxeqmix1_i),
         .TILE1_RXN0_IN                  (RXN_IN[2]),
         .TILE1_RXN1_IN                  (RXN_IN[3]),
         .TILE1_RXP0_IN                  (RXP_IN[2]),
@@ -1630,30 +1624,28 @@ begin : chipscope
     // Chipscope VIO ouptut connections on Tile 0
     assign  tile0_loopback0_i               =  tile0_data_vio_out_i[139:137];
     assign  tile0_loopback1_i               =  tile0_data_vio_out_i[136:134];
+    assign  tile0_rxeqmix0_i                =  tile0_data_vio_out_i[133:132];
+    assign  tile0_rxeqmix1_i                =  tile0_data_vio_out_i[131:130];
 
     // Chipscope ILA connections for GTP0 on Tile 0
     assign  tile0_ila_in0_i[84:83]          =  tile0_rxchariscomma0_i;
     assign  tile0_ila_in0_i[82:81]          =  tile0_rxcharisk0_i;
     assign  tile0_ila_in0_i[80:79]          =  tile0_rxdisperr0_i;
     assign  tile0_ila_in0_i[78:77]          =  tile0_rxnotintable0_i;
-    assign  tile0_ila_in0_i[76]             =  tile0_rxbyteisaligned0_i;
-    assign  tile0_ila_in0_i[75]             =  tile0_rxcommadet0_i;
-    assign  tile0_ila_in0_i[74:59]          =  tile0_rxdata0_i;
-    assign  tile0_ila_in0_i[58:57]          =  tile0_rxlossofsync0_i;
-    assign  tile0_ila_in0_i[56:49]          =  tile0_error_count0_i;
-    assign  tile0_ila_in0_i[48:0]           =  tied_to_ground_vec_i[48:0];
+    assign  tile0_ila_in0_i[76:61]          =  tile0_rxdata0_i;
+    assign  tile0_ila_in0_i[60:59]          =  tile0_rxlossofsync0_i;
+    assign  tile0_ila_in0_i[58:51]          =  tile0_error_count0_i;
+    assign  tile0_ila_in0_i[50:0]           =  tied_to_ground_vec_i[50:0];
 
     // Chipscope ILA connections for GTP1 on Tile 0
     assign  tile0_ila_in1_i[84:83]          =  tile0_rxchariscomma1_i;
     assign  tile0_ila_in1_i[82:81]          =  tile0_rxcharisk1_i;
     assign  tile0_ila_in1_i[80:79]          =  tile0_rxdisperr1_i;
     assign  tile0_ila_in1_i[78:77]          =  tile0_rxnotintable1_i;
-    assign  tile0_ila_in1_i[76]             =  tile0_rxbyteisaligned1_i;
-    assign  tile0_ila_in1_i[75]             =  tile0_rxcommadet1_i;
-    assign  tile0_ila_in1_i[74:59]          =  tile0_rxdata1_i;
-    assign  tile0_ila_in1_i[58:57]          =  tile0_rxlossofsync1_i;
-    assign  tile0_ila_in1_i[56:49]          =  tile0_error_count1_i;
-    assign  tile0_ila_in1_i[48:0]           =  tied_to_ground_vec_i[48:0];
+    assign  tile0_ila_in1_i[76:61]          =  tile0_rxdata1_i;
+    assign  tile0_ila_in1_i[60:59]          =  tile0_rxlossofsync1_i;
+    assign  tile0_ila_in1_i[58:51]          =  tile0_error_count1_i;
+    assign  tile0_ila_in1_i[50:0]           =  tied_to_ground_vec_i[50:0];
 
     // Chipscope VIO input connections on Tile 1
     assign  tile1_data_vio_in_i[139]        =  tile1_resetdone0_i;
@@ -1663,30 +1655,28 @@ begin : chipscope
     // Chipscope VIO ouptut connections on Tile 1
     assign  tile1_loopback0_i               =  tile1_data_vio_out_i[139:137];
     assign  tile1_loopback1_i               =  tile1_data_vio_out_i[136:134];
+    assign  tile1_rxeqmix0_i                =  tile1_data_vio_out_i[133:132];
+    assign  tile1_rxeqmix1_i                =  tile1_data_vio_out_i[131:130];
 
     // Chipscope ILA connections for GTP0 on Tile 1
     assign  tile1_ila_in0_i[84:83]          =  tile1_rxchariscomma0_i;
     assign  tile1_ila_in0_i[82:81]          =  tile1_rxcharisk0_i;
     assign  tile1_ila_in0_i[80:79]          =  tile1_rxdisperr0_i;
     assign  tile1_ila_in0_i[78:77]          =  tile1_rxnotintable0_i;
-    assign  tile1_ila_in0_i[76]             =  tile1_rxbyteisaligned0_i;
-    assign  tile1_ila_in0_i[75]             =  tile1_rxcommadet0_i;
-    assign  tile1_ila_in0_i[74:59]          =  tile1_rxdata0_i;
-    assign  tile1_ila_in0_i[58:57]          =  tile1_rxlossofsync0_i;
-    assign  tile1_ila_in0_i[56:49]          =  tile1_error_count0_i;
-    assign  tile1_ila_in0_i[48:0]           =  tied_to_ground_vec_i[48:0];
+    assign  tile1_ila_in0_i[76:61]          =  tile1_rxdata0_i;
+    assign  tile1_ila_in0_i[60:59]          =  tile1_rxlossofsync0_i;
+    assign  tile1_ila_in0_i[58:51]          =  tile1_error_count0_i;
+    assign  tile1_ila_in0_i[50:0]           =  tied_to_ground_vec_i[50:0];
 
     // Chipscope ILA connections for GTP1 on Tile 1
     assign  tile1_ila_in1_i[84:83]          =  tile1_rxchariscomma1_i;
     assign  tile1_ila_in1_i[82:81]          =  tile1_rxcharisk1_i;
     assign  tile1_ila_in1_i[80:79]          =  tile1_rxdisperr1_i;
     assign  tile1_ila_in1_i[78:77]          =  tile1_rxnotintable1_i;
-    assign  tile1_ila_in1_i[76]             =  tile1_rxbyteisaligned1_i;
-    assign  tile1_ila_in1_i[75]             =  tile1_rxcommadet1_i;
-    assign  tile1_ila_in1_i[74:59]          =  tile1_rxdata1_i;
-    assign  tile1_ila_in1_i[58:57]          =  tile1_rxlossofsync1_i;
-    assign  tile1_ila_in1_i[56:49]          =  tile1_error_count1_i;
-    assign  tile1_ila_in1_i[48:0]           =  tied_to_ground_vec_i[48:0];
+    assign  tile1_ila_in1_i[76:61]          =  tile1_rxdata1_i;
+    assign  tile1_ila_in1_i[60:59]          =  tile1_rxlossofsync1_i;
+    assign  tile1_ila_in1_i[58:51]          =  tile1_error_count1_i;
+    assign  tile1_ila_in1_i[50:0]           =  tied_to_ground_vec_i[50:0];
 
 
 
@@ -1721,8 +1711,12 @@ begin: no_chipscope
     assign  user_rx_reset_i                 =  tied_to_ground_i;
     assign  tile0_loopback0_i               =  tied_to_ground_vec_i[2:0];
     assign  tile0_loopback1_i               =  tied_to_ground_vec_i[2:0];
+    assign  tile0_rxeqmix0_i                =  tied_to_ground_vec_i[1:0];
+    assign  tile0_rxeqmix1_i                =  tied_to_ground_vec_i[1:0];
     assign  tile1_loopback0_i               =  tied_to_ground_vec_i[2:0];
     assign  tile1_loopback1_i               =  tied_to_ground_vec_i[2:0];
+    assign  tile1_rxeqmix0_i                =  tied_to_ground_vec_i[1:0];
+    assign  tile1_rxeqmix1_i                =  tied_to_ground_vec_i[1:0];
 
 
 

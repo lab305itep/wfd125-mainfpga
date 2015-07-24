@@ -121,10 +121,6 @@ gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{TILE0_s6_gtpwizard_v1_11}} -d
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXNOTINTABLE0_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXNOTINTABLE1_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{Receive Ports - Comma Detection and Alignment}} -divider
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED0_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED1_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXCOMMADET0_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXCOMMADET1_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN0_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENPCOMMAALIGN0_IN}
@@ -137,6 +133,8 @@ gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{TILE0_s6_gtpwizard_v1_11}} -d
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXUSRCLK20_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXUSRCLK21_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR}} -divider
+  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXEQMIX0_IN}
+  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXEQMIX1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXN0_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXN1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXP0_IN}
@@ -186,10 +184,6 @@ gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{TILE1_s6_gtpwizard_v1_11}} -d
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXNOTINTABLE0_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXNOTINTABLE1_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{Receive Ports - Comma Detection and Alignment}} -divider
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED0_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED1_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXCOMMADET0_OUT}
-  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXCOMMADET1_OUT}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN0_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENPCOMMAALIGN0_IN}
@@ -202,6 +196,8 @@ gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{TILE1_s6_gtpwizard_v1_11}} -d
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXUSRCLK20_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXUSRCLK21_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {{Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR}} -divider
+  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXEQMIX0_IN}
+  gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXEQMIX1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXN0_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXN1_IN}
   gui_sg_addsignal -group s6_gtpwizard_v1_11_Group {DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXP0_IN}

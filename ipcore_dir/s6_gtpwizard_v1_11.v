@@ -110,10 +110,6 @@ module s6_gtpwizard_v1_11 #
     output  [1:0]   TILE0_RXNOTINTABLE0_OUT,
     output  [1:0]   TILE0_RXNOTINTABLE1_OUT,
     //------------- Receive Ports - Comma Detection and Alignment --------------
-    output          TILE0_RXBYTEISALIGNED0_OUT,
-    output          TILE0_RXBYTEISALIGNED1_OUT,
-    output          TILE0_RXCOMMADET0_OUT,
-    output          TILE0_RXCOMMADET1_OUT,
     input           TILE0_RXENMCOMMAALIGN0_IN,
     input           TILE0_RXENMCOMMAALIGN1_IN,
     input           TILE0_RXENPCOMMAALIGN0_IN,
@@ -126,6 +122,8 @@ module s6_gtpwizard_v1_11 #
     input           TILE0_RXUSRCLK20_IN,
     input           TILE0_RXUSRCLK21_IN,
     //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+    input   [1:0]   TILE0_RXEQMIX0_IN,
+    input   [1:0]   TILE0_RXEQMIX1_IN,
     input           TILE0_RXN0_IN,
     input           TILE0_RXN1_IN,
     input           TILE0_RXP0_IN,
@@ -181,10 +179,6 @@ module s6_gtpwizard_v1_11 #
     output  [1:0]   TILE1_RXNOTINTABLE0_OUT,
     output  [1:0]   TILE1_RXNOTINTABLE1_OUT,
     //------------- Receive Ports - Comma Detection and Alignment --------------
-    output          TILE1_RXBYTEISALIGNED0_OUT,
-    output          TILE1_RXBYTEISALIGNED1_OUT,
-    output          TILE1_RXCOMMADET0_OUT,
-    output          TILE1_RXCOMMADET1_OUT,
     input           TILE1_RXENMCOMMAALIGN0_IN,
     input           TILE1_RXENMCOMMAALIGN1_IN,
     input           TILE1_RXENPCOMMAALIGN0_IN,
@@ -197,6 +191,8 @@ module s6_gtpwizard_v1_11 #
     input           TILE1_RXUSRCLK20_IN,
     input           TILE1_RXUSRCLK21_IN,
     //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+    input   [1:0]   TILE1_RXEQMIX0_IN,
+    input   [1:0]   TILE1_RXEQMIX1_IN,
     input           TILE1_RXN0_IN,
     input           TILE1_RXN1_IN,
     input           TILE1_RXP0_IN,
@@ -440,10 +436,6 @@ endgenerate //End generate for WRAPPER_SIMULATION
         .RXNOTINTABLE0_OUT              (TILE0_RXNOTINTABLE0_OUT),
         .RXNOTINTABLE1_OUT              (TILE0_RXNOTINTABLE1_OUT),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .RXBYTEISALIGNED0_OUT           (TILE0_RXBYTEISALIGNED0_OUT),
-        .RXBYTEISALIGNED1_OUT           (TILE0_RXBYTEISALIGNED1_OUT),
-        .RXCOMMADET0_OUT                (TILE0_RXCOMMADET0_OUT),
-        .RXCOMMADET1_OUT                (TILE0_RXCOMMADET1_OUT),
         .RXENMCOMMAALIGN0_IN            (TILE0_RXENMCOMMAALIGN0_IN),
         .RXENMCOMMAALIGN1_IN            (TILE0_RXENMCOMMAALIGN1_IN),
         .RXENPCOMMAALIGN0_IN            (TILE0_RXENPCOMMAALIGN0_IN),
@@ -456,6 +448,8 @@ endgenerate //End generate for WRAPPER_SIMULATION
         .RXUSRCLK20_IN                  (TILE0_RXUSRCLK20_IN),
         .RXUSRCLK21_IN                  (TILE0_RXUSRCLK21_IN),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .RXEQMIX0_IN                    (TILE0_RXEQMIX0_IN),
+        .RXEQMIX1_IN                    (TILE0_RXEQMIX1_IN),
         .RXN0_IN                        (TILE0_RXN0_IN),
         .RXN1_IN                        (TILE0_RXN1_IN),
         .RXP0_IN                        (TILE0_RXP0_IN),
@@ -530,10 +524,6 @@ endgenerate //End generate for WRAPPER_SIMULATION
         .RXNOTINTABLE0_OUT              (TILE1_RXNOTINTABLE0_OUT),
         .RXNOTINTABLE1_OUT              (TILE1_RXNOTINTABLE1_OUT),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .RXBYTEISALIGNED0_OUT           (TILE1_RXBYTEISALIGNED0_OUT),
-        .RXBYTEISALIGNED1_OUT           (TILE1_RXBYTEISALIGNED1_OUT),
-        .RXCOMMADET0_OUT                (TILE1_RXCOMMADET0_OUT),
-        .RXCOMMADET1_OUT                (TILE1_RXCOMMADET1_OUT),
         .RXENMCOMMAALIGN0_IN            (TILE1_RXENMCOMMAALIGN0_IN),
         .RXENMCOMMAALIGN1_IN            (TILE1_RXENMCOMMAALIGN1_IN),
         .RXENPCOMMAALIGN0_IN            (TILE1_RXENPCOMMAALIGN0_IN),
@@ -546,6 +536,8 @@ endgenerate //End generate for WRAPPER_SIMULATION
         .RXUSRCLK20_IN                  (TILE1_RXUSRCLK20_IN),
         .RXUSRCLK21_IN                  (TILE1_RXUSRCLK21_IN),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .RXEQMIX0_IN                    (TILE1_RXEQMIX0_IN),
+        .RXEQMIX1_IN                    (TILE1_RXEQMIX1_IN),
         .RXN0_IN                        (TILE1_RXN0_IN),
         .RXN1_IN                        (TILE1_RXN1_IN),
         .RXP0_IN                        (TILE1_RXP0_IN),

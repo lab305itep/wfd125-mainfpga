@@ -54,10 +54,6 @@ add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_1
 add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXNOTINTABLE0_OUT
 add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXNOTINTABLE1_OUT
 add wave -noupdate -divider {Receive Ports - Comma Detection and Alignment }
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED0_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED1_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXCOMMADET0_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXCOMMADET1_OUT
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN0_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENPCOMMAALIGN0_IN
@@ -70,6 +66,8 @@ add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXUSRCLK20_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXUSRCLK21_IN
 add wave -noupdate -divider {Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR }
+add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXEQMIX0_IN
+add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXEQMIX1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXN0_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXN1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXP0_IN
@@ -119,10 +117,6 @@ add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_1
 add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXNOTINTABLE0_OUT
 add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXNOTINTABLE1_OUT
 add wave -noupdate -divider {Receive Ports - Comma Detection and Alignment }
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED0_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED1_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXCOMMADET0_OUT
-add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXCOMMADET1_OUT
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN0_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENPCOMMAALIGN0_IN
@@ -135,6 +129,8 @@ add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXUSRCLK20_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXUSRCLK21_IN
 add wave -noupdate -divider {Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR }
+add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXEQMIX0_IN
+add wave -noupdate -format Literal -radix hexadecimal /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXEQMIX1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXN0_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXN1_IN
 add wave -noupdate -format Logic /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXP0_IN

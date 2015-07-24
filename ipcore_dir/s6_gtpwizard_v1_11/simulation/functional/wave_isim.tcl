@@ -54,10 +54,6 @@ wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwiza
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXNOTINTABLE0_OUT
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXNOTINTABLE1_OUT
 divider add "Receive Ports - Comma Detection and Alignment"
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED0_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED1_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXCOMMADET0_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXCOMMADET1_OUT
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN0_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXENPCOMMAALIGN0_IN
@@ -70,6 +66,8 @@ wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwiza
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXUSRCLK20_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXUSRCLK21_IN
 divider add "Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR"
+wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXEQMIX0_IN
+wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXEQMIX1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXN0_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXN1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/RXP0_IN
@@ -118,10 +116,6 @@ wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwiza
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXNOTINTABLE0_OUT
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXNOTINTABLE1_OUT
 divider add "Receive Ports - Comma Detection and Alignment"
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED0_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXBYTEISALIGNED1_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXCOMMADET0_OUT
-wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXCOMMADET1_OUT
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN0_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENMCOMMAALIGN1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXENPCOMMAALIGN0_IN
@@ -134,6 +128,8 @@ wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwiza
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXUSRCLK20_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXUSRCLK21_IN
 divider add "Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR"
+wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXEQMIX0_IN
+wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXEQMIX1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXN0_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXN1_IN
 wave add /DEMO_TB/s6_gtpwizard_v1_11_top_i/s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/RXP0_IN

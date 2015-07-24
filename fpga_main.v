@@ -57,7 +57,8 @@
 //		ICX[4]	SPI clocks (to channels)
 //		ICX[5]	prepheral wishbone reset (to channels)
 //		ICX[6]	INH to channels
-//		ICX[15:7]	not used
+//		ICX[7]   Test pulse
+//		ICX[15:8]	not used
 //
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -290,7 +291,8 @@ module fpga_main(
 		.OCLKSEL		(OCLKSEL),
 		.CLKENFP		(CLKENFP),
 		.CLKENBP		(CLKENBP),
-		.CLKENBFP	(CLKENBFP)
+		.CLKENBFP	(CLKENBFP),
+		.testpulse	(ICX[7])
 	);
 	
 	assign FP[5:4] = 2'bZZ;

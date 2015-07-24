@@ -60,11 +60,11 @@ INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_TDCC_CFG_1 
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i PMA_TX_CFG_0                           = 20'h00082;
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_BUFFER_USE_0                        = "TRUE";
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_XCLK_SEL_0                          = "TXOUT";
-INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_0                          = 3'b011;
+INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_0                          = 3'b111;
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i PMA_TX_CFG_1                           = 20'h00082;
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_BUFFER_USE_1                        = "TRUE";
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_XCLK_SEL_1                          = "TXOUT";
-INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_1                          = 3'b011;
+INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_1                          = 3'b111;
 
 ##TX Driver and OOB signalling Attributes
 INST s6_gtpwizard_v1_11_i/tile0_s6_gtpwizard_v1_11_i/gtpa1_dual_i CM_TRIM_0                              = 2'b00;
@@ -306,11 +306,11 @@ INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_TDCC_CFG_1 
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i PMA_TX_CFG_0                           = 20'h00082;
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_BUFFER_USE_0                        = "TRUE";
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_XCLK_SEL_0                          = "TXOUT";
-INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_0                          = 3'b011;
+INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_0                          = 3'b111;
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i PMA_TX_CFG_1                           = 20'h00082;
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_BUFFER_USE_1                        = "TRUE";
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TX_XCLK_SEL_1                          = "TXOUT";
-INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_1                          = 3'b011;
+INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i TXRX_INVERT_1                          = 3'b111;
 
 ##TX Driver and OOB signalling Attributes
 INST s6_gtpwizard_v1_11_i/tile1_s6_gtpwizard_v1_11_i/gtpa1_dual_i CM_TRIM_0                              = 2'b00;

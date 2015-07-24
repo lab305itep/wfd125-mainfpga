@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version 14.7
-# Date: Mon Sep 29 15:34:31 2014
+# Date: Fri Jul 24 13:49:15 2015
 #
 ##############################################################
 #
@@ -189,7 +189,7 @@ CSET gtp0_tx_datapath_width=16
 CSET gtp0_tx_divider=/1
 CSET gtp0_tx_drive_mode=false
 CSET gtp0_tx_line_rate=2.5
-CSET gtp0_txrx_invert=011
+CSET gtp0_txrx_invert=111
 CSET gtp0_txusrclk_source=REFCLKPLL
 CSET gtp0_use_cc=false
 CSET gtp0_use_comma_detect=true
@@ -202,12 +202,12 @@ CSET gtp0_use_port_refclkout=false
 CSET gtp0_use_port_refclkpowerdown=false
 CSET gtp0_use_port_rxbufreset=false
 CSET gtp0_use_port_rxbufstatus=false
-CSET gtp0_use_port_rxbyteisaligned=true
+CSET gtp0_use_port_rxbyteisaligned=false
 CSET gtp0_use_port_rxbyterealign=false
 CSET gtp0_use_port_rxcdrreset=false
 CSET gtp0_use_port_rxchariscomma=true
 CSET gtp0_use_port_rxcharisk=true
-CSET gtp0_use_port_rxcommadet=true
+CSET gtp0_use_port_rxcommadet=false
 CSET gtp0_use_port_rxlossofsync=true
 CSET gtp0_use_port_rxpolarity=false
 CSET gtp0_use_port_rxpowerdown=false
@@ -242,7 +242,7 @@ CSET gtp0_use_rx_oob=false
 CSET gtp0_use_rxbuffer=true
 CSET gtp0_use_two_cc_sequences=false
 CSET gtp0_use_txbuffer=true
-CSET gtp0_wideband_highpass_mix=00
+CSET gtp0_wideband_highpass_mix=Use_RXEQMIX_Port
 CSET gtp1_bytes_to_reduce_error=8
 CSET gtp1_cb2_inh_cc_period=8
 CSET gtp1_cc_keep_one_idle=false
@@ -354,7 +354,7 @@ CSET gtp1_tx_datapath_width=16
 CSET gtp1_tx_divider=/1
 CSET gtp1_tx_drive_mode=false
 CSET gtp1_tx_line_rate=2.5
-CSET gtp1_txrx_invert=011
+CSET gtp1_txrx_invert=111
 CSET gtp1_txusrclk_source=REFCLKPLL
 CSET gtp1_use_cc=false
 CSET gtp1_use_comma_detect=true
@@ -367,12 +367,12 @@ CSET gtp1_use_port_refclkout=false
 CSET gtp1_use_port_refclkpowerdown=false
 CSET gtp1_use_port_rxbufreset=false
 CSET gtp1_use_port_rxbufstatus=false
-CSET gtp1_use_port_rxbyteisaligned=true
+CSET gtp1_use_port_rxbyteisaligned=false
 CSET gtp1_use_port_rxbyterealign=false
 CSET gtp1_use_port_rxcdrreset=false
 CSET gtp1_use_port_rxchariscomma=true
 CSET gtp1_use_port_rxcharisk=true
-CSET gtp1_use_port_rxcommadet=true
+CSET gtp1_use_port_rxcommadet=false
 CSET gtp1_use_port_rxlossofsync=true
 CSET gtp1_use_port_rxpolarity=false
 CSET gtp1_use_port_rxpowerdown=false
@@ -407,7 +407,7 @@ CSET gtp1_use_rx_oob=false
 CSET gtp1_use_rxbuffer=true
 CSET gtp1_use_two_cc_sequences=false
 CSET gtp1_use_txbuffer=true
-CSET gtp1_wideband_highpass_mix=00
+CSET gtp1_wideband_highpass_mix=Use_RXEQMIX_Port
 CSET refclk_ac_coupling_x0_y0=false
 CSET refclk_ac_coupling_x0_y1=false
 CSET refclk_ac_coupling_x1_y0=false
@@ -426,4 +426,4 @@ CSET use_two_cb_sequences=false
 MISC pkg_timestamp=2011-04-06T10:16:39Z
 # END Extra information
 GENERATE
-# CRC: 121ddb2b
+# CRC: 72ccf090

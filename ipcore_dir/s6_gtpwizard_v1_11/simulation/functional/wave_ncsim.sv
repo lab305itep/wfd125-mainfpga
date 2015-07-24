@@ -58,10 +58,6 @@
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXNOTINTABLE0_OUT
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXNOTINTABLE1_OUT
   waveform  add  -label Receive_Ports_-_Comma_Detection_and_Alignment  -comment  Receive_Ports_-_Comma_Detection_and_Alignment
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED0_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED1_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXCOMMADET0_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXCOMMADET1_OUT
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN0_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXENPCOMMAALIGN0_IN
@@ -74,6 +70,8 @@
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXUSRCLK20_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXUSRCLK21_IN
   waveform  add  -label Receive_Ports_-_RX_Driver,OOB_signalling,Coupling_and_Eq.,CDR  -comment  Receive_Ports_-_RX_Driver,OOB_signalling,Coupling_and_Eq.,CDR
+  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXEQMIX0_IN
+  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXEQMIX1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXN0_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXN1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile0_s6_gtpwizard_v1_11_i.RXP0_IN
@@ -123,10 +121,6 @@
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXNOTINTABLE0_OUT
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXNOTINTABLE1_OUT
   waveform  add  -label Receive_Ports_-_Comma_Detection_and_Alignment  -comment  Receive_Ports_-_Comma_Detection_and_Alignment
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED0_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXBYTEISALIGNED1_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXCOMMADET0_OUT
-  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXCOMMADET1_OUT
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN0_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENMCOMMAALIGN1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXENPCOMMAALIGN0_IN
@@ -139,6 +133,8 @@
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXUSRCLK20_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXUSRCLK21_IN
   waveform  add  -label Receive_Ports_-_RX_Driver,OOB_signalling,Coupling_and_Eq.,CDR  -comment  Receive_Ports_-_RX_Driver,OOB_signalling,Coupling_and_Eq.,CDR
+  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXEQMIX0_IN
+  waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXEQMIX1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXN0_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXN1_IN
   waveform  add  -signals  DEMO_TB.s6_gtpwizard_v1_11_top_i.s6_gtpwizard_v1_11_i.tile1_s6_gtpwizard_v1_11_i.RXP0_IN

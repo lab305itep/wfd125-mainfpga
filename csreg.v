@@ -27,7 +27,8 @@
 //			in addition, programming of CDCUN required:
 //			for modes 0-3 IN1 of CDCUN must be selected
 //			for modes 4-7 IN2 of CDCUN must be selected
-//		CSR[15:11]	 general purpose CSR outputs
+//		CSR[11]		 test pulse generation enable (makes ~100 Hz ~1 us pulses on ICX[7])
+//		CSR[15:12]	 general purpose CSR outputs
 //		CSR[30:16]	 user word to be put to trigger block written to memory	 
 //		CSR[31] 		 peripheral WB reset
 //		CSR+4 [31:0] are general inputs from the upper hierarchy, unused so far
@@ -44,7 +45,7 @@ module csreg(
     input wb_stb,
 	 input wb_adr,
 	 // reg outputs/inputs for general purposes
-    output [4:0]		gen_o,
+    output [3:0]		gen_o,
     input [31:0] 		gen_i,
 	 // assigned outputs
 	 output				pwb_rst,		// peripheral wishbone reset
@@ -66,7 +67,8 @@ module csreg(
     output reg			OCLKSEL,
     output reg			CLKENFP,
     output reg			CLKENBP,
-    output reg			CLKENBFP
+    output reg			CLKENBFP,
+	 output reg			testpulse
     );
 	 
 	reg [31:0] csr;
@@ -95,6 +97,11 @@ module csreg(
 	reg	inh_BP_sel = 0;
 	wire	inh_to_ICX;
 	reg [1:0] inh_ICX_sel;
+	
+	// test pulse
+	reg [6:0]  test_prediv = 0;
+	reg        test_prepulse = 0;
+	reg [12:0] test_div = 0;
 
 	assign gen_o = csr[15:11];
 	assign pwb_rst = csr[31];
@@ -344,6 +351,17 @@ module csreg(
                end
 		endcase
 		if (csr[7]) inh_ICX_sel <= 3;	// X's are insensitive to INH
+	end
+//		test pulse
+	always @ (posedge wb_clk) begin
+		if (csr[11]) begin
+			testpulse <= (test_div == 0);
+			test_prepulse <= (test_prediv == 0);
+			test_prediv <= test_prediv + 1;
+			if (test_prepulse) 	test_div <= test_div + 1;
+		end else begin
+			testpulse <= 0;
+		end
 	end
 
 endmodule

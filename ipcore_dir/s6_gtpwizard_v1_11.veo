@@ -104,10 +104,6 @@
         .TILE0_RXNOTINTABLE0_OUT        (),
         .TILE0_RXNOTINTABLE1_OUT        (),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE0_RXBYTEISALIGNED0_OUT     (),
-        .TILE0_RXBYTEISALIGNED1_OUT     (),
-        .TILE0_RXCOMMADET0_OUT          (),
-        .TILE0_RXCOMMADET1_OUT          (),
         .TILE0_RXENMCOMMAALIGN0_IN      (),
         .TILE0_RXENMCOMMAALIGN1_IN      (),
         .TILE0_RXENPCOMMAALIGN0_IN      (),
@@ -120,6 +116,8 @@
         .TILE0_RXUSRCLK20_IN            (),
         .TILE0_RXUSRCLK21_IN            (),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .TILE0_RXEQMIX0_IN              (),
+        .TILE0_RXEQMIX1_IN              (),
         .TILE0_RXN0_IN                  (),
         .TILE0_RXN1_IN                  (),
         .TILE0_RXP0_IN                  (),
@@ -174,10 +172,6 @@
         .TILE1_RXNOTINTABLE0_OUT        (),
         .TILE1_RXNOTINTABLE1_OUT        (),
         //------------- Receive Ports - Comma Detection and Alignment --------------
-        .TILE1_RXBYTEISALIGNED0_OUT     (),
-        .TILE1_RXBYTEISALIGNED1_OUT     (),
-        .TILE1_RXCOMMADET0_OUT          (),
-        .TILE1_RXCOMMADET1_OUT          (),
         .TILE1_RXENMCOMMAALIGN0_IN      (),
         .TILE1_RXENMCOMMAALIGN1_IN      (),
         .TILE1_RXENPCOMMAALIGN0_IN      (),
@@ -190,6 +184,8 @@
         .TILE1_RXUSRCLK20_IN            (),
         .TILE1_RXUSRCLK21_IN            (),
         //----- Receive Ports - RX Driver,OOB signalling,Coupling and Eq.,CDR ------
+        .TILE1_RXEQMIX0_IN              (),
+        .TILE1_RXEQMIX1_IN              (),
         .TILE1_RXN0_IN                  (),
         .TILE1_RXN1_IN                  (),
         .TILE1_RXP0_IN                  (),
