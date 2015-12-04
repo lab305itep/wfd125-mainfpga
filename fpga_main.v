@@ -31,7 +31,7 @@
 //		1		GND
 //		2,3	FP0/FP1	Triger P/N		Yes
 //		4,5	FP2/FP3	Inhibit P/N		Yes
-//		6,7	FP4/FP5	unused			No
+//		6,7	FP4/FP5	Trigger to Prop			Yes
 //		8,9	FP6/FP7	Clock P/N		Yes
 //		10		GND
 //
@@ -228,6 +228,8 @@ module fpga_main(
 	wire [15:0]  gtp_token;		// token data and status to channels
 	wire [15:0]	 trg_data;		// data from triggen to trigger block fifo in memory
 	wire			 trg_valid;		// valid accompanying the above
+	wire [15:0]	 tok_data;		// data from token synchro module
+	wire			 tok_valid;		// valid accompanying the above
 	wire [14:0]  usr_word;		// user word from CSR to be put to trigger block in memory
 	wire			 trigger;		// master trigger from triggen to commutation in csreg
 	wire			 inhibit;		// inhibit from triggen to commutation in csreg
@@ -237,6 +239,7 @@ module fpga_main(
 	wire			 mem_status;	// memory errors
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
+	wire [15:13] CSR_BITS;			// CSR bits 15:13
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -257,7 +260,6 @@ module fpga_main(
    assign BDACC = 1'bz;
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
-	
 
 	csreg reg_csr (
 		.wb_clk (wb_clk), 
@@ -269,7 +271,7 @@ module fpga_main(
 		.wb_dat_o (wb_s2m_reg_csr_dat), 
 		.wb_ack (wb_s2m_reg_csr_ack),
 		//
-		.gen_o   (),
+		.gen_o   (CSR_BITS),
 		.gen_i	({22'h0, token}),
 		// assigned outputs
 		.pwb_rst	(ICX[5]),		// peripheral wishbone reset
@@ -280,6 +282,7 @@ module fpga_main(
 		// front panel signals
 		.trig_FP	(FP[1:0]),
 		.inh_FP	(FP[3:2]),
+		.trig1_FP (FP[5:4]),
 		// back panel signals
 		.trig_BP	({USRDEF[5], USRDEF[6]}),
 		.inh_BP	({USRDEF[2], USRDEF[0]}),
@@ -294,8 +297,6 @@ module fpga_main(
 		.CLKENBFP	(CLKENBFP),
 		.testpulse	(ICX[7])
 	);
-	
-	assign FP[5:4] = 2'bZZ;
 	
 	assign wb_s2m_reg_csr_rty = 0;
 	assign wb_s2m_reg_csr_err = 0;
@@ -438,7 +439,6 @@ vme (
 	assign wb_s2m_i2c_ms_cbuf_dat[31:8] = 0;		// pad high data with zeroes
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
-
 	
    gentrig UTRIG (
 		// GTP reciever data and k-char info
@@ -467,6 +467,16 @@ vme (
 
 	assign wb_s2m_triggen_err = 0;
 	assign wb_s2m_triggen_rty = 0;
+
+	toksync UTOKSYNC(
+		.clk		(CLK125),	// gtp clock
+		.token 	(token),		// token
+		.tok_rdy (tok_rdy),	// token strob
+		.tok_dat (tok_data),	// data to FIFO
+		.tok_vld (tok_valid),	// valid to FIFO
+		.inhibit (ICX[6]),		// global inhibit
+		.enable	(CSR_BITS[13])	// enable these blocks
+    );
 
 //		SPI to DAC
 wire [6:0] empty_spi_csa;
@@ -550,6 +560,10 @@ sdram (
 	 .trg_dat	(trg_data),
 	// trigger data valid
 	 .trg_vld	(trg_valid),
+	// token synchronization
+	 .tok_dat	(tok_data),
+	// trigger data valid
+	 .tok_vld	(tok_valid),
 	// SDRAM interface
 	 .mcb_clk		(CLKMCB),
 	// Address

@@ -28,7 +28,8 @@
 //			for modes 0-3 IN1 of CDCUN must be selected
 //			for modes 4-7 IN2 of CDCUN must be selected
 //		CSR[11]		 test pulse generation enable (makes ~100 Hz ~1 us pulses on ICX[7])
-//		CSR[15:12]	 general purpose CSR outputs
+//		CSR[12]		 enable trigger+inhibit mixture on FP[5:4]
+//		CSR[15:13]	 general purpose CSR outputs. CSR[13] - enable token sychro blocks (type=5).
 //		CSR[30:16]	 user word to be put to trigger block written to memory	 
 //		CSR[31] 		 peripheral WB reset
 //		CSR+4 [31:0] are general inputs from the upper hierarchy, unused so far
@@ -45,7 +46,7 @@ module csreg(
     input wb_stb,
 	 input wb_adr,
 	 // reg outputs/inputs for general purposes
-    output [3:0]		gen_o,
+    output [2:0]		gen_o,
     input [31:0] 		gen_i,
 	 // assigned outputs
 	 output				pwb_rst,		// peripheral wishbone reset
@@ -56,6 +57,7 @@ module csreg(
 	 // front panel signals
 	 inout [1:0] 		trig_FP,
 	 inout [1:0] 		inh_FP,
+	 output reg [1:0]		trig1_FP,
 	 // back panel signals
 	 inout [1:0] 		trig_BP,
 	 inout [1:0]		inh_BP,
@@ -102,6 +104,9 @@ module csreg(
 	reg [6:0]  test_prediv = 0;
 	reg        test_prepulse = 0;
 	reg [12:0] test_div = 0;
+
+	// trigger + inhibit mixture
+	reg [6:0]	trig_blk_cnt = 0;
 
 	assign gen_o = csr[15:11];
 	assign pwb_rst = csr[31];
@@ -363,5 +368,25 @@ module csreg(
 			testpulse <= 0;
 		end
 	end
-
+//		Trigger + inhibit mixture for proportional chambers
+	always @ (posedge wb_clk) begin
+		if (csr[12]) begin
+			if (inh_to_ICX) begin
+				trig1_FP <= 2'b10;
+				trig_blk_cnt <= 0;
+			end else if (trig_blk_cnt > 0) begin
+				trig_blk_cnt <= trig_blk_cnt - 1;
+				if (trig_blk_cnt > 120) begin
+					trig1_FP <= 2'b10;
+				end else begin
+					trig1_FP <= 2'b01;
+				end
+			end else if (trig_to_ICX) begin
+				trig_blk_cnt <= 127;
+			end
+		end else begin
+			trig1_FP <= 2'bZZ;
+			trig_blk_cnt <= 0;
+		end
+	end
 endmodule

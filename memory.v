@@ -53,6 +53,9 @@ module memory # (
 	 input [15:0]	trg_dat,
 	// trigger data valid
 	 input			trg_vld,
+	//		token synchronization
+	 input [15:0]  tok_dat,
+	 input         tok_vld,
 	// SDRAM interface
 	 input         mcb_clk,
 	// Address
@@ -109,7 +112,7 @@ module memory # (
 	wire			invld;			// fifo under invalidation
 
 	// gtp recievers and arbitter
-	localparam 				NFIFO		= 5;
+	localparam 				NFIFO		= 6;
 	wire [31:0] 			dattoarb;			// data from gtp FIFOs to arbitter (common "tri-state")
 	wire [NFIFO-1:0]		fifo_have;			// ready from FIFOs to arbitter
 	wire [NFIFO-1:0]		arb_wants;			// get from arbitter to FIFOs
@@ -511,6 +514,24 @@ u_memcntr (
 				.err_ovr		(fifo_ovr[4]),
 				.err_undr	(fifo_undr[4]),
 				.missed		(fifo_missed[4])
+			);
+
+//	sixth fifo keeps timing information for tokens 0, 256, 512 and 768
+			gtpfifo # (
+				.MBITS(FIFO_MBITS)
+			) 
+			tokfifo(
+				.gtp_clk		(gtp_clk),
+				.gtp_dat    (tok_dat),
+				.gtp_vld		(tok_vld),
+				.rst			(fifo_rst),
+				.give			(arb_wants[5]),
+				.data			(dattoarb),
+				.have			(fifo_have[5]),
+				.empty		(fifo_empty[5]),
+				.err_ovr		(fifo_ovr[5]),
+				.err_undr	(fifo_undr[5]),
+				.missed		(fifo_missed[5])
 			);
 	
 // arbitter

@@ -90,6 +90,7 @@ module gentrig # (
 	reg [31:0] 	TRGCNT = 0;					// master triggers counter
 	reg [31:0] 	MISCNT = 0;					// triggers missed because of blocking
 	reg [44:0] 	GTIME = 0;					// global system time
+	reg [44:0] 	GTIMES = 0;					// global system time
 	
 	reg 			cnt_reset = 0;				// counters reset
 	reg 			soft_trig = 0;				// soft trigger
@@ -228,6 +229,7 @@ module gentrig # (
 			mem_cnt <= MEM_WORDS + 1;
 			or_trg <= {per_trig, soft_trig, CTRG};
 			or_cnt <= CSR[6:4];
+			GTIMES <= GTIME;
 		end else begin
 			if (mem_cnt == (MEM_WORDS + 1)) begin
 				// stay here during trigger catching time
@@ -248,11 +250,11 @@ module gentrig # (
 						//		2	0uuu uuuu uuuu uuuu - user word
 						MEM_WORDS-2 : trg_dat <= {1'b0, usr_word}; 
 						//		3	0 GTIME[14:0]		  - lower GTIME
-						MEM_WORDS-3 : trg_dat <= {1'b0, GTIME[14:0]}; 
+						MEM_WORDS-3 : trg_dat <= {1'b0, GTIMES[14:0]}; 
 						//		4	0 GTIME[29:15]		  - middle GTIME
-						MEM_WORDS-4 : trg_dat <= {1'b0, GTIME[29:15]}; 
+						MEM_WORDS-4 : trg_dat <= {1'b0, GTIMES[29:15]}; 
 						//		5	0 GTIME[44:30]		  - higher GTIME
-						MEM_WORDS-5 : trg_dat <= {1'b0, GTIME[44:30]}; 
+						MEM_WORDS-5 : trg_dat <= {1'b0, GTIMES[44:30]}; 
 						//		6  0 TRIGCNT[14:0]	  - lower trigger counter, 11 LSB coinside with token
 						MEM_WORDS-6 : trg_dat <= {1'b0, TRGCNT[14:0]}; 
 						//		7  0 TRIGCNT[29:15]	  - higher trigger counter
