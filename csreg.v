@@ -109,7 +109,7 @@ module csreg(
 	// trigger + inhibit mixture
 	reg [6:0]	trig_blk_cnt = 0;
 
-	assign gen_o = csr[15:11];
+	assign gen_o = csr[15:13];
 	assign pwb_rst = csr[31];
 	assign usr_word = csr[30:16];
 

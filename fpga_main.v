@@ -478,6 +478,12 @@ vme (
 		.enable	(CSR_BITS[13])	// enable these blocks
     );
 
+assign TP[1] = tok_rdy;
+assign TP[2] = tok_valid;
+assign TP[3] = ICX[6];
+assign TP[4] = CSR_BITS[13];
+assign TP[5] = ICX[0];
+
 //		SPI to DAC
 wire [6:0] empty_spi_csa;
 xspi_master  #(
@@ -590,7 +596,7 @@ sdram (
     .MEMRZQ			(MEMRZQ),
 	// current status
     .status			(mem_status),
-	 .tp				(TP[5:1])
+	 .tp				()
     );
 	
 	assign	wb_s2m_sdram_err = 0;
