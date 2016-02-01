@@ -57,7 +57,7 @@ module toksync(
 						end
 				end
 			1 : begin
-					tok_dat <= {4'h5, blk_par, 1'b0, token};
+					tok_dat <= {4'b0101, blk_par, 1'b0, token};
 					tok_vld <= 1;
 					send_cnt <= 2;
 				end
