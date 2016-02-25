@@ -208,7 +208,7 @@ module gentrig # (
 		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
 		if (any_trig & ~blk) begin
 			// start sending token on first trig in group if not inhibited or soft trigger
-			ser_trg <= {1'b0, ~(^TRGCNT[TOKEN_LENGTH-1:0]), TRGCNT[TOKEN_LENGTH-1:0], 1'b1};
+			ser_trg <= {1'b0, ~(^TRGCNT[TOKEN_LENGTH-1:0]), TRGCNT[TOKEN_LENGTH-1:TOKEN_LENGTH/2], ~TRGCNT[TOKEN_LENGTH/2-1:0], 1'b1};
 			ser_div <= TOKEN_CLKDIV - 1;
 			ser_cnt <= TOKEN_LENGTH + 2;
 		end else begin

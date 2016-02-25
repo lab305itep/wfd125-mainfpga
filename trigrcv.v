@@ -34,8 +34,10 @@ module trigrcv # (
 	reg [3:0]					ser_cnt = 0;	// counter of transmitted token bits
 	reg [3:0]					ser_div = 0;	// conter of frq divider for token transmission
 	reg							ser_err = 0;	// error flag
+	wire                    parity_res;		// resulting parity
 	
-	assign	token = ser_trg[TOKEN_LENGTH:1];
+	assign token = {ser_trg[TOKEN_LENGTH:TOKEN_LENGTH/2+1], ~ser_trg[TOKEN_LENGTH/2:1]};
+	assign parity_res = ser_trg[TOKEN_LENGTH+1] ^ (^token);
 	
 	always @ (posedge clk) begin
 		ser_trig <= ser_trig_in;
@@ -57,7 +59,7 @@ module trigrcv # (
 					if (ser_trig != ser_trg[TOKEN_LENGTH+2]) ser_err <= 1;
 					if (~(|ser_cnt)) begin
 						// last bit sampled and shifted, check start/stop and par
-						if (~ser_trg[0] | ser_trg[TOKEN_LENGTH+2] | ~(^ser_trg[TOKEN_LENGTH+1:1]) | ser_err) tok_err <= 1;
+						if (~ser_trg[0] | ser_trg[TOKEN_LENGTH+2] | ~parity_res | ser_err) tok_err <= 1;
 						tok_rdy <= 1;
 					end
 				end
