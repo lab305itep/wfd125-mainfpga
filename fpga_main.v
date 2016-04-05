@@ -239,7 +239,8 @@ module fpga_main(
 	wire			 mem_status;	// memory errors
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
-	wire [15:13] CSR_BITS;			// CSR bits 15:13
+	wire [15:13] CSR_BITS;		// CSR bits 15:13
+	wire         auxtrig;		// front panel aux trigger input
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -279,6 +280,7 @@ module fpga_main(
 		// inputs from triggen
 		.trig		(trigger),
 		.inh		(inhibit),
+		.auxtrig (auxtrig),
 		// front panel signals
 		.trig_FP	(FP[1:0]),
 		.inh_FP	(FP[3:2]),
@@ -445,6 +447,7 @@ vme (
 		.gtp_clk		(CLK125),
 		.gtp_dat		(gtp_data_o),
 		.kchar		(gtp_kchar_o),
+		.auxtrig    (auxtrig),
 		// intrface to memory fifo
 		.trg_dat		(trg_data),
 		.trg_vld		(trg_valid),

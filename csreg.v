@@ -54,6 +54,7 @@ module csreg(
 	 // inputs from triggen
 	 input				trig,
 	 input				inh,
+	 output reg       auxtrig,
 	 // front panel signals
 	 inout [1:0] 		trig_FP,
 	 inout [1:0] 		inh_FP,
@@ -88,6 +89,7 @@ module csreg(
 	wire	trig_to_ICX;
 	reg  [1:0] trig_ICX_sel;
 	reg 	trig1_to_FP;
+	wire 	trig1_from_FP;
 	
 	// inhibit propagation signals
 	wire 	inh_from_FP;
@@ -100,6 +102,7 @@ module csreg(
 	reg	inh_BP_sel = 0;
 	wire	inh_to_ICX;
 	reg [1:0] inh_ICX_sel;
+	reg   [1:0] aux_trig_d = 0;
 	
 	// test pulse
 	reg [6:0]  test_prediv = 0;
@@ -373,26 +376,30 @@ module csreg(
 
 //		Trigger + inhibit mixture for proportional chambers
 
-   OBUFTDS #(
-      .IOSTANDARD("LVDS_25") // Specify the output I/O standard
-   ) OBUFTDS_inst (
-      .O(trig1_FP[0]),     // Diff_p output (connect directly to top-level port)
-      .OB(trig1_FP[1]),   // Diff_n output (connect directly to top-level port)
+   IOBUFDS #(
+      .IOSTANDARD("LVDS_25")    // Specify the I/O standard
+   ) IOBUFDS_inst (
+      .O(trig1_from_FP),     // Buffer output
+      .IO(trig1_FP[0]),   // Diff_p inout (connect directly to top-level port)
+      .IOB(trig1_FP[1]), // Diff_n inout (connect directly to top-level port)
       .I(trig1_to_FP),     // Buffer input
-      .T(~csr[12])      // 3-state enable input
+      .T(~csr[12])      // 3-state enable input, high=input, low=output
    );
  
 	always @ (posedge wb_clk) begin
 		trig1_to_FP <= 0;
-		if (inh_to_ICX) begin
+		if (inh) begin
 			trig1_to_FP <= 1;
 			trig_blk_cnt <= 0;
 		end else if (trig_blk_cnt > 0) begin
 			trig_blk_cnt <= trig_blk_cnt - 1;
-			trig1_to_FP <= (trig_blk_cnt > 120) ? 1 : 0;
-		end else if (trig_to_ICX) begin
-			trig_blk_cnt <= 127;
+			trig1_to_FP <= (trig_blk_cnt > 56) ? 1 : 0;
+		end else if (trig) begin
+			trig_blk_cnt <= 63;
 			trig1_to_FP <= 1;			
 		end
+		auxtrig <= 0;
+		if (aux_trig_d == 2'b01) auxtrig <= 1;
+		aux_trig_d <= {aux_trig_d[0], trig1_from_FP};
 	end
 endmodule

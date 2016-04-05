@@ -25,7 +25,8 @@
 //			15:7  - 1 + trigger blocking time (125MHz ticks), actual blocking time 
 //						cannot be less than token transmission time 14*TOKEN_CLKDIV clocks
 //			28:16 - period in ms of the soft trigger generation, zero value means no periodical soft trigger, not generated on INH
-//			30:29 - unused
+//			29    - auxillary trigger input enable
+//			30    - unused
 //			31		- inhibit, set on power on
 //		1 TRGCNT	(R) :
 //			counts issued master triggers when not inhibited, 11 LSB are used as trigger token
@@ -61,6 +62,7 @@ module gentrig # (
 		input 				gtp_clk,
 		input [63:0] 		gtp_dat,
 		input [3:0] 		kchar,
+		input             auxtrig,
 		// intrface to memory fifo
 		output reg [15:0]	trg_dat,
 		output reg			trg_vld,
@@ -101,13 +103,14 @@ module gentrig # (
 	reg [31:0]	cnt_dat = 0;				// selected counter data for readout
 	
 	integer j;
-	reg [3:0]  CTRG;				// current mask of triggers from channel sources, if enabled and not inhibited
+	reg [3:0]  CTRG = 0;						// current mask of triggers from channel sources, if enabled and not inhibited
+	reg        ATRG = 0;						// AUX trig masked
 
 	reg [TOKEN_LENGTH+2:0]	ser_trg = 0;	// shift reg for serial token, 3 bits longer than token length
 	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
 	reg [3:0]	ser_div = 0;	// conter of frq divider for token transmission
 	reg [3:0]	mem_cnt = 0;	// counter for words transmitted to memory
-	reg [5:0]	or_trg = 0;		//	to accumulate triggers from different sources
+	reg [6:0]	or_trg = 0;		//	to accumulate triggers from different sources
 	reg [2:0]	or_cnt = 0;		// to count time to accumulate triggers from different sources
 	wire [10:0]	tok_mem;			// 11-bit token part of fifo block (strictly 11 bit)
 	reg [8:0]	blk_cnt = 0;	// blocking time count
@@ -131,7 +134,7 @@ module gentrig # (
 	// millisecond pulse
 	assign ms_p = (&GTIME[16:0]) & ~CSR[31];
 	// trigger OR
-	assign any_trig = (|CTRG) | soft_trig | per_trig;
+	assign any_trig = (|CTRG) | soft_trig | per_trig | ATRG;
 	
 	// Make trigger signals from channels
 //	genvar i;
@@ -203,6 +206,7 @@ module gentrig # (
 		for (j=0; j<4; j=j+1) begin
 			CTRG[j] <= ~CSR[31] & CSR[j] & kchar[j] & (gtp_dat[16*j +:16] == CH_TRIG);
 		end	
+		ATRG <= ~CSR[31] & CSR[29] & auxtrig;
 
 		// Sending trigger token (immediately on first appearing trigger from channels)
 		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
@@ -227,14 +231,14 @@ module gentrig # (
 		if (any_trig & ~blk) begin
 			// initialize and catch first trigger to OR
 			mem_cnt <= MEM_WORDS + 1;
-			or_trg <= {per_trig, soft_trig, CTRG};
+			or_trg <= {ATRG, per_trig, soft_trig, CTRG};
 			or_cnt <= CSR[6:4];
 			GTIMES <= GTIME;
 		end else begin
 			if (mem_cnt == (MEM_WORDS + 1)) begin
 				// stay here during trigger catching time
 				if (|or_cnt) begin
-					or_trg <= or_trg | {2'b00, CTRG};
+					or_trg <= or_trg | {ATRG, 2'b00, CTRG};
 					or_cnt <= or_cnt - 1;
 				end else begin
 					mem_cnt <= mem_cnt - 1;
@@ -244,7 +248,7 @@ module gentrig # (
 					// send trig info words one by one
 					case (mem_cnt)
 						//		0	10SC CCCL LLLL LLLL 	CW
-						MEM_WORDS   : trg_dat <= {1'b1, or_trg, MEM_LEN};	//	 L=7 
+						MEM_WORDS   : trg_dat <= {1'b1, or_trg[5:0], MEM_LEN};	//	 L=7 
 						// 	1	0ttt pnnn nnnn nnnn - ttt=2 - trigger info block, token
 						MEM_WORDS-1 : trg_dat <= {4'b0010, TRGCNT[0], tok_mem};
 						//		2	0uuu uuuu uuuu uuuu - user word
