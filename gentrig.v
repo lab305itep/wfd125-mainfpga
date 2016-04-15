@@ -26,7 +26,7 @@
 //						cannot be less than token transmission time 14*TOKEN_CLKDIV clocks
 //			28:16 - period in ms of the soft trigger generation, zero value means no periodical soft trigger, not generated on INH
 //			29    - auxillary trigger input enable
-//			30    - unused
+//			30    - enable trigger info blocks (type = 2) to be sent to FIFO
 //			31		- inhibit, set on power on
 //		1 TRGCNT	(R) :
 //			counts issued master triggers when not inhibited, 11 LSB are used as trigger token
@@ -120,6 +120,7 @@ module gentrig # (
 	reg			per_trig = 0;	// periodical soft trigger
 	reg [13:0]	per_cnt = 0;	// periodical soft trigger period counter
 	wire 			any_trig;		// or of all reigger sources
+	reg			trg_block_enable = 0;	// enable sending trigger block to FIFO
 
 	// Inhibit and trigger outputs
 	assign inhibit = CSR[31];
@@ -267,9 +268,11 @@ module gentrig # (
 							TRGCNT <= TRGCNT + 1;		//	increment trigger counter here, not used anymore with this trigger
 						end
 					endcase
-					trg_vld <= 1;				// acknowledge trigger data
+					trg_vld <= trg_block_enable;				// acknowledge trigger data
 					mem_cnt <= mem_cnt - 1;	// to the next word
-				end	// nonzero mem_cnt
+				end else begin// nonzero mem_cnt
+					trg_block_enable <= CSR[30];
+				end
 			end
 		end
 
