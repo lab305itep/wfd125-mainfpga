@@ -533,8 +533,8 @@
     <!-- include files.                                                       -->
     <file xil_pn:name="wb_intercon.vh" xil_pn:type="FILE_VERILOG"/>
     <file xil_pn:name="version.vh" xil_pn:type="FILE_VERILOG"/>
-    <file xil_pn:name="intercon/verilog_utils.vh" xil_pn:type="FILE_VERILOG"/>
     <file xil_pn:name="include/i2c_master_slave_defines.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="intercon/verilog_utils.vh" xil_pn:type="FILE_VERILOG"/>
   </autoManagedFiles>
 
 </project>

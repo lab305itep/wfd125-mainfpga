@@ -16,9 +16,9 @@
 //			1 - I->FI	internal trigger to channels and front panel
 //			2 - I->BI	internal trigger to channels and back panel
 //			3 - I->FBI	internal trigger to channels, front and back panels
-//			4 - F->I		front panel trigger to channels
+//			4 - F->I	front panel trigger to channels
 //			5 - F->BI	front panel trigger to channels and back panel
-//			6 - B->I		back panel trigger to channels
+//			6 - B->I	back panel trigger to channels
 //			7 - B->FI	back panel trigger to channels and front panel
 //		CSR[3]	 if 1, channels do not accept trigger
 //		CSR[6:4]  defines connection of INH similarly to trigger connections
