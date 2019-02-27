@@ -54,7 +54,7 @@ module csreg(
 	 // inputs from triggen
 	 input				trig,
 	 input				inh,
-	 output reg       auxtrig,
+	 output           auxtrig,		// translated from FP trig1 trigger
 	 // front panel signals
 	 inout [1:0] 		trig_FP,
 	 inout [1:0] 		inh_FP,
@@ -150,7 +150,7 @@ module csreg(
       3'b100 : begin		// front panel clock to ADC's, needs CDCUN select input 1
                end
       3'b101 : begin		// front panel clock to ADC's and back panel, needs CDCUN select input 1
-                  OCLKSEL <= 1;
+						OCLKSEL <= 1;
 						CLKENBP <= 1;
                end
       3'b110 : begin		// back panel clock to ADC's, needs CDCUN select input 1
@@ -376,14 +376,15 @@ module csreg(
 
 //		Trigger + inhibit mixture for proportional chambers
 
-   IOBUFDS #(
+   IBUFDS #(
+      .DIFF_TERM("TRUE"),   	  // Differential Termination
       .IOSTANDARD("LVDS_25")    // Specify the I/O standard
-   ) IOBUFDS_inst (
+   ) auxtrig_fp (
       .O(trig1_from_FP),     // Buffer output
-      .IO(trig1_FP[0]),   // Diff_p inout (connect directly to top-level port)
-      .IOB(trig1_FP[1]), // Diff_n inout (connect directly to top-level port)
-      .I(trig1_to_FP),     // Buffer input
-      .T(~csr[12])      // 3-state enable input, high=input, low=output
+      .I(trig1_FP[0]),   // Diff_p inout (connect directly to top-level port)
+      .IB(trig1_FP[1])   // Diff_n inout (connect directly to top-level port)
+//      .I(trig1_to_FP),     // Buffer input
+//      .T(~csr[12])      // 3-state enable input, high=input, low=output
    );
  
 	always @ (posedge wb_clk) begin
@@ -398,8 +399,12 @@ module csreg(
 			trig_blk_cnt <= 63;
 			trig1_to_FP <= 1;			
 		end
-		auxtrig <= 0;
-		if (aux_trig_d == 2'b01) auxtrig <= 1;
-		aux_trig_d <= {aux_trig_d[0], trig1_from_FP};
+//		auxtrig <= 0;
+//		if (aux_trig_d == 2'b01) auxtrig <= 1;
+//		aux_trig_d <= {aux_trig_d[0], trig1_from_FP};
 	end
+
+// just translate input auxtrig to the trigger module
+	assign auxtrig = trig1_from_FP;
+
 endmodule

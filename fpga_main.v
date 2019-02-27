@@ -240,7 +240,7 @@ module fpga_main(
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
 	wire [15:13] CSR_BITS;		// CSR bits 15:13
-	wire         auxtrig;		// front panel aux trigger input
+	wire         auxtrig;		// front panel aux trigger single CLK pulse
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;

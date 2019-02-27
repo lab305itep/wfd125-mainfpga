@@ -85,17 +85,20 @@ module gentrig # (
 
 	localparam	CH_COMMA = 16'h00BC;		// comma K28.5
 	localparam  CH_TRIG  = 16'h801C;		// K-character K28.0
-	localparam  MEM_WORDS  = 8;			// number of words sent to memory FIFO (<=14)
-	wire [8:0]	MEM_LEN = MEM_WORDS-1;	// length of fifo block in CW
+	localparam  MEM_WORDS  = 8;			// TRIG: number of words sent to memory FIFO (<=14)
+	wire [8:0]	MEM_LEN = MEM_WORDS-1;	// TRIG: length of fifo block in CW
+	localparam  CMEM_WORDS  = 9;			// CYCLE: number of words sent to memory FIFO  (<=14)
+	wire [8:0]	CMEM_LEN = CMEM_WORDS-1;	// CYCLE: length of fifo block in CW
 
 	reg [31:0] 	CSR = 32'h80000000;		// inhibit is set on power on
 	reg [31:0] 	TRGCNT = 0;					// master triggers counter
 	reg [31:0] 	MISCNT = 0;					// triggers missed because of blocking
 	reg [44:0] 	GTIME = 0;					// global system time
 	reg [44:0] 	GTIMES = 0;					// global system time
+	reg [31:0] 	CYCCNT = 0;					// cycles, initated by long aux trigger
 	
-	reg 			cnt_reset = 0;				// counters reset
-	reg 			soft_trig = 0;				// soft trigger
+	reg 		cnt_reset = 0;				// counters reset
+	reg 		soft_trig = 0;				// soft trigger
 	reg			st_req = 0;					// soft trigger request from WB
 	reg			st_done = 0;				// soft trigger ack
 	reg [2:0]	rd_sel = 0;					//	prepare counters for readout through WB
@@ -103,23 +106,29 @@ module gentrig # (
 	reg [31:0]	cnt_dat = 0;				// selected counter data for readout
 	
 	integer j;
-	reg [3:0]  CTRG = 0;						// current mask of triggers from channel sources, if enabled and not inhibited
-	reg        ATRG = 0;						// AUX trig masked
+	reg [3:0]	CTRG = 0;						// current mask of triggers from channel sources, if enabled and not inhibited
+	reg			ATRG = 0;						// AUX trig masked
+
+	reg [2:0]	aux_trig_d = 0;				// for detection of aux trigger
+	reg			auxlong = 0;					// long aux = cycle
+	reg [9:0]	auxlong_cnt;					// cycle = aux active for 8 us 
+	reg			cycle = 0;					// cycle 1 CLK pulse after 8 us aux detected
 
 	reg [TOKEN_LENGTH+2:0]	ser_trg = 0;	// shift reg for serial token, 3 bits longer than token length
 	reg [3:0]	ser_cnt = 0;	// counter of transmitted token bits
 	reg [3:0]	ser_div = 0;	// conter of frq divider for token transmission
-	reg [3:0]	mem_cnt = 0;	// counter for words transmitted to memory
+	reg [4:0]	mem_cnt = 0;	// counter for words transmitted to memory
+	reg [4:0]	cmem_cnt = 0;	// counter for cycle words transmitted to memory
 	reg [6:0]	or_trg = 0;		//	to accumulate triggers from different sources
 	reg [2:0]	or_cnt = 0;		// to count time to accumulate triggers from different sources
 	wire [10:0]	tok_mem;			// 11-bit token part of fifo block (strictly 11 bit)
 	reg [8:0]	blk_cnt = 0;	// blocking time count
-	wire			blk;				// sum of all blocking signals
-	wire			missed_sense;	// if 1, we are sensitive to missed triggers
-	wire			ms_p;				// about 1 ms single clk pulse
+	wire		blk;				// sum of all blocking signals
+	wire		missed_sense;	// if 1, we are sensitive to missed triggers
+	wire		ms_p;				// about 1 ms single clk pulse
 	reg			per_trig = 0;	// periodical soft trigger
 	reg [13:0]	per_cnt = 0;	// periodical soft trigger period counter
-	wire 			any_trig;		// or of all reigger sources
+	wire 		any_trig;		// or of all reigger sources
 	reg			trg_block_enable = 0;	// enable sending trigger block to FIFO
 
 	// Inhibit and trigger outputs
@@ -127,7 +136,7 @@ module gentrig # (
 	assign trigger = ser_trg[0];
 	
 	// trigger blocking
-	assign blk = (|ser_cnt) | (|mem_cnt) | (|blk_cnt);
+	assign blk = (|ser_cnt) | (|mem_cnt) | (|blk_cnt) | auxlong | (|cmem_cnt);
 	// missed sensitivity
 	assign missed_senese = blk & (mem_cnt < (MEM_WORDS+1));
 	// token to memory (no error, will be padded to 11 bits)
@@ -207,7 +216,29 @@ module gentrig # (
 		for (j=0; j<4; j=j+1) begin
 			CTRG[j] <= ~CSR[31] & CSR[j] & kchar[j] & (gtp_dat[16*j +:16] == CH_TRIG);
 		end	
-		ATRG <= ~CSR[31] & CSR[29] & auxtrig;
+		// process aux trigger, including long as cycle indicator
+		ATRG <= 0;			// this is 1 CLK aux trigger, to be ored with other trigger sources
+		auxlong <= 0;		// this is long embracing cycle signal, used for blocking, directly follows ATRG
+		cycle <= 0;			// this is 1 CLK cycle pulse, generated when trigger longer than 8 us detected
+		case (aux_trig_d[2:1])
+			2'b01: begin
+				ATRG <= ~CSR[31];
+				auxlong_cnt <= 1000;
+			end
+			2'b11: begin
+				auxlong <= 1;
+				if (auxlong_cnt == 1) begin
+					cycle <= 1;
+				end
+				if (|auxlong_cnt) begin
+					auxlong_cnt <= auxlong_cnt - 1;
+				end
+			end
+			default: begin
+				auxlong_cnt <= 0;
+			end
+		endcase
+		aux_trig_d <= {aux_trig_d[1], aux_trig_d[0] & CSR[29], auxtrig};
 
 		// Sending trigger token (immediately on first appearing trigger from channels)
 		// token transmission is always longer than writing to memory, even if TOKEN_CLKDIV=1
@@ -268,12 +299,52 @@ module gentrig # (
 							TRGCNT <= TRGCNT + 1;		//	increment trigger counter here, not used anymore with this trigger
 						end
 					endcase
-					trg_vld <= trg_block_enable;				// acknowledge trigger data
-					mem_cnt <= mem_cnt - 1;	// to the next word
-				end else begin// nonzero mem_cnt
+					trg_vld <= trg_block_enable;	// acknowledge trigger data
+					mem_cnt <= mem_cnt - 1;			// to the next word
+				end else begin// zero mem_cnt
 					trg_block_enable <= CSR[30];
 				end
 			end
+		end
+
+		// Sending cycle block to memory fifo, no other activity 8 us before
+		if (cycle) begin
+			// initialize
+			cmem_cnt <= CMEM_WORDS;
+			GTIMES <= GTIME;
+		end else begin
+			if (|cmem_cnt) begin
+			// send cycle info words one by one
+				case (cmem_cnt)
+					//		0	10SC CCCL LLLL LLLL 	CW
+					CMEM_WORDS   : trg_dat <= {1'b1, 6'b0, CMEM_LEN};	//	 L=8 
+					// 	1	0ttt pnnn nnnn nnnn - ttt=6 - cycle info block
+					CMEM_WORDS-1 : trg_dat <= {4'b0111, CYCCNT[0], CYCCNT[10:0]};
+					//		2	0 GTIME[14:0]		  - lower GTIME
+					CMEM_WORDS-2 : trg_dat <= {1'b0, GTIMES[14:0]}; 
+					//		3	0 GTIME[29:15]		  - middle GTIME
+					CMEM_WORDS-3 : trg_dat <= {1'b0, GTIMES[29:15]}; 
+					//		4	0 GTIME[44:30]		  - higher GTIME
+					CMEM_WORDS-4 : trg_dat <= {1'b0, GTIMES[44:30]}; 
+					//		5  0 TRIGCNT[14:0]	  - lower trigger counter, 11 LSB coinside with token
+					CMEM_WORDS-5 : trg_dat <= {1'b0, TRGCNT[14:0]}; 
+					//		6  0 TRIGCNT[29:15]	  - higher trigger counter
+					CMEM_WORDS-6 : begin
+							trg_dat <= {1'b0, TRGCNT[29:15]};
+							TRGCNT[15:0] <= 0;		//	clear trigger counter here, not used anymore with this cycle
+							TRGCNT[31:16] <= TRGCNT[31:16] + 1;
+						end
+					//		7  0 CYCCNT[29:15]	  - higher cycle counter
+					CMEM_WORDS-7 : trg_dat <= {1'b0, CYCCNT[14:0]}; 
+					//		8  0 CYCCNT[29:15]	  - higher cycle counter
+					CMEM_WORDS-8 : begin
+							trg_dat <= {1'b0, CYCCNT[29:15]};
+							CYCCNT <= CYCCNT + 1;		//	increment cycle counter here, not used anymore with this cycle
+						end
+				endcase
+				trg_vld <= 1;					// acknowledge trigger data
+				cmem_cnt <= cmem_cnt - 1;		// to the next word
+			end 
 		end
 
 		// additional blocking
@@ -338,6 +409,7 @@ module gentrig # (
 			TRGCNT <= 0;
 			MISCNT <= 0;
 			GTIME <= 0;
+			CYCCNT <= 0;
 		end
 	end	// posedge gtp_clk
 

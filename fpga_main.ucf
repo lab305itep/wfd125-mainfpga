@@ -138,7 +138,7 @@ NET "ICX<13>" LOC = A5;
 NET "ICX<14>" LOC = D4;
 NET "ICX<15>" LOC = D5;
 
-# Fast serial connections and CLK
+# Fast serial onnections and CLK
 #INST "mygtp_i/tile0_mygtp_i/gtpa1_dual_i" LOC = GTPA1_DUAL_X0Y0;
 #INST "tile0_gtp0_refclk_ibufds_i" LOC = BUFDS_X1Y2;
 # Main Clock
@@ -186,12 +186,18 @@ NET "led<1>" LOC = A20;
 NET "led<2>" LOC = A19;
 NET "led<3>" LOC = B18;
 # Front panel pairs (even-odd)
-NET "FP<0>" LOC = E16 | DIFF_TERM = "TRUE";
-NET "FP<1>" LOC = F16 | DIFF_TERM = "TRUE";
-NET "FP<2>" LOC = H14 | DIFF_TERM = "TRUE";
-NET "FP<3>" LOC = G15 | DIFF_TERM = "TRUE";
-NET "FP<4>" LOC = D18 | DIFF_TERM = "TRUE";
-NET "FP<5>" LOC = D19 | DIFF_TERM = "TRUE";
+NET "FP<0>" LOC = E16 ;
+#NET "FP<0>" DIFF_TERM = "TRUE";
+NET "FP<1>" LOC = F16; 
+#NET "FP<1>" DIFF_TERM = "TRUE";
+NET "FP<2>" LOC = H14;
+#NET "FP<2>" DIFF_TERM = "TRUE";
+NET "FP<3>" LOC = G15;
+#NET "FP<3>" DIFF_TERM = "TRUE";
+NET "FP<4>" LOC = D18;
+#NET "FP<4>"  DIFF_TERM = "TRUE";
+NET "FP<5>" LOC = D19;
+#NET "FP<5>" DIFF_TERM = "TRUE";
 
 # Back panel
 # 0-2 - "next-by-next" BP pair, X-pair, board pair
