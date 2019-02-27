@@ -331,8 +331,8 @@ module gentrig # (
 					//		6  0 TRIGCNT[29:15]	  - higher trigger counter
 					CMEM_WORDS-6 : begin
 							trg_dat <= {1'b0, TRGCNT[29:15]};
-							TRGCNT[15:0] <= 0;		//	clear trigger counter here, not used anymore with this cycle
-							TRGCNT[31:16] <= TRGCNT[31:16] + 1;
+//							TRGCNT[15:0] <= 0;		//	clear trigger counter here, not used anymore with this cycle
+// Don't touch TRGCNT		TRGCNT[31:16] <= TRGCNT[31:16] + 1;
 						end
 					//		7  0 CYCCNT[29:15]	  - higher cycle counter
 					CMEM_WORDS-7 : trg_dat <= {1'b0, CYCCNT[14:0]}; 
