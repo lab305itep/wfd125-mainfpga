@@ -122,6 +122,7 @@ module gentrig # (
 	reg [6:0]	or_trg = 0;		//	to accumulate triggers from different sources
 	reg [2:0]	or_cnt = 0;		// to count time to accumulate triggers from different sources
 	wire [10:0]	tok_mem;			// 11-bit token part of fifo block (strictly 11 bit)
+	reg [10:0]	tok_mem_store;		// 11-bit token part of fifo block (strictly 11 bit), stored at trigger block write
 	reg [8:0]	blk_cnt = 0;	// blocking time count
 	wire		blk;				// sum of all blocking signals
 	wire		missed_sense;	// if 1, we are sensitive to missed triggers
@@ -282,7 +283,10 @@ module gentrig # (
 						//		0	10SC CCCL LLLL LLLL 	CW
 						MEM_WORDS   : trg_dat <= {1'b1, or_trg[5:0], MEM_LEN};	//	 L=7 
 						// 	1	0ttt pnnn nnnn nnnn - ttt=2 - trigger info block, token
-						MEM_WORDS-1 : trg_dat <= {4'b0010, TRGCNT[0], tok_mem};
+						MEM_WORDS-1 : begin
+							trg_dat <= {4'b0010, TRGCNT[0], tok_mem};
+							tok_mem_store <= tok_mem;
+						end
 						//		2	0uuu uuuu uuuu uuuu - user word
 						MEM_WORDS-2 : trg_dat <= {1'b0, usr_word}; 
 						//		3	0 GTIME[14:0]		  - lower GTIME
@@ -319,7 +323,7 @@ module gentrig # (
 					//		0	10SC CCCL LLLL LLLL 	CW
 					CMEM_WORDS   : trg_dat <= {1'b1, 6'b0, CMEM_LEN};	//	 L=8 
 					// 	1	0ttt pnnn nnnn nnnn - ttt=6 - cycle info block
-					CMEM_WORDS-1 : trg_dat <= {4'b0111, CYCCNT[0], CYCCNT[10:0]};
+					CMEM_WORDS-1 : trg_dat <= {4'b0111, tok_mem_store[0], tok_mem_store};
 					//		2	0 GTIME[14:0]		  - lower GTIME
 					CMEM_WORDS-2 : trg_dat <= {1'b0, GTIMES[14:0]}; 
 					//		3	0 GTIME[29:15]		  - middle GTIME
