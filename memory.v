@@ -243,7 +243,7 @@ module memory # (
 			inv_cnt_a <= inv_cnt_a - 1;
 		end
 		inv_nz_d <= |inv_cnt;
-		inv_nz_d <= |inv_cnt_a;
+		inv_nz_d_a <= |inv_cnt_a;
 		if (a32_fifo_adr_wr) begin
 			a32_fifo_adr <= {wba_dat_i[28:2], 2'b00};
 		end
