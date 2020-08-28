@@ -117,6 +117,19 @@ wire        wb_s2m_i2c_ms_cbuf_ack;
 wire        wb_s2m_i2c_ms_cbuf_err;
 wire        wb_s2m_i2c_ms_cbuf_stall;
 wire        wb_s2m_i2c_ms_cbuf_rty;
+wire [31:0] wb_m2s_sdrama32_adr;
+wire [31:0] wb_m2s_sdrama32_dat;
+wire  [3:0] wb_m2s_sdrama32_sel;
+wire        wb_m2s_sdrama32_we;
+wire        wb_m2s_sdrama32_cyc;
+wire        wb_m2s_sdrama32_stb;
+wire  [2:0] wb_m2s_sdrama32_cti;
+wire  [1:0] wb_m2s_sdrama32_bte;
+wire [31:0] wb_s2m_sdrama32_dat;
+wire        wb_s2m_sdrama32_ack;
+wire        wb_s2m_sdrama32_err;
+wire        wb_s2m_sdrama32_stall;
+wire        wb_s2m_sdrama32_rty;
 
 wb_intercon wb_intercon0
    (.wb_clk_i                  (wb_clk),
@@ -237,5 +250,18 @@ wb_intercon wb_intercon0
     .wb_i2c_ms_cbuf_ack_i      (wb_s2m_i2c_ms_cbuf_ack),
     .wb_i2c_ms_cbuf_err_i      (wb_s2m_i2c_ms_cbuf_err),
     .wb_i2c_ms_cbuf_stall_i    (wb_s2m_i2c_ms_cbuf_stall),
-    .wb_i2c_ms_cbuf_rty_i      (wb_s2m_i2c_ms_cbuf_rty));
+    .wb_i2c_ms_cbuf_rty_i      (wb_s2m_i2c_ms_cbuf_rty),
+    .wb_sdrama32_adr_o         (wb_m2s_sdrama32_adr),
+    .wb_sdrama32_dat_o         (wb_m2s_sdrama32_dat),
+    .wb_sdrama32_sel_o         (wb_m2s_sdrama32_sel),
+    .wb_sdrama32_we_o          (wb_m2s_sdrama32_we),
+    .wb_sdrama32_cyc_o         (wb_m2s_sdrama32_cyc),
+    .wb_sdrama32_stb_o         (wb_m2s_sdrama32_stb),
+    .wb_sdrama32_cti_o         (wb_m2s_sdrama32_cti),
+    .wb_sdrama32_bte_o         (wb_m2s_sdrama32_bte),
+    .wb_sdrama32_dat_i         (wb_s2m_sdrama32_dat),
+    .wb_sdrama32_ack_i         (wb_s2m_sdrama32_ack),
+    .wb_sdrama32_err_i         (wb_s2m_sdrama32_err),
+    .wb_sdrama32_stall_i       (wb_s2m_sdrama32_stall),
+    .wb_sdrama32_rty_i         (wb_s2m_sdrama32_rty));
 

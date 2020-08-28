@@ -9,12 +9,16 @@
 // Project Name:   wfd125-mainfpga
 // Target Devices: XC6SLX45T
 // Description: 
-//		Accepts and buffers data from 4 GTP recievers, passes it to SDRAM memory
-//		in blocks with round-robbin arbitration
-//		Supports full pipelined block transfer interface for Wishbone
-//		assumes only sequential addresses in a single block transfers
-//
-//		with CSR28=1, WADR reads debug lines as indicated below
+//	Accepts and buffers data from 4 GTP recievers, trigger and token FIFOs, passes it to SDRAM memory
+//	in blocks with round-robbin arbitration
+//	Supports full pipelined block transfer interface for Wishbone
+//	assumes only sequential addresses in a single block transfers
+//	3 memory controller ports are used:
+//		Port 0 - read/write data bridge to Wishbone for A64/D32/D64 (MBLT) access, 512 M address space, VME address is used
+//		Port 1 - read/write data bridge to Wishbone for A32/D32/D64 (MBLT) access, 32 k address space, 
+//			VME address is ignored and address written to wadr register is used, address autoincrement
+//		Port 2 - write input data to SDRAM
+//	with CSR28=1, WADR reads debug lines as indicated below
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
@@ -28,36 +32,45 @@ module memory # (
     input         wbm_cyc,
     input         wbm_stb,
     input         wbm_we,
-	 input [3:0]   wbm_sel,
-	 input [28:0]  wbm_addr,	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
+    input [3:0]   wbm_sel,
+    input [28:0]  wbm_addr,	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
     input [31:0]  wbm_dat_i,
     output reg    wbm_ack,
     output        wbm_stall,
     output reg [31:0] wbm_dat_o,
+   // Memory WishBone A32 FIFO
+    input         wba_cyc,
+    input         wba_stb,
+    input         wba_we,
+    input [3:0]   wba_sel,
+    input [31:0]  wba_dat_i,
+    output reg    wba_ack,
+    output        wba_stall,
+    output reg [31:0] wba_dat_o,
    // Register WishBone
     input         wbr_cyc,
     input         wbr_stb,
     input         wbr_we,
-	 input [1:0]   wbr_addr,
+    input [1:0]   wbr_addr,
     input [31:0]  wbr_dat_i,
     output        wbr_ack,
     output [31:0] wbr_dat_o,
    // GTP data
 	// reciever clock 125 MHz
-	 input         gtp_clk,
+    input         gtp_clk,
 	// recied data from 4 recievers
     input [63:0]  gtp_dat,
 	// recieved data valid (not a comma) from 4 recievers
     input [3:0]   gtp_vld,
 	// trigger data from triggen module
-	 input [15:0]	trg_dat,
+    input [15:0]	trg_dat,
 	// trigger data valid
-	 input			trg_vld,
+    input			trg_vld,
 	//		token synchronization
-	 input [15:0]  tok_dat,
-	 input         tok_vld,
+    input [15:0]  tok_dat,
+    input         tok_vld,
 	// SDRAM interface
-	 input         mcb_clk,
+    input         mcb_clk,
 	// Address
     output [14:0] MEMA,
 	// Bank addr
@@ -88,52 +101,73 @@ module memory # (
 //======= SIGNALS ==============
 
 	// port 0 : MIG to WB interface and fsm signals
-	localparam	inv_time = 63;// time in wb_clk to make readahead invalid (~1 us @ 125 MHz)
+	localparam	inv_time = 63;			// time in wb_clk to make readahead invalid (~1 us @ 125 MHz)
 	wire  		mem_rst;			// external reset or command from register
 	wire  		mcb_rst;			// mcb and fsm reset from CSR
-	wire			fifo_rst;		// recieving fifo reset from CSR
+	wire		fifo_rst;			// recieving fifo reset from CSR
+	// Port 0
 	wire  		w0_full;			// port 0 write fifo full
-	wire  		w0_enable;	   // port 0 write fifo enable
-	wire  		p0_full;       // port 0 cmd fifo full
-	reg   		p0_enable = 0; // port 0 cmd fifo enable
-	reg   		r0_enable = 0; // port 0 read fifo enable
-	wire			r0_empty;		// port 0 read fifo empty
-	wire [6:0]	r0_cnt;			// port 0 read fifo current data counter
+	wire  		w0_enable;			// port 0 write fifo enable
+	wire  		p0_full;			// port 0 cmd fifo full
+	reg   		p0_enable = 0;		// port 0 cmd fifo enable
+	reg   		r0_enable = 0;		// port 0 read fifo enable
+	wire		r0_empty;			// port 0 read fifo empty
+	wire [6:0]	r0_cnt;				// port 0 read fifo current data counter
 	reg [5:0] 	p0_blen;			// port 0 current burst length
-	reg [2:0] 	p0_cmd;			// port 0 instruction
-	wire [31:0] r0_data;			// port 0 read fifo data
+	reg [2:0] 	p0_cmd;				// port 0 instruction
+	wire [31:0]	r0_data;			// port 0 read fifo data
 	reg [6:0] 	stb_cnt;			// valid wbm_stb counter for one block transfer
 	reg [6:0] 	ack_cnt;			// read wbm_ack counter for one block transfer
 	reg [28:0] 	adr_beg;			// burst beginning address
-	reg [28:0] 	adr_next;		// next address available in read fifo
+	reg [28:0] 	adr_next;			// next address available in read fifo
 	reg [6:0]	rd_left;			// number of dwords in fifo (after burst execution)
-	reg [6:0]	inv_cnt = 0;	// number of dwords to take  out from fifo for invalidation
-	reg			inv_nz_d = 0;	// nonzero inv_cnt delayed
-	wire			invld;			// fifo under invalidation
+	reg [6:0]	inv_cnt = 0;		// number of dwords to take  out from fifo for invalidation
+	reg			inv_nz_d = 0;		// nonzero inv_cnt delayed
+	wire		invld;				// fifo under invalidation
+
+	// Port 1
+	wire  		w1_full;			// port 1 write fifo full
+	wire  		w1_enable;			// port 1 write fifo enable
+	wire  		p1_full;			// port 1 cmd fifo full
+	reg   		p1_enable = 0;			// port 1 cmd fifo enable
+	reg   		r1_enable = 0;			// port 1 read fifo enable
+	wire		r1_empty;			// port 1 read fifo empty
+	wire [6:0]	r1_cnt;				// port 1 read fifo current data counter
+	reg [5:0] 	p1_blen;			// port 1 current burst length
+	reg [2:0] 	p1_cmd;				// port 1 instruction
+	wire [31:0]	r1_data;			// port 1 read fifo data
+	reg [28:0]	a32_fifo_adr;		// address for port 1 access, autoincremented
+	wire		a32_fifo_adr_wr;		// address for port 1 access write strob
+	reg [6:0] 	stb_cnt_a;			// valid wbm_stb counter for one block transfer
+	reg [6:0] 	ack_cnt_a;			// read wbm_ack counter for one block transfer
+	reg [6:0]	rd_left_a;			// number of dwords in fifo (after burst execution)
+	reg [6:0]	inv_cnt_a = 0;		// number of dwords to take  out from fifo for invalidation
+	reg			inv_nz_d_a = 0;		// nonzero inv_cnt delayed
+	wire		invld_a;			// fifo under invalidation
 
 	// gtp recievers and arbitter
-	localparam 				NFIFO		= 6;
+	localparam 			NFIFO = 6;
 	wire [31:0] 			dattoarb;			// data from gtp FIFOs to arbitter (common "tri-state")
 	wire [NFIFO-1:0]		fifo_have;			// ready from FIFOs to arbitter
 	wire [NFIFO-1:0]		arb_wants;			// get from arbitter to FIFOs
 	wire [NFIFO-1:0]		fifo_empty;			// empty flag from fifos
-	wire [NFIFO-1:0]		fifo_missed;		// error pulse from fifo when it's full to accept a block
+	wire [NFIFO-1:0]		fifo_missed;			// error pulse from fifo when it's full to accept a block
 	wire [NFIFO-1:0]		fifo_ovr;			// error pulse from fifo when it expects CW but doesn't get it
 	wire [NFIFO-1:0]		fifo_undr;			// error pulse from fifo when it gets unexpected CW
-	wire						arb_invld;			// wadr read from arbitter -- invalidate WB fifo
+	wire				arb_invld;			// wadr read from arbitter -- invalidate WB fifo
 
 	// port 2 : arbitter to MIG interface
 	wire			p2_enable;		// port 2 cmd fifo enable
-	wire			p2_full;			// port 2 cmd fifo full
+	wire			p2_full;		// port 2 cmd fifo full
 	wire			p2_empty;		// port 2 cmd fifo empty
-	wire [5:0]	p2_blen;			// port 2 current burst length
+	wire [5:0]		p2_blen;		// port 2 current burst length
 	wire			w2_enable;		// port 2 write fifo enable
-	wire			w2_full;			// port 2 write fifo full
+	wire			w2_full;		// port 2 write fifo full
 	wire			w2_empty;		// port 2 write fifo empty
-	wire [28:0]	adr_rcv;			// port 2 address within recieving area
-	wire [31:0]	datfromarb;		// port 2 write data from arbitter
+	wire [28:0]		adr_rcv;		// port 2 address within recieving area
+	wire [31:0]		datfromarb;		// port 2 write data from arbitter
 
-	wire [31:0] wbr_dat_a;		// register data from arbitter
+	wire [31:0] wbr_dat_a;				// register data from arbitter
 
 	// debug lines
 	// 31        28  X X 25  24     23  22  21  20   X 18  12     11  10   9   8   X 6    0
@@ -161,43 +195,64 @@ module memory # (
 	// We always write to wr_fifo if it's not full, otherwise we signal STALL
 	assign w0_enable = wbm_cyc & wbm_stb & wbm_we & ~wbm_stall;
 	assign wbm_stall = w0_full | p0_full;
+	assign w1_enable = wba_cyc & wba_stb & wba_we & ~wba_stall;
+	assign wba_stall = w1_full | p1_full;
 	assign mem_rst = wb_rst | mcb_rst;
 	
 	assign invld = inv_nz_d | (|inv_cnt);
+	assign invld_a = inv_nz_d_a | (|inv_cnt_a);
 
 // MIG to WB state machine
 	reg [2:0] state;
+	reg [2:0] state_a;
 	localparam ST_RST 		= 0;
 	localparam ST_IDLE 		= 1;
 	localparam ST_WR_FIFO 	= 2;
-	localparam ST_WR_CMD		= 3;
+	localparam ST_WR_CMD	= 3;
 	localparam ST_RD_FIFO 	= 4;
-	localparam ST_RD_CMD		= 5;
-	
+	localparam ST_RD_CMD	= 5;
 	
 	always @(posedge wb_clk) begin
 		// Defaults
 		wbm_ack <= w0_enable;	
+		wba_ack <= w1_enable;	
 		if (wbm_cyc & wbm_stb & ~wbm_stall) begin
 			stb_cnt <= stb_cnt + 1;
 		end
+		if (wba_cyc & wba_stb & ~wba_stall) begin
+			stb_cnt_a <= stb_cnt_a + 1;
+		end
 		p0_enable <= 0;
 		r0_enable <= 0;
+		p1_enable <= 0;
+		r1_enable <= 0;
 		// check invalidation req from arbitter
 		if (arb_invld) begin
 			inv_cnt <= rd_left;
 			rd_left <= 0;
+			inv_cnt_a <= rd_left_a;
+			rd_left_a <= 0;
 		end
 		// service invalidate request: take out data from rd fifo when allowed by r0_empty
 		if (|inv_cnt & ~r0_empty) begin
 			r0_enable <= 1;
 			inv_cnt <= inv_cnt - 1;
 		end
+		if (|inv_cnt_a & ~r1_empty) begin
+			r1_enable <= 1;
+			inv_cnt_a <= inv_cnt_a - 1;
+		end
 		inv_nz_d <= |inv_cnt;
+		inv_nz_d <= |inv_cnt_a;
+		if (a32_fifo_adr_wr) begin
+			a32_fifo_adr <= {wba_dat_i[28:2], 2'b00};
+		end
 		// main state machine
 		if (mem_rst) begin
-         state <= ST_RST;
-      end else begin
+			state <= ST_RST;
+			state_a <= ST_RST;
+		end else begin
+//***********************	Port 0 - VME A64 FIFO read/write	************************//
 			case (state)
 				ST_RST : begin
 					// We are here at the end of reset pulse and always with mcb_reset (no need to clear fifos)
@@ -208,7 +263,7 @@ module memory # (
 						state <= ST_IDLE;
 					end
 				end
-            ST_IDLE : begin
+				ST_IDLE : begin
 					stb_cnt <= 0;
 					ack_cnt <= 0;
 					if (wbm_cyc & wbm_stb & ~wbm_stall) begin
@@ -308,6 +363,117 @@ module memory # (
 					end
             end
          endcase 
+//***********************	Port 1 - VME A32 FIFO read/write	************************//
+			case (state_a)
+				ST_RST : begin
+					// We are here at the end of reset pulse and always with mcb_reset (no need to clear fifos)
+					// Wait for end of current cycle here
+					if (~wba_cyc) begin
+						inv_cnt_a <= 0;
+						rd_left_a <= 0;
+						state_a <= ST_IDLE;
+						a32_fifo_adr <= 0;
+					end
+				end
+				ST_IDLE : begin
+					stb_cnt_a <= 0;
+					ack_cnt_a <= 0;
+					if (wba_cyc & wba_stb & ~wba_stall) begin
+						// This is first valid stb in a cycle
+						stb_cnt_a <= 1;
+						if (wba_we) begin
+							// Write operation
+							state_a <= ST_WR_FIFO;
+						end else begin
+							// Read operation
+							if (|rd_left_a & ~invld_a) begin	// we always read the next word unless the new address was set
+								// we may have data in fifo ready immediately
+								if (~r1_empty) begin
+								// we have reqired data in read fifo
+									r1_enable <= 1;
+									rd_left_a <= rd_left_a - 1;
+									wba_ack <= 1;
+									wba_dat_o <= r1_data;
+									ack_cnt_a <= 1;
+									a32_fifo_adr <= a32_fifo_adr + 4;	// 4 bytes interface width
+								end
+								state <= ST_RD_FIFO;
+							end else begin
+								// otherwise start new burst and read out dummy data if necessary
+								p1_blen <= READ_BURST_LEN - 1;
+								p1_cmd <= 3'b011;			// read with autoprecharge
+								ack_cnt_a <= 0;
+								if (~invld_a) begin			// start invalidation if not already underway
+									inv_cnt_a <= rd_left_a;
+								end
+								rd_left_a <= READ_BURST_LEN;		// we will execute burst, immediately or not
+								if (p1_full) begin
+									state_a <= ST_RD_CMD;
+								end else begin 
+									p1_enable <= 1;		// execute instruction
+									state_a <= ST_RD_FIFO;
+								end
+							end
+						end
+					end
+            end
+            ST_WR_FIFO : begin
+					if (w1_full | ~wba_cyc) begin
+						// wr_fifo full or write cycle ended
+						p1_blen <= stb_cnt_a - 1;
+						p1_cmd <= 3'b010;			// write with autoprecharge
+						inv_cnt_a <= rd_left_a;		// invalidate read fifo (always on writes)
+						rd_left_a <= 0;
+						if (p1_full) begin
+							state_a <= ST_WR_CMD;
+						end else begin 
+							p1_enable <= 1;	// execute instruction
+							a32_fifo_adr <= a32_fifo_adr + 4 * stb_cnt_a;	// 4 bytes interface width
+							state_a <= ST_IDLE;
+						end	// else we stay in this state and continue writing FIFO
+					end 
+            end
+            ST_WR_CMD : begin
+					if (~p1_full) begin
+						p1_enable <= 1;
+						a32_fifo_adr <= a32_fifo_adr + 4 * stb_cnt_a;	// 4 bytes interface width
+						state_a <= ST_IDLE;
+					end
+            end
+            ST_RD_FIFO : begin
+					if (wba_cyc & ((ack_cnt_a < stb_cnt_a) | wba_stb)) begin
+						if (|rd_left_a) begin 
+							if (~invld_a & ~r1_empty) begin
+							// we have data to read and junk already removed -- send
+								r1_enable <= 1;
+								rd_left_a <= rd_left_a - 1;
+								wba_ack <= 1;
+								wba_dat_o <= r1_data;
+								ack_cnt_a <= ack_cnt_a + 1;
+								a32_fifo_adr <= a32_fifo_adr + 4;
+							end
+						end else begin
+							// this is not the first read and we need more data -- start new burst with no invalidation
+							p1_blen <= READ_BURST_LEN - 1;
+							p1_cmd <= 3'b011;			// read with autoprecharge
+							rd_left_a <= READ_BURST_LEN;
+							if (p1_full) begin
+								state_a <= ST_RD_CMD;
+							end else begin 
+								p1_enable <= 1;		// execute instruction
+							end
+						end
+					end else if (~wba_cyc) begin
+						state_a <= ST_IDLE;
+					end
+            end
+            ST_RD_CMD : begin
+					if (~p1_full) begin
+						p1_enable <= 1;		// execute instruction (prepared in ST_IDLE)
+						state_a <= ST_RD_FIFO;
+					end
+            end
+         endcase 
       end
 	end
 
@@ -333,8 +499,8 @@ u_memcntr (
 // system
   .c1_sys_clk             (mcb_clk),
   .c1_sys_rst_i           (mem_rst),                        
-  .c1_clk0		        	  (),			// unused output
-  .c1_rst0		           (),			// unused output
+  .c1_clk0		  (),			// unused output
+  .c1_rst0		  (),			// unused output
   .c1_calib_done          (),			// unused so far
 // SDRAM chip signals to board
   .mcb1_dram_dq           (MEMD),  
@@ -381,29 +547,29 @@ u_memcntr (
    .c1_p0_rd_count                         (r0_cnt),
    .c1_p0_rd_overflow                      (debug[22]),
    .c1_p0_rd_error                         (debug[23]),
-// port1 unused
-   .c1_p1_cmd_clk                          (1'b0),
-   .c1_p1_cmd_en                           (1'b0),
-   .c1_p1_cmd_instr                        (3'b000),
-   .c1_p1_cmd_bl                           (6'b000000),
-   .c1_p1_cmd_byte_addr                    (30'h00000000),
+// port1 bidirectional
+   .c1_p1_cmd_clk                          (wb_clk),
+   .c1_p1_cmd_en                           (p1_enable),
+   .c1_p1_cmd_instr                        (p1_cmd),
+   .c1_p1_cmd_bl                           (p1_blen),
+   .c1_p1_cmd_byte_addr                    ({1'b0, a32_fifo_adr}),
    .c1_p1_cmd_empty                        (),
-   .c1_p1_cmd_full                         (),
-   .c1_p1_wr_clk                           (1'b0),
-   .c1_p1_wr_en                            (1'b0),
-   .c1_p1_wr_mask                          (4'b1111),
-   .c1_p1_wr_data                          (32'h00000000),
-   .c1_p1_wr_full                          (),
+   .c1_p1_cmd_full                         (p1_full),
+   .c1_p1_wr_clk                           (wb_clk),
+   .c1_p1_wr_en                            (w1_enable),
+   .c1_p1_wr_mask                          (~wba_sel),
+   .c1_p1_wr_data                          (wba_dat_i),
+   .c1_p1_wr_full                          (w1_full),
    .c1_p1_wr_empty                         (),
    .c1_p1_wr_count                         (),
    .c1_p1_wr_underrun                      (),
    .c1_p1_wr_error                         (),
-   .c1_p1_rd_clk                           (1'b0),
-   .c1_p1_rd_en                            (1'b0),
-   .c1_p1_rd_data                          (),
+   .c1_p1_rd_clk                           (wb_clk),
+   .c1_p1_rd_en                            (r1_enable),
+   .c1_p1_rd_data                          (r1_data),
    .c1_p1_rd_full                          (),
-   .c1_p1_rd_empty                         (),
-   .c1_p1_rd_count                         (),
+   .c1_p1_rd_empty                         (r1_empty),
+   .c1_p1_rd_count                         (r1_cnt),
    .c1_p1_rd_overflow                      (),
    .c1_p1_rd_error                         (),
 // port 2 write only	!!! on gtp_clk
@@ -541,43 +707,44 @@ rcv_arb #(
 	 .NFIFO		(NFIFO)
 )
 arbitter (
-	 .wb_clk			(wb_clk),
-	 .wb_rst			(wb_rst),
+    .wb_clk		(wb_clk),
+    .wb_rst		(wb_rst),
    // Register WishBone
     .wbr_cyc		(wbr_cyc),
     .wbr_stb		(wbr_stb),
-    .wbr_we			(wbr_we),
-	 .wbr_addr		(wbr_addr),
+    .wbr_we		(wbr_we),
+    .wbr_addr		(wbr_addr),
     .wbr_dat_i		(wbr_dat_i),
     .wbr_ack		(wbr_ack),
     .wbr_dat_o		(wbr_dat_a),
-	 .rd_wadr		(arb_invld),
-	 // 	trace back a few bits from csr
-	 .fifo_rst		(fifo_rst),			//	~CSR31 or CSR30 (autoclear) or wb_rst
-	 .mcb_rst		(mcb_rst),			// autoclear bits CSR29 or CSR30
-	 .en_debug		(en_debug),
+    .inv_cache		(arb_invld),
+	// 	trace back a few bits from csr
+    .fifo_rst		(fifo_rst),		// ~CSR31 or CSR30 (autoclear) or wb_rst
+    .mcb_rst		(mcb_rst),		// autoclear bits CSR29 or CSR30
+    .en_debug		(en_debug),
+    .a32_fifo_adr_wr	(a32_fifo_adr_wr),	// write strob for A32 space FIFO address
 	 // interface with recieving FIFOs
-	 .gtp_clk		(gtp_clk),
-	 .want			(arb_wants),
-	 .datfromfifo	(dattoarb),
-	 .have			(fifo_have),
-	 .fifo_empty	(fifo_empty),
-	 .fifo_ovr		(fifo_ovr),
-	 .fifo_undr		(fifo_undr),
-	 .fifo_missed	(fifo_missed),
+    .gtp_clk		(gtp_clk),
+    .want		(arb_wants),
+    .datfromfifo	(dattoarb),
+    .have		(fifo_have),
+    .fifo_empty		(fifo_empty),
+    .fifo_ovr		(fifo_ovr),
+    .fifo_undr		(fifo_undr),
+    .fifo_missed	(fifo_missed),
 	 // inteface with MIG
-	 .cmd_enable	(p2_enable),		// MIG port cmd fifo enable
-	 .cmd_full		(p2_full),			// MIG port cmd fifo full
-	 .cmd_empty		(p2_empty),			// MIG port cmd fifo full
-	 .blen			(p2_blen),			// MIG port current burst length
-	 .wr_enable		(w2_enable),		// MIG port write fifo enable
-	 .wr_full		(w2_full),			// MIG port write fifo full
-	 .wr_empty		(w2_empty),			// MIG port write fifo empty
-	 .adr_rcv		(adr_rcv),			// MIG address within recieving area
-	 .dattomcb		(datfromarb),		// MIG port write data
-	 // error
-	 .status			(status)
-    );
+    .cmd_enable		(p2_enable),		// MIG port cmd fifo enable
+    .cmd_full		(p2_full),		// MIG port cmd fifo full
+    .cmd_empty		(p2_empty),		// MIG port cmd fifo full
+    .blen		(p2_blen),		// MIG port current burst length
+    .wr_enable		(w2_enable),		// MIG port write fifo enable
+    .wr_full		(w2_full),		// MIG port write fifo full
+    .wr_empty		(w2_empty),		// MIG port write fifo empty
+    .adr_rcv		(adr_rcv),		// MIG address within recieving area
+    .dattomcb		(datfromarb),		// MIG port write data
+	// error
+    .status			(status)
+);
 
 
 endmodule

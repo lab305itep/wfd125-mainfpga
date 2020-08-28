@@ -47,6 +47,10 @@
 //				WADR[28:2]	physical addres of the first free cell after recieved block is written
 //				WADR[1:0]	always reads 00
 //
+//		C:		A32_FIFO_ADDR (W)
+//				A32_FIFO_ADDR[28:2]	physical addres of the cell for A32 space FIFO read/write, autoincrementing
+//				A32_FIFO_ADDR[31:29] and A32_FIFO_ADDR[1:0]	should be 0
+//
 //				with CSR28=1 reads debug lines as indicated in memory.v
 //
 //////////////////////////////////////////////////////////////////////////////////
@@ -56,24 +60,25 @@ module rcv_arb #(
 )
 (
 	 input					wb_clk,
-	 input					wb_rst,
+    input					wb_rst,
    // Register WishBone
     input         		wbr_cyc,
     input         		wbr_stb,
     input         		wbr_we,
-	 input [1:0]   		wbr_addr,
+    input [1:0]   		wbr_addr,
     input [31:0]  		wbr_dat_i,
     output reg    		wbr_ack,
     output reg [31:0]	wbr_dat_o,
-	 output reg				rd_wadr,
-	 // 	trace back a few bits from csr
-	 output reg				fifo_rst,
-	 output reg				mcb_rst,
-	 output 					en_debug,
+    output reg			inv_cache,
+     // 	trace back a few bits from csr
+    output reg			fifo_rst,
+    output reg			mcb_rst,
+    output 				en_debug,
+	output reg			a32_fifo_adr_wr,	// write strob for A32 space FIFO address
 	 // interface with recieving FIFOs
-	 input					gtp_clk,			// all arbitration and MIG writes are on this clock
+	 input				gtp_clk,			// all arbitration and MIG writes are on this clock
 	 output [NFIFO-1:0]	want,
-	 input [31:0]			datfromfifo,	// common "tri-state"
+	 input [31:0]		datfromfifo,	// common "tri-state"
 	 input [NFIFO-1:0]	have,
 	 input [NFIFO-1:0]	fifo_empty,
 	 input [NFIFO-1:0]	fifo_ovr,
@@ -271,6 +276,9 @@ module rcv_arb #(
 	always @(posedge wb_clk) begin
 		// registers: reset-independent
 		wbr_ack <=  wbr_cyc & wbr_stb;
+		// defaults
+		a32_fifo_adr_wr <= 0;
+		inv_cache <= 0;		
 		// wrte regs
 		if (wbr_cyc & wbr_stb & wbr_we) begin;
 			case (wbr_addr)
@@ -289,10 +297,13 @@ module rcv_arb #(
 					radr_invalid <= (radr[28:13] < wbr_dat_i[15:0]) || (radr[28:13] >= wbr_dat_i[31:16]);
 				end
 			end
+			2'b11:	begin
+				a32_fifo_adr_wr <= 1;
+				inv_cache <= 1;
+			end
 			endcase
 		end
 		// read regs
-		rd_wadr <= 0;		// default
 		if (wbr_cyc & wbr_stb & ~wbr_we) begin;
 			case (wbr_addr)
 			2'b00:	wbr_dat_o <= {csr[31:28], pause, radr_invalid, csr[25:4], af_undr, af_ovr, mem_full, mem_empty};
@@ -300,7 +311,7 @@ module rcv_arb #(
 			2'b10:	wbr_dat_o <= limr;
 			2'b11:	begin	
 					wbr_dat_o <= wadr;
-					rd_wadr <= 1;
+					inv_cache <= 1;
 				end
 			endcase
 		end

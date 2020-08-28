@@ -540,16 +540,25 @@ memory # (
 sdram (
     .wb_clk		(wb_clk),
     .wb_rst    (wb_rst),
-   // Memory WishBone
+   // Memory WishBone for A64
     .wbm_cyc   (wb_m2s_sdram_cyc),
     .wbm_stb	(wb_m2s_sdram_stb),
-    .wbm_we		(wb_m2s_sdram_we),
-	 .wbm_sel   (wb_m2s_sdram_sel),
-	 .wbm_addr  (wb_m2s_sdram_adr),	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
+    .wbm_we	(wb_m2s_sdram_we),
+    .wbm_sel   (wb_m2s_sdram_sel),
+    .wbm_addr  (wb_m2s_sdram_adr),	// byte address is 29 bit wide for 4 Gbits (512 Mbytes)
     .wbm_dat_i	(wb_m2s_sdram_dat),
     .wbm_ack	(wb_s2m_sdram_ack),
     .wbm_stall (wb_s2m_sdram_stall),
     .wbm_dat_o	(wb_s2m_sdram_dat),
+   // Memory WishBone for A32 - fifo
+    .wba_cyc   (wb_m2s_sdrama32_cyc),
+    .wba_stb	(wb_m2s_sdrama32_stb),
+    .wba_we	(wb_m2s_sdrama32_we),
+    .wba_sel   (wb_m2s_sdrama32_sel),
+    .wba_dat_i	(wb_m2s_sdrama32_dat),
+    .wba_ack	(wb_s2m_sdrama32_ack),
+    .wba_stall (wb_s2m_sdrama32_stall),
+    .wba_dat_o	(wb_s2m_sdrama32_dat),
    // Register WishBone
     .wbr_cyc	(wb_m2s_reg_fifo_cyc),
     .wbr_stb	(wb_m2s_reg_fifo_stb),
