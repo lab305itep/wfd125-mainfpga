@@ -139,6 +139,7 @@ module memory # (
 	reg [28:0]	a32_fifo_adr;		// address for port 1 access, autoincremented
 	wire		a32_fifo_adr_wr;		// address for port 1 access write strob
 	reg [6:0] 	stb_cnt_a;			// valid wbm_stb counter for one block transfer
+	reg [6:0] 	stb_cnt_d_a;		// write address post increment
 	reg [6:0] 	ack_cnt_a;			// read wbm_ack counter for one block transfer
 	reg [6:0]	rd_left_a;			// number of dwords in fifo (after burst execution)
 	reg [6:0]	inv_cnt_a = 0;		// number of dwords to take  out from fifo for invalidation
@@ -226,6 +227,7 @@ module memory # (
 		r0_enable <= 0;
 		p1_enable <= 0;
 		r1_enable <= 0;
+		stb_cnt_d_a <= 0;
 		// check invalidation req from arbitter
 		if (arb_invld) begin
 			inv_cnt <= rd_left;
@@ -244,8 +246,9 @@ module memory # (
 		end
 		inv_nz_d <= |inv_cnt;
 		inv_nz_d_a <= |inv_cnt_a;
+		a32_fifo_adr <= a32_fifo_adr + 4 * stb_cnt_d_a;	// do address postincrement
 		if (a32_fifo_adr_wr) begin
-			a32_fifo_adr <= {wba_dat_i[28:2], 2'b00};
+			a32_fifo_adr <= {wbr_dat_i[28:2], 2'b00};
 		end
 		// main state machine
 		if (mem_rst) begin
@@ -428,7 +431,7 @@ module memory # (
 							state_a <= ST_WR_CMD;
 						end else begin 
 							p1_enable <= 1;	// execute instruction
-							a32_fifo_adr <= a32_fifo_adr + 4 * stb_cnt_a;	// 4 bytes interface width
+							stb_cnt_d_a <= stb_cnt_a;	// postincrement
 							state_a <= ST_IDLE;
 						end	// else we stay in this state and continue writing FIFO
 					end 
@@ -436,7 +439,7 @@ module memory # (
             ST_WR_CMD : begin
 					if (~p1_full) begin
 						p1_enable <= 1;
-						a32_fifo_adr <= a32_fifo_adr + 4 * stb_cnt_a;	// 4 bytes interface width
+						stb_cnt_d_a <= stb_cnt_a;	// postincrement
 						state_a <= ST_IDLE;
 					end
             end
@@ -478,7 +481,7 @@ module memory # (
 	end
 
 // MIG DDR3 SDRAM controller
-// we only use port 0 for Wishbone ternsfers and port 2 for GTP data writing
+// we only use port 0 and 1 for Wishbone transfers and port 2 for GTP data writing
  memcntr # (
     .C1_P0_MASK_SIZE(4),
     .C1_P0_DATA_PORT_SIZE(32),
