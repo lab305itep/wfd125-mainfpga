@@ -82,6 +82,11 @@ if (TARGET == "XILINX") begin
                 .S(1'b0)
             );
         end else if (IODDR_STYLE == "IODDR2") begin
+	    wire nclk;
+	    BUFG bufg_inst(
+		.I(~clk),
+		.O(nclk)
+	    );
             IDDR2 #(
                 .DDR_ALIGNMENT("C0")
             )
@@ -89,7 +94,7 @@ if (TARGET == "XILINX") begin
                 .Q0(q1[n]),
                 .Q1(q2[n]),
                 .C0(clk),
-                .C1(~clk),
+                .C1(nclk),
                 .CE(1'b1),
                 .D(d[n]),
                 .R(1'b0),

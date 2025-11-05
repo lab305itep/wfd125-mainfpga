@@ -483,11 +483,11 @@ vme (
 		.enable	(CSR_BITS[13])	// enable these blocks
     );
 
-assign TP[1] = tok_rdy;
-assign TP[2] = tok_valid;
-assign TP[3] = ICX[6];
-assign TP[4] = CSR_BITS[13];
-assign TP[5] = ICX[0];
+// assign TP[1] = tok_rdy;
+// assign TP[2] = tok_valid;
+// assign TP[3] = ICX[6];
+// assign TP[4] = CSR_BITS[13];
+// assign TP[5] = ICX[0];
 
 //		SPI to DAC
 wire [6:0] empty_spi_csa;
@@ -654,45 +654,32 @@ sdram (
 		end
 	endgenerate
 
-//	Ethernet phy
-	eth_mac_1g_rgmii_fifo #(
-		.TARGET("XILINX")
-	) ethernet_phy (
-		.gtx_clk(CLK125),
-		.gtx_clk90(CLK125_90),
-		.gtx_rst(XRESET),	// translate VME reset here
-		.logic_clk(wb_clk),
-		.logic_rst(wb_rst),
-		    /*
-     * AXI input
-     */
-    input wire [7:0]   tx_axis_tdata,
-    input wire         tx_axis_tvalid,
-    output wire        tx_axis_tready,
-    input wire         tx_axis_tlast,
-    input wire         tx_axis_tuser,
 
-    /*
-     * AXI output
-     */
-    output wire [7:0]  rx_axis_tdata,
-    output wire        rx_axis_tvalid,
-    input  wire        rx_axis_tready,
-    output wire        rx_axis_tlast,
-    output wire        rx_axis_tuser,
-
-    /*
-     * RGMII interface
-     */
-    input wire         rgmii_rx_clk,
-    input wire [3:0]   rgmii_rxd,
-    input wire         rgmii_rx_ctl,
-    output wire        rgmii_tx_clk,
-    output wire [3:0]  rgmii_txd,
-    output wire        rgmii_tx_ctl,
-    output wire        mac_gmii_tx_en,
-
-		
+	ethernet u_ethernet(
+	// general
+		.clk125(CLK125),
+		.clk125_90(CLK125_90),
+		.reset(XRESET),
+		.error(),
+		.debug(TP),
+	// data to be sent
+		.txd(0),
+		.txvld(0),
+		.txend(0),
+		.txready(),
+	// request received
+		.address(),
+		.value(),
+		.cmd(),
+		.ready4cmd(0),
+	// PHY interface
+		.rgmii_rx_clk(PHYRXCLK),
+		.rgmii_rxd(PHYRXD),
+		.rgmii_rx_ctl(PHYRXDVLD),
+		.rgmii_tx_clk(PHYTXCLK),
+		.rgmii_txd(PHYTXD),
+		.rgmii_tx_ctl(PHYTXENB),
+		.mac_gmii_tx_en()
 	);
 
 endmodule
