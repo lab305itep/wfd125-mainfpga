@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-// Company: 
+// Company:
 // Engineer: 		SvirLex
 // 
 // Create Date:    17:03:59 03/27/2015 
@@ -88,11 +88,11 @@ module memory # (
     output        MEMLDM,
 	// Pairs
     output [1:0]  MEMCK,
-    output [1:0]  MEMUDQS,
-    output [1:0]  MEMLDQS,
+    inout [1:0]  MEMUDQS,
+    inout [1:0]  MEMLDQS,
 	// Impedance matching
-    output        MEMZIO,
-    output        MEMRZQ,
+    inout        MEMZIO,
+    inout        MEMRZQ,
 	// current status
     output  		status,
 	 output	[4:0]	tp

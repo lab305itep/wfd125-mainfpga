@@ -175,11 +175,11 @@ module fpga_main(
     output MEMLDM,
 	// Pairs
     output [1:0] MEMCK,
-    output [1:0] MEMUDQS,
-    output [1:0] MEMLDQS,
+    inout [1:0] MEMUDQS,
+    inout [1:0] MEMLDQS,
 	// Impedance matching
-    output MEMZIO,
-    output MEMRZQ,
+    inout MEMZIO,
+    inout MEMRZQ,
 	// Test points
     output [5:1] TP
     );
@@ -192,13 +192,14 @@ module fpga_main(
 `include "version.vh"
 
 	wire CLK125;
+	wire CLK125_90;
 	wire CLKMCB;
 	reg [3:0] ledp;
 	reg once = 1;
 	reg greset = 1;
 	
 	wire [5:0]   VME_GA_i;
-	assign 		 VME_GA_i = ~C2X[5:0];
+	assign 	     VME_GA_i = ~C2X[5:0];
 	
 	wire         VME_BERR_o;
 	wire         VME_DTACK_n_o;
@@ -252,12 +253,12 @@ module fpga_main(
 	end
 
 	assign IACKPASS = 1'bz;
-   assign PHYTXCLK = 1'bz;
-   assign PHYTXENB = 1'bz;
-   assign PHYTXD  = 4'hz;
-   assign PHYMDIO = 1'bz;
-   assign PHYMDC  = 1'bz;
-   assign PHYRST  = 1'bz;
+//   assign PHYTXCLK = 1'bz;
+//   assign PHYTXENB = 1'bz;
+//   assign PHYTXD  = 4'hz;
+//   assign PHYMDIO = 1'bz;
+//   assign PHYMDC  = 1'bz;
+//   assign PHYRST  = 1'bz;
    assign BDACC = 1'bz;
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
@@ -324,10 +325,11 @@ module fpga_main(
 	UGTP (
 		.rxpin	({RX3, RX2, RX1, RX0}),	// input data pins
 		.txpin	({TX3, TX2, TX1, TX0}),	// output data pins
-		.clkpin	(RCLK),						// input clock pins - tile0 package pins A10/B10
-		.clkout	(CLK125),					// output 125 MHz clock
-		.clkwb   (wb_clk),					// output clock for wishbone
-		.gck_o   (CLKMCB),					// clock to MCB
+		.clkpin	(RCLK),			// input clock pins - tile0 package pins A10/B10
+		.clkout	(CLK125),		// output 125 MHz clock
+		.clkout_90 (CLK125_90),		// output 125 MHz clock 90 degrees for RGMII
+		.clkwb   (wb_clk),		// output clock for wishbone
+		.gck_o   (CLKMCB),		// clock to MCB
 //			Do remapping here
 		.data_o		({gtp_data_o[15:0], gtp_data_o[31:16], gtp_data_o[47:32], gtp_data_o[63:48]}),	// data received
 		.charisk_o	({gtp_kchar_o[0], gtp_kchar_o[1], gtp_kchar_o[2], gtp_kchar_o[3]}), 		// K-char signature received
@@ -652,5 +654,45 @@ sdram (
 		end
 	endgenerate
 
+//	Ethernet phy
+	eth_mac_1g_rgmii_fifo #(
+		.TARGET("XILINX")
+	) ethernet_phy (
+		.gtx_clk(CLK125),
+		.gtx_clk90(CLK125_90),
+		.gtx_rst(XRESET),	// translate VME reset here
+		.logic_clk(wb_clk),
+		.logic_rst(wb_rst),
+		    /*
+     * AXI input
+     */
+    input wire [7:0]   tx_axis_tdata,
+    input wire         tx_axis_tvalid,
+    output wire        tx_axis_tready,
+    input wire         tx_axis_tlast,
+    input wire         tx_axis_tuser,
+
+    /*
+     * AXI output
+     */
+    output wire [7:0]  rx_axis_tdata,
+    output wire        rx_axis_tvalid,
+    input  wire        rx_axis_tready,
+    output wire        rx_axis_tlast,
+    output wire        rx_axis_tuser,
+
+    /*
+     * RGMII interface
+     */
+    input wire         rgmii_rx_clk,
+    input wire [3:0]   rgmii_rxd,
+    input wire         rgmii_rx_ctl,
+    output wire        rgmii_tx_clk,
+    output wire [3:0]  rgmii_txd,
+    output wire        rgmii_tx_ctl,
+    output wire        mac_gmii_tx_en,
+
+		
+	);
 
 endmodule

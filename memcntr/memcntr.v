@@ -306,17 +306,19 @@ module memcntr #
    localparam C1_MEM_TYPE             = "DDR3";       
    localparam C1_MEM_DENSITY          = "4Gb";       
    localparam C1_MEM_BURST_LEN        = 8;       
-   localparam C1_MEM_CAS_LATENCY      = 6;       
+//	Lex 27.01.2021
+   localparam C1_MEM_CAS_LATENCY      = 6;
+//   localparam C1_MEM_CAS_LATENCY      = 6;       
    localparam C1_MEM_NUM_COL_BITS     = 10;       
    localparam C1_MEM_DDR1_2_ODS       = "FULL";       
    localparam C1_MEM_DDR2_RTT         = "150OHMS";       
    localparam C1_MEM_DDR2_DIFF_DQS_EN  = "YES";       
    localparam C1_MEM_DDR2_3_PA_SR     = "FULL";       
    localparam C1_MEM_DDR2_3_HIGH_TEMP_SR  = "NORMAL";       
-   localparam C1_MEM_DDR3_CAS_LATENCY  = 6;       
+   localparam C1_MEM_DDR3_CAS_LATENCY  = 5;      // was 6 Lex 27.01.2021
    localparam C1_MEM_DDR3_ODS         = "DIV6";       
    localparam C1_MEM_DDR3_RTT         = "DIV4";       
-   localparam C1_MEM_DDR3_CAS_WR_LATENCY  = 5;       
+   localparam C1_MEM_DDR3_CAS_WR_LATENCY  = 5;    // was 5 Lex 27.01.2021
    localparam C1_MEM_DDR3_AUTO_SR     = "ENABLED";       
    localparam C1_MEM_MOBILE_PA_SR     = "FULL";       
    localparam C1_MEM_MDDR_ODS         = "FULL";       

@@ -22,18 +22,22 @@ module gtprcv4(
     input [7:0] rxpin,		// input data pins
     output [7:0] txpin,		// output data pins
     input [1:0] clkpin,		// input clock pins - tile0 package pins A10/B10
-    output clkout,			// output 125 MHz clock
-	 output clkwb,				// output clock for wishbone
- 	 output gck_o,				// output clock for mcb
+    output clkout,		// output 125 MHz clock
+    output clkout_90,		// output 125 MHz clock 90 degrees shifted for RGMII
+    output clkwb,		// output clock for wishbone
+    output gck_o,		// output clock for mcb
     output [63:0] data_o,	// output data 4x16bit
-    output [3:0] charisk_o,// output char is K-char signature
+    output [3:0] charisk_o,	// output char is K-char signature
     input [63:0] data_i,	// output data 4x16bit
-    input [3:0] charisk_i, // output char is K-char signature	 
-	 output locked				// DCM here is locked
+    input [3:0] charisk_i, 	// output char is K-char signature	 
+    output locked		// DCM here is locked
     );
 
-	 parameter WB_DIVIDE = 5;		// parameters for c clkwb generation
-	 parameter WB_MULTIPLY = 4;	// parameters for c clkwb generation - 100 MHz default
+	 parameter WB_DIVIDE = 5;		// parameters for clkwb generation
+	 parameter WB_MULTIPLY = 4;	// parameters for clkwb generation - 100 MHz
+	 parameter MCB_DIVIDE = 5;		// parameters for clkmcb generation
+	 parameter MCB_MULTIPLY = 4;	// parameters for clkmcb generation - 150 MHz => 300 on memory
+									// 4 - 200 MHz, 5 - 250 MHz, 6 - 300 MHz, 7 - 350 MHz
 
 	 wire [7:0] kchar_o;
 	 wire refclk_i;	// 125 MHz
@@ -43,7 +47,10 @@ module gtprcv4(
 	 wire bufclk_o;	// 125 MHz
 	 wire pll_lock;
 	 wire CLK125;
+	 wire CLK125_90;
 	 wire CLK250;
+	 wire CLKM_FB;
+	 wire CLK_MCB;
 
 	 genvar i;
 	 generate
@@ -53,6 +60,7 @@ module gtprcv4(
 	 endgenerate
 	 
 	 assign clkout = CLK125;
+	 assign clkout_90 = CLK125_90;
 
     //--------------------------- The GTP Wrapper -----------------------------
     s6_gtpwizard_v1_11 #
@@ -222,7 +230,7 @@ module gtprcv4(
        .I(bufclk_o)  // 1-bit input: Clock buffer input
     );
 
-	 assign gck_o = gclk_o;
+//	 assign gck_o = gclk_o;
 
 	 DCM_SP #(
       .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
@@ -243,25 +251,71 @@ module gtprcv4(
       .STARTUP_WAIT("FALSE")                // Delay config DONE until DCM_SP LOCKED (TRUE/FALSE)
     )
     UDCM (
-      .CLK0(CLK125),       // 1-bit output: 0 degree clock output
+      .CLK0(CLK125),       	// 1-bit output: 0 degree clock output
       .CLK180(),     		// 1-bit output: 180 degree clock output
       .CLK270(),     		// 1-bit output: 270 degree clock output
-      .CLK2X(CLK250),      // 1-bit output: 2X clock frequency clock output
+      .CLK2X(CLK250),      	// 1-bit output: 2X clock frequency clock output
+      .CLK2X180(), 		// 1-bit output: 2X clock frequency, 180 degree clock output
+      .CLK90(CLK125_90),       	// 1-bit output: 90 degree clock output
+      .CLKDV(),       		// 1-bit output: Divided clock output
+      .CLKFX(clkwb),   		// 1-bit output: Digital Frequency Synthesizer output (DFS)
+      .CLKFX180(), 		// 1-bit output: 180 degree CLKFX output
+      .LOCKED(locked),     	// 1-bit output: DCM_SP Lock Output
+      .PSDONE(),   		// 1-bit output: Phase shift done output
+      .STATUS(),     		// 8-bit output: DCM_SP status output
+      .CLKFB(CLK125),      	// 1-bit input: Clock feedback input
+      .CLKIN(gclk_o),      	// 1-bit input: Clock input
+      .DSSEN(1'b0),       	// 1-bit input: Unsupported, specify to GND.
+      .PSCLK(1'b0),       	// 1-bit input: Phase shift clock input
+      .PSEN(1'b0),         	// 1-bit input: Phase shift enable
+      .PSINCDEC(1'b0), 		// 1-bit input: Phase shift increment/decrement input
+      .RST(!pll_lock)      	// 1-bit input: Active high reset input
+    );
+
+	 DCM_SP #(
+      .CLKDV_DIVIDE(2.0),                   // CLKDV divide value
+                                            // (1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,9,10,11,12,13,14,15,16).
+      .CLKFX_DIVIDE(MCB_DIVIDE),             // Divide value on CLKFX outputs - D - (1-32)
+      .CLKFX_MULTIPLY(MCB_MULTIPLY),         // Multiply value on CLKFX outputs - M - (2-32)
+      .CLKIN_DIVIDE_BY_2("FALSE"),          // CLKIN divide by two (TRUE/FALSE)
+      .CLKIN_PERIOD(8.0),                   // Input clock period specified in nS
+      .CLKOUT_PHASE_SHIFT("NONE"),          // Output phase shift (NONE, FIXED, VARIABLE)
+      .CLK_FEEDBACK("1X"),                  // Feedback source (NONE, 1X, 2X)
+      .DESKEW_ADJUST("SYSTEM_SYNCHRONOUS"), // SYSTEM_SYNCHRNOUS or SOURCE_SYNCHRONOUS
+      .DFS_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
+      .DLL_FREQUENCY_MODE("LOW"),           // Unsupported - Do not change value
+      .DSS_MODE("NONE"),                    // Unsupported - Do not change value
+      .DUTY_CYCLE_CORRECTION("TRUE"),       // Unsupported - Do not change value
+      .FACTORY_JF(16'hc080),                // Unsupported - Do not change value
+      .PHASE_SHIFT(0),                      // Amount of fixed phase shift (-255 to 255)
+      .STARTUP_WAIT("FALSE")                // Delay config DONE until DCM_SP LOCKED (TRUE/FALSE)
+    )
+    UDCMMCB (
+      .CLK0(CLKM_FB),       // 1-bit output: 0 degree clock output
+      .CLK180(),     		// 1-bit output: 180 degree clock output
+      .CLK270(),     		// 1-bit output: 270 degree clock output
+      .CLK2X(),             // 1-bit output: 2X clock frequency clock output
       .CLK2X180(), 			// 1-bit output: 2X clock frequency, 180 degree clock output
       .CLK90(),       		// 1-bit output: 90 degree clock output
       .CLKDV(),       		// 1-bit output: Divided clock output
-      .CLKFX(clkwb),   		// 1-bit output: Digital Frequency Synthesizer output (DFS)
+      .CLKFX(CLK_MCB), 		// 1-bit output: Digital Frequency Synthesizer output (DFS)
       .CLKFX180(), 			// 1-bit output: 180 degree CLKFX output
-      .LOCKED(locked),     // 1-bit output: DCM_SP Lock Output
-      .PSDONE(),   		   // 1-bit output: Phase shift done output
+      .LOCKED(),            // 1-bit output: DCM_SP Lock Output
+      .PSDONE(),   		    // 1-bit output: Phase shift done output
       .STATUS(),     		// 8-bit output: DCM_SP status output
-      .CLKFB(CLK125),      // 1-bit input: Clock feedback input
-      .CLKIN(gclk_o),      // 1-bit input: Clock input
+      .CLKFB(CLKM_FB),      // 1-bit input: Clock feedback input
+      .CLKIN(gclk_o),       // 1-bit input: Clock input
       .DSSEN(1'b0),       	// 1-bit input: Unsupported, specify to GND.
       .PSCLK(1'b0),       	// 1-bit input: Phase shift clock input
-      .PSEN(1'b0),         // 1-bit input: Phase shift enable
+      .PSEN(1'b0),          // 1-bit input: Phase shift enable
       .PSINCDEC(1'b0), 		// 1-bit input: Phase shift increment/decrement input
-      .RST(!pll_lock)      // 1-bit input: Active high reset input
+      .RST(!pll_lock)       // 1-bit input: Active high reset input
     );
+
+    BUFG gtpclk_bufg_mcb (
+       .O(gck_o),   // 1-bit output: Clock buffer output
+       .I(CLK_MCB)  // 1-bit input: Clock buffer input
+    );
+
 
 endmodule

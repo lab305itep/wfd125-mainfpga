@@ -1,1 +1,1 @@
-localparam VERSION = 32'h00020003;
+localparam VERSION = 32'h00020004;

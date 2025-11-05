@@ -271,9 +271,9 @@ CONFIG MCB_PERFORMANCE= EXTENDED;
 #NET "memc1_infrastructure_inst/sys_clk_ibufg" TNM_NET = "SYS_CLK1";
 #TIMESPEC "TS_SYS_CLK1" = PERIOD "SYS_CLK1"  8  ns HIGH 50 %;
 ## I/O TERMINATION                                                          
-NET "MEMD[*]"             IN_TERM = NONE;
-NET "MEMLDQS[*]"          IN_TERM = NONE;
-NET "MEMUDQS[*]"          IN_TERM = NONE;
+NET "MEMD[*]"             IN_TERM = UNTUNED_SPLIT_50;
+NET "MEMLDQS[*]"          IN_TERM = UNTUNED_SPLIT_50;
+NET "MEMUDQS[*]"          IN_TERM = UNTUNED_SPLIT_50;
 # I/O STANDARDS 
 NET  "MEMD[*]"            IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
 NET  "MEMA[*]"            IOSTANDARD = SSTL15_II  |OUT_TERM = UNTUNED_50;
