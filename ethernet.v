@@ -30,6 +30,7 @@ module ethernet(
 	input clk125_90,
 	input reset,
 	output error,
+	output rcvcnt,
 	output [4:0] debug,
 	// data to be sent
 	input [31:0] txd,
@@ -73,10 +74,13 @@ module ethernet(
 	assign debug[2] = tready;
 	assign debug[3] = error;
 	assign debug[4] = 0;
+	assign rcvcnt = rlast;
 	
 //	Ethernet by Alex Forencich (GHz RGMII Ethernet MAC to the Digilent Genesys2 board)
 	eth_mac_1g_rgmii_fifo #(
-		.TARGET("XILINX")
+		.TARGET("XILINX"),
+		.IODDR_STYLE("IODDR2"),
+		.CLOCK_INPUT_STYLE("BUFIO2")
 	) ethernet_phy (
 		.gtx_clk(clk125),
 		.gtx_clk90(clk125_90),

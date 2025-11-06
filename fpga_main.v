@@ -242,6 +242,8 @@ module fpga_main(
 	reg [5:1] tpdebug = 0;
 	wire [15:13] CSR_BITS;		// CSR bits 15:13
 	wire         auxtrig;		// front panel aux trigger single CLK pulse
+	wire eth_error;			// ethernet error flag
+	wire eth_rcv;			// ethernet block received
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -253,12 +255,6 @@ module fpga_main(
 	end
 
 	assign IACKPASS = 1'bz;
-//   assign PHYTXCLK = 1'bz;
-//   assign PHYTXENB = 1'bz;
-//   assign PHYTXD  = 4'hz;
-//   assign PHYMDIO = 1'bz;
-//   assign PHYMDC  = 1'bz;
-//   assign PHYRST  = 1'bz;
    assign BDACC = 1'bz;
    assign BDACD = 1'bz;
    assign BDACCS = 1'bz;
@@ -653,14 +649,35 @@ sdram (
 			);
 		end
 	endgenerate
+	
+	ethctl u_ethctl (	// Ethernet slow control
+		.wb_dat_i(wb_m2s_ethctl_dat),
+		.wb_dat_o(wb_s2m_ethctl_dat),
+		.wb_we(wb_m2s_ethctl_we),
+		.wb_clk(wb_clk),
+		.wb_cyc(wb_m2s_ethctl_cyc),
+		.wb_ack(wb_s2m_ethctl_ack),
+		.wb_stb(wb_m2s_ethctl_stb),
+		.wb_adr(wb_m2s_ethctl_adr[3:2]),
+		.wb_rst(wb_rst),
+		.phymdio(PHYMDIO),
+		.phymdc(PHYMDC),
+		.phyint(PHYINT),
+		.phyrst(PHYRST),
+		.blkcnt(eth_rcv),
+		.errcnt(eth_error)
+	);
 
-
-	ethernet u_ethernet(
+	assign wb_s2m_ethctl_rty = 0;
+	assign wb_s2m_ethctl_err = 0;
+	
+	ethernet u_ethernet(	// Ethernet data interface
 	// general
 		.clk125(CLK125),
 		.clk125_90(CLK125_90),
 		.reset(XRESET),
-		.error(),
+		.error(eth_error),
+		.rcvcnt(eth_rcv),
 		.debug(TP),
 	// data to be sent
 		.txd(0),

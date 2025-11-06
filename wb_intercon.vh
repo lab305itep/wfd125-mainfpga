@@ -117,6 +117,19 @@ wire        wb_s2m_i2c_ms_cbuf_ack;
 wire        wb_s2m_i2c_ms_cbuf_err;
 wire        wb_s2m_i2c_ms_cbuf_stall;
 wire        wb_s2m_i2c_ms_cbuf_rty;
+wire [31:0] wb_m2s_ethctl_adr;
+wire [31:0] wb_m2s_ethctl_dat;
+wire  [3:0] wb_m2s_ethctl_sel;
+wire        wb_m2s_ethctl_we;
+wire        wb_m2s_ethctl_cyc;
+wire        wb_m2s_ethctl_stb;
+wire  [2:0] wb_m2s_ethctl_cti;
+wire  [1:0] wb_m2s_ethctl_bte;
+wire [31:0] wb_s2m_ethctl_dat;
+wire        wb_s2m_ethctl_ack;
+wire        wb_s2m_ethctl_err;
+wire        wb_s2m_ethctl_stall;
+wire        wb_s2m_ethctl_rty;
 wire [31:0] wb_m2s_sdrama32_adr;
 wire [31:0] wb_m2s_sdrama32_dat;
 wire  [3:0] wb_m2s_sdrama32_sel;
@@ -251,6 +264,19 @@ wb_intercon wb_intercon0
     .wb_i2c_ms_cbuf_err_i      (wb_s2m_i2c_ms_cbuf_err),
     .wb_i2c_ms_cbuf_stall_i    (wb_s2m_i2c_ms_cbuf_stall),
     .wb_i2c_ms_cbuf_rty_i      (wb_s2m_i2c_ms_cbuf_rty),
+    .wb_ethctl_adr_o           (wb_m2s_ethctl_adr),
+    .wb_ethctl_dat_o           (wb_m2s_ethctl_dat),
+    .wb_ethctl_sel_o           (wb_m2s_ethctl_sel),
+    .wb_ethctl_we_o            (wb_m2s_ethctl_we),
+    .wb_ethctl_cyc_o           (wb_m2s_ethctl_cyc),
+    .wb_ethctl_stb_o           (wb_m2s_ethctl_stb),
+    .wb_ethctl_cti_o           (wb_m2s_ethctl_cti),
+    .wb_ethctl_bte_o           (wb_m2s_ethctl_bte),
+    .wb_ethctl_dat_i           (wb_s2m_ethctl_dat),
+    .wb_ethctl_ack_i           (wb_s2m_ethctl_ack),
+    .wb_ethctl_err_i           (wb_s2m_ethctl_err),
+    .wb_ethctl_stall_i         (wb_s2m_ethctl_stall),
+    .wb_ethctl_rty_i           (wb_s2m_ethctl_rty),
     .wb_sdrama32_adr_o         (wb_m2s_sdrama32_adr),
     .wb_sdrama32_dat_o         (wb_m2s_sdrama32_dat),
     .wb_sdrama32_sel_o         (wb_m2s_sdrama32_sel),

@@ -56,6 +56,7 @@ module ssio_ddr_in #
 
 wire clk_int;
 wire clk_io;
+wire clk_io_180;
 
 generate
 
@@ -132,6 +133,20 @@ if (TARGET == "XILINX") begin
             .SERDESSTROBE()
         );
 
+        // pass through RX clock to input buffers
+        BUFIO2 #(
+            .DIVIDE(1),
+            .DIVIDE_BYPASS("TRUE"),
+            .I_INVERT("TRUE"),
+            .USE_DOUBLER("FALSE")
+        )
+        clk_bufio_180 (
+            .I(input_clk),
+            .DIVCLK(),
+            .IOCLK(clk_io_180),
+            .SERDESSTROBE()
+        );
+
         // pass through RX clock to MAC
         BUFG
         clk_bufg (
@@ -161,6 +176,7 @@ iddr #(
 )
 data_iddr_inst (
     .clk(clk_io),
+    .clk180(clk_io_180),
     .d(input_d),
     .q1(output_q1),
     .q2(output_q2)
