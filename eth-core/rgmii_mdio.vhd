@@ -52,6 +52,7 @@ ENTITY rgmii_mdio IS
     -- Management interface
     ---------------------------------------------------------------------------
     iMDI  : IN  STD_LOGIC;
+    oMDO  : OUT STD_LOGIC;
     oMDHz : OUT STD_LOGIC;              -- mdio is in HighZ state
     oMDC  : OUT STD_LOGIC
     );
@@ -139,6 +140,7 @@ BEGIN  -- ARCHITECTURE rtl
     BEGIN
       IF iRst_n = '0' THEN
         oMDHz             <= '1';
+	oMDO              <= '1';
         state             <= PREAMBLE;
         endOp             <= '0';
         bitCnt            <= 0;
@@ -152,7 +154,8 @@ BEGIN  -- ARCHITECTURE rtl
           WHEN PREAMBLE =>
             IF sendEn THEN
               bitCnt <= bitCnt + 1;
-              oMDHz  <= '1';
+              oMDHz  <= '0';
+	      oMDO   <= '1';
               IF bitCnt = 30 THEN
                 state <= IDLE;
               END IF;
@@ -161,6 +164,7 @@ BEGIN  -- ARCHITECTURE rtl
             IF sendEn THEN
               IF busy = '1' THEN        -- start transaction
                 oMDHz    <= '0';        -- firstbit of start word
+		oMDO     <= '0';
                 state    <= CTRL;
                 bitCnt   <= 0;
                 shiftReg <= iData2PHY;
@@ -170,28 +174,43 @@ BEGIN  -- ARCHITECTURE rtl
             IF sendEn THEN
               bitCnt <= bitCnt + 1;
               CASE bitCnt IS
-                WHEN 0  => oMDHz <= '1';   -- second bit of start word
+                WHEN 0  => oMDO <= '1';   -- second bit of start word
+		           oMDHz  <= '0';
                 --  OPCODE. 1 then 0 for read, 0 then 1 for write
-                WHEN 1  => oMDHz <= rdPend;
-                WHEN 2  => oMDHz <= NOT rdPend;
+                WHEN 1  => oMDO <= rdPend;
+		           oMDHz  <= '0';
+                WHEN 2  => oMDO <= NOT rdPend;
+		           oMDHz  <= '0';
                 -- PHY address
-                WHEN 3  => oMDHz <= iPHYAddr(4);
-                WHEN 4  => oMDHz <= iPHYAddr(3);
-                WHEN 5  => oMDHz <= iPHYAddr(2);
-                WHEN 6  => oMDHz <= iPHYAddr(1);
-                WHEN 7  => oMDHz <= iPHYAddr(0);
+                WHEN 3  => oMDO <= iPHYAddr(4);
+		           oMDHz  <= '0';
+                WHEN 4  => oMDO <= iPHYAddr(3);
+		           oMDHz  <= '0';
+                WHEN 5  => oMDO <= iPHYAddr(2);
+		           oMDHz  <= '0';
+                WHEN 6  => oMDO <= iPHYAddr(1);
+		           oMDHz  <= '0';
+                WHEN 7  => oMDO <= iPHYAddr(0);
+		           oMDHz  <= '0';
                 --  Register address
-                WHEN 8  => oMDHz <= iRegAddr(4);
-                WHEN 9  => oMDHz <= iRegAddr(3);
-                WHEN 10 => oMDHz <= iRegAddr(2);
-                WHEN 11 => oMDHz <= iRegAddr(1);
-                WHEN 12 => oMDHz <= iRegAddr(0);
+                WHEN 8  => oMDO <= iRegAddr(4);
+		           oMDHz  <= '0';
+                WHEN 9  => oMDO <= iRegAddr(3);
+		           oMDHz  <= '0';
+                WHEN 10 => oMDO <= iRegAddr(2);
+		           oMDHz  <= '0';
+                WHEN 11 => oMDO <= iRegAddr(1);
+		           oMDHz  <= '0';
+                WHEN 12 => oMDO <= iRegAddr(0);
+		           oMDHz  <= '0';
                 -- TA
-                WHEN 13 => oMDHz <= '1';
+                WHEN 13 => oMDO <= '1';
+		           oMDHz  <= rdPend;
                 WHEN 14 =>
                   IF rdPend = '0' THEN
                     state  <= WRITE;
                     oMDHz  <= '0';
+		    oMDO   <= '0';
                     bitCnt <= 0;
                   END IF;
                 WHEN 15 =>
@@ -202,7 +221,8 @@ BEGIN  -- ARCHITECTURE rtl
             END IF;
           WHEN WRITE =>
             IF sendEn THEN
-              oMDHz    <= shiftReg(15);
+              oMDO     <= shiftReg(15);
+	      oMDHz    <= '0';
               shiftReg <= shiftReg(14 DOWNTO 0) & '0';
               bitCnt   <= bitCnt + 1;
               IF bitCnt = 15 THEN
