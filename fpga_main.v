@@ -183,9 +183,20 @@ module fpga_main(
 	// Test points
     output [5:1] TP
     );
+    
+//	Pullup PHY pins
+// Pullup output (connect directly to top-level port)
+//	PHYAD = 7: (PHYAD1 and PHYAD0 = 1 in the schematic)
+	PULLUP PULLUP_1 ( .O(PHYRXCLK));	// PHYAD2
+//	MODE = 1111 - RGMII mode - advertise all capabilities (10/100/1000 speed half-/full-duplex)
+	PULLUP PULLUP_2 ( .O(PHYRXD[0]));	// MODE0
+	PULLUP PULLUP_3 ( .O(PHYRXD[1]));	// MODE1
+	PULLUP PULLUP_4 ( .O(PHYRXD[2]));	// MODE2
+	PULLUP PULLUP_5 ( .O(PHYRXD[3]));	// MODE3
+	PULLDOWN PULLDOWN_1 ( .O(PHYRXDVLD));	// Disable 125 MHz clock output to pin 41
 
-	wire			 wb_clk;
-	wire         wb_rst;
+	wire wb_clk;
+	wire wb_rst;
 	
 `include "wb_intercon.vh"
 
