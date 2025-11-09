@@ -25,14 +25,15 @@
 // 31	- enable PHY (clear reset)
 //      MDIO bits:
 // 31   - busy (read only)
+// 30   - reset MDIO
 // 22:21 - operation: 0 - none, 1 - write, 2 - read, 3 - reserved
 // 20:16 - register address
 // 15:0 - data (read/write)
 //////////////////////////////////////////////////////////////////////////////////
 module ethctl #
 (
-	parameter PHYADDR = 7,
-	parameter MDIOCLKDIV = 100
+	parameter PHYADDR = 5'b00111,
+	parameter MDIOCLKDIV = 8'b01100100
 )(
 //		Wishbone
 	input [31:0] wb_dat_i,
@@ -77,13 +78,13 @@ module ethctl #
 
 	rgmii_mdio mdio_inst (
 		.iWbClk(wb_clk),
-		.iRst_n(wb_rst | !CSR[31]),	// reset MDIO when the chip is reset
+		.iRst_n(!(wb_rst | MDIO[30])),
 	//---------------------------------------------------------------------------
 	//-- signals from register file
 	//---------------------------------------------------------------------------
 		.iPHYAddr(PHYADDR),
 		.iRegAddr(MDIO[20:16]),
-		.iNoPre(0),			// always send preamble
+		.iNoPre(1'b0),			// always send preamble
 		.iData2PHY(MDIO[15:0]),
 		.iClkDiv(MDIOCLKDIV),
 		.iRdOp(mdio_read),
