@@ -243,18 +243,21 @@ module fpga_main(
 	wire [15:0]	 tok_data;		// data from token synchro module
 	wire			 tok_valid;		// valid accompanying the above
 	wire [14:0]  usr_word;		// user word from CSR to be put to trigger block in memory
-	wire			 trigger;		// master trigger from triggen to commutation in csreg
-	wire			 inhibit;		// inhibit from triggen to commutation in csreg
-	wire [9:0]	 token;			// 10 bit token of recieved trigger
-	wire			 tok_rdy;		// token recieved
-	wire			 tok_err;		// token error
-	wire			 mem_status;	// memory errors
+	wire	 trigger;		// master trigger from triggen to commutation in csreg
+	wire	 inhibit;		// inhibit from triggen to commutation in csreg
+	wire [9:0]	 token;		// 10 bit token of recieved trigger
+	wire	 tok_rdy;		// token recieved
+	wire	 tok_err;		// token error
+	wire	 mem_status;		// memory errors
 	reg  [31:0]  CNT = 0;
 	reg [5:1] tpdebug = 0;
-	wire [15:13] CSR_BITS;		// CSR bits 15:13
-	wire         auxtrig;		// front panel aux trigger single CLK pulse
-	wire eth_error;			// ethernet error flag
-	wire eth_rcv;			// ethernet block received
+	wire [15:13] CSR_BITS;	// CSR bits 15:13
+	wire auxtrig;		// front panel aux trigger single CLK pulse
+	wire eth_error;		// ethernet error flag
+	wire eth_rcv;		// ethernet block received
+	wire [47:0] MAC;	// our ehternet MAC address
+	wire [31:0] IP;		// our ehternet IP address
+	
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -669,14 +672,16 @@ sdram (
 		.wb_cyc(wb_m2s_ethctl_cyc),
 		.wb_ack(wb_s2m_ethctl_ack),
 		.wb_stb(wb_m2s_ethctl_stb),
-		.wb_adr(wb_m2s_ethctl_adr[3:2]),
+		.wb_adr(wb_m2s_ethctl_adr[4:2]),
 		.wb_rst(wb_rst),
 		.phymdio(PHYMDIO),
 		.phymdc(PHYMDC),
 		.phyint(PHYINT),
 		.phyrst(PHYRST),
 		.blkcnt(eth_rcv),
-		.errcnt(eth_error)
+		.errcnt(eth_error),
+		.MAC(MAC),
+		.IP(IP)
 	);
 
 	assign wb_s2m_ethctl_rty = 0;
@@ -690,6 +695,8 @@ sdram (
 		.error(eth_error),
 		.rcvcnt(eth_rcv),
 		.debug(TP),
+		.MAC(MAC),
+		.IP(IP),
 	// data to be sent
 		.txd(0),
 		.txvld(0),

@@ -21,6 +21,9 @@
 // 4    MDIO
 // 8    received block counter
 // 12   error counter
+// 16   MAC[31:0]
+// 20   MAC[47:32]
+// 24   IP
 //	CSR bits:
 // 31	- enable PHY (clear reset)
 //      MDIO bits:
@@ -43,7 +46,7 @@ module ethctl #
 	input wb_cyc,
 	output reg wb_ack,
 	input wb_stb,
-	input [1:0] wb_adr,
+	input [2:0] wb_adr,
 	input wb_rst,
 //		Phy MDC
 	inout phymdio,
@@ -52,7 +55,10 @@ module ethctl #
 	output phyrst,
 //		Counter pulses
 	input blkcnt,
-	input errcnt
+	input errcnt,
+//		Address parameters
+	output reg [47:0] MAC,
+	output reg [31:0] IP
 );
 
 	reg [31:0] CSR;
@@ -108,63 +114,85 @@ module ethctl #
 
 	always @(wb_adr, CSR, MDIO, BlockCnt, ErrorCnt)
 	case (wb_adr)
-		2'b00: wb_dat_o = CSR;
-		2'b01: wb_dat_o = MDIO;
-		2'b10: wb_dat_o = BlockCnt;
-		2'b11: wb_dat_o = ErrorCnt;
+		3'h0: wb_dat_o = CSR;
+		3'h1: wb_dat_o = MDIO;
+		3'h2: wb_dat_o = BlockCnt;
+		3'h3: wb_dat_o = ErrorCnt;
+		3'h4: wb_dat_o = MAC[31:0];
+		3'h5: wb_dat_o = {MAC[47:32], 16'd0};
+		3'h6: wb_dat_o = IP;
+		default: wb_dat_o = 0;
 	endcase
 	
 	always @ (posedge wb_clk) begin
 		wb_ack <= #1 wb_cyc & wb_stb;
-		mdio_read = 0;
-		mdio_write = 0;
+		mdio_read <= 0;
+		mdio_write <= 0;
 		if (wb_rst) begin
-			CSR = 0;
-			MDIO = 0;
-			BlockCnt = 0;
-			ErrorCnt = 0;
+			CSR <= 0;
+			MDIO <= 0;
+			BlockCnt <= 0;
+			ErrorCnt <= 0;
 		end else begin
 		// CSR
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 0) begin
-				CSR = wb_dat_i;
+				CSR <= wb_dat_i;
 			end
 		// MDIO
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 1) begin
-				MDIO = wb_dat_i;
+				MDIO <= wb_dat_i;
 			end
-			MDIO[31] = mdio_busy;
+			MDIO[31] <= mdio_busy;
 			if (mdio_vld) begin
-				MDIO[15:0] = mdio_rdata;
+				MDIO[15:0] <= mdio_rdata;
 			end
 			if (MDIO[22:21] == 1) begin
-				mdio_write = 1;
+				mdio_write <= 1;
 			end
 			if (MDIO[22:21] == 2) begin
-				mdio_read = 1;
+				mdio_read <= 1;
 			end
 			if (start_of_read || start_of_write) begin
-				MDIO[22:21] = 0;
+				MDIO[22:21] <= 0;
 			end
 		// Block counter
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 2) begin
-				BlockCnt = 0;					// reset on write
+				BlockCnt <= 0;					// reset on write
 			end else if (blk_pulse) begin
-				BlockCnt = BlockCnt + 1;
+				BlockCnt <= BlockCnt + 1;
 			end
 		// Error counter
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 3) begin
-				ErrorCnt = 0;					// reset on write
+				ErrorCnt <= 0;					// reset on write
 			end else if (err_pulse) begin
-				ErrorCnt = ErrorCnt + 1;
+				ErrorCnt <= ErrorCnt + 1;
+			end
+		// MAC & IP
+			if (wb_cyc & wb_stb & wb_we & wb_adr == 4) begin
+				MAC[31:0] <= wb_dat_i;
+			end
+			if (wb_cyc & wb_stb & wb_we & wb_adr == 5) begin
+				MAC[47:32] <= wb_dat_i[15:0];
+			end
+			if (wb_cyc & wb_stb & wb_we & wb_adr == 6) begin
+				IP <= wb_dat_i;
 			end
 		end
 	end
 	
 	always @ (posedge wb_clk or posedge blkcnt) begin
 		if (blk_pulse) begin
-			blk_pulse = 0;
+			blk_pulse <= 0;
 		end else if (blkcnt) begin
-			blk_pulse = 1;
+			blk_pulse <= 1;
+		end
+	end
+
+	always @ (posedge wb_clk or posedge error) begin
+		if (err_pulse) begin
+			err_pulse <= 0;
+		end else if (blkcnt) begin
+			err_pulse <= 1;
 		end
 	end
 	

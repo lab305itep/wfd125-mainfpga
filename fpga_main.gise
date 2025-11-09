@@ -30,9 +30,7 @@
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/trce.xmsgs"/>
     <file xil_pn:fileType="FILE_XMSGS" xil_pn:name="_xmsgs/xst.xmsgs"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGR" xil_pn:name="eth_mac_1g_rgmii_fifo.ngr"/>
-    <file xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="ethctl_test_beh.prj"/>
     <file xil_pn:branch="BehavioralSim" xil_pn:fileType="FILE_ISIM_EXE" xil_pn:name="ethctl_test_isim_beh.exe"/>
-    <file xil_pn:fileType="FILE_ISIM_MISC" xil_pn:name="ethctl_test_isim_beh.wdb"/>
     <file xil_pn:fileType="FILE_CMD_LOG" xil_pn:name="ethernet.cmd_log"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_LSO" xil_pn:name="ethernet.lso"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_NGC" xil_pn:name="ethernet.ngc"/>
@@ -42,6 +40,10 @@
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST_REPORT" xil_pn:name="ethernet.syr"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_XST" xil_pn:name="ethernet.xst"/>
     <file xil_pn:fileType="FILE_HTML" xil_pn:name="ethernet_summary.html"/>
+    <file xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="ethernet_test_beh.prj"/>
+    <file xil_pn:branch="BehavioralSim" xil_pn:fileType="FILE_ISIM_EXE" xil_pn:name="ethernet_test_isim_beh.exe"/>
+    <file xil_pn:fileType="FILE_ISIM_MISC" xil_pn:name="ethernet_test_isim_beh.wdb"/>
+    <file xil_pn:fileType="FILE_XST_PROJECT" xil_pn:name="ethernet_test_stx_beh.prj"/>
     <file xil_pn:fileType="FILE_XRPT" xil_pn:name="ethernet_xst.xrpt"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BITGEN_REPORT" xil_pn:name="fpga_main.bgn" xil_pn:subbranch="FPGAConfiguration"/>
     <file xil_pn:branch="Implementation" xil_pn:fileType="FILE_BIT" xil_pn:name="fpga_main.bit" xil_pn:subbranch="FPGAConfiguration"/>
@@ -100,7 +102,7 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1762628874" xil_pn:in_ck="6803508488124769821" xil_pn:name="TRAN_copyAbstractToPostAbstractSimulation" xil_pn:start_ts="1762628874">
+    <transform xil_pn:end_ts="1762713710" xil_pn:in_ck="8964910041356376799" xil_pn:name="TRAN_copyAbstractToPostAbstractSimulation" xil_pn:start_ts="1762713709">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForInputs"/>
@@ -125,6 +127,7 @@
       <outfile xil_pn:name="ethctl.v"/>
       <outfile xil_pn:name="ethctl_test.v"/>
       <outfile xil_pn:name="ethernet.v"/>
+      <outfile xil_pn:name="ethernet_test.v"/>
       <outfile xil_pn:name="fpga_main.v"/>
       <outfile xil_pn:name="gentrig.v"/>
       <outfile xil_pn:name="gtpfifo.v"/>
@@ -167,11 +170,11 @@
       <outfile xil_pn:name="wb_intercon.vh"/>
       <outfile xil_pn:name="xspi_master.v"/>
     </transform>
-    <transform xil_pn:end_ts="1762627900" xil_pn:name="TRAN_xawsToSimhdl" xil_pn:prop_ck="-2441970881655318086" xil_pn:start_ts="1762627900">
+    <transform xil_pn:end_ts="1762704044" xil_pn:name="TRAN_xawsToSimhdl" xil_pn:prop_ck="962872907109661909" xil_pn:start_ts="1762704044">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
-    <transform xil_pn:end_ts="1762627900" xil_pn:name="TRAN_schematicsToHdlSim" xil_pn:prop_ck="-7004910714016979592" xil_pn:start_ts="1762627900">
+    <transform xil_pn:end_ts="1762704044" xil_pn:name="TRAN_schematicsToHdlSim" xil_pn:prop_ck="7590102510574608019" xil_pn:start_ts="1762704044">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
     </transform>
@@ -185,7 +188,7 @@
       <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11/example_design/s6_gtpwizard_v1_11_top.v"/>
       <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11_tile.v"/>
     </transform>
-    <transform xil_pn:end_ts="1762628874" xil_pn:in_ck="5634669085501695685" xil_pn:name="TRAN_copyPostAbstractToPreSimulation" xil_pn:start_ts="1762628874">
+    <transform xil_pn:end_ts="1762713710" xil_pn:in_ck="8964910041356376799" xil_pn:name="TRAN_copyPostAbstractToPreSimulation" xil_pn:start_ts="1762713710">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForInputs"/>
@@ -211,6 +214,7 @@
       <outfile xil_pn:name="ethctl.v"/>
       <outfile xil_pn:name="ethctl_test.v"/>
       <outfile xil_pn:name="ethernet.v"/>
+      <outfile xil_pn:name="ethernet_test.v"/>
       <outfile xil_pn:name="fpga_main.v"/>
       <outfile xil_pn:name="gentrig.v"/>
       <outfile xil_pn:name="gtpfifo.v"/>
@@ -222,12 +226,6 @@
       <outfile xil_pn:name="inoutreg.v"/>
       <outfile xil_pn:name="intercon/verilog_utils.vh"/>
       <outfile xil_pn:name="intercon/wb_mux.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_check.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_gen.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11/example_design/mgt_usrclk_source_pll.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11/example_design/s6_gtpwizard_v1_11_top.v"/>
-      <outfile xil_pn:name="ipcore_dir/s6_gtpwizard_v1_11_tile.v"/>
       <outfile xil_pn:name="ledengine.v"/>
       <outfile xil_pn:name="memcntr/infrastructure.v"/>
       <outfile xil_pn:name="memcntr/iodrp_controller.v"/>
@@ -259,7 +257,7 @@
       <outfile xil_pn:name="wb_intercon.vh"/>
       <outfile xil_pn:name="xspi_master.v"/>
     </transform>
-    <transform xil_pn:end_ts="1762628875" xil_pn:in_ck="5634669085501695685" xil_pn:name="TRAN_ISimulateBehavioralModelRunFuse" xil_pn:prop_ck="3168798945096906355" xil_pn:start_ts="1762628874">
+    <transform xil_pn:end_ts="1762713711" xil_pn:in_ck="4675543313542697735" xil_pn:name="TRAN_ISimulateBehavioralModelRunFuse" xil_pn:prop_ck="-7850330724486114903" xil_pn:start_ts="1762713710">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForInputs"/>
@@ -267,20 +265,20 @@
       <status xil_pn:value="OutOfDateForOutputs"/>
       <status xil_pn:value="InputChanged"/>
       <status xil_pn:value="OutputChanged"/>
-      <outfile xil_pn:name="ethctl_test_beh.prj"/>
-      <outfile xil_pn:name="ethctl_test_isim_beh.exe"/>
+      <outfile xil_pn:name="ethernet_test_beh.prj"/>
+      <outfile xil_pn:name="ethernet_test_isim_beh.exe"/>
       <outfile xil_pn:name="fuse.log"/>
       <outfile xil_pn:name="isim"/>
       <outfile xil_pn:name="isim.log"/>
       <outfile xil_pn:name="xilinxsim.ini"/>
     </transform>
-    <transform xil_pn:end_ts="1762628875" xil_pn:in_ck="2384183917465613842" xil_pn:name="TRAN_ISimulateBehavioralModel" xil_pn:prop_ck="8006053311430763510" xil_pn:start_ts="1762628875">
+    <transform xil_pn:end_ts="1762713711" xil_pn:in_ck="1509061662804809375" xil_pn:name="TRAN_ISimulateBehavioralModel" xil_pn:prop_ck="3996223289596237772" xil_pn:start_ts="1762713711">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
       <status xil_pn:value="OutOfDateForPredecessor"/>
       <status xil_pn:value="OutOfDateForOutputs"/>
       <status xil_pn:value="OutputChanged"/>
-      <outfile xil_pn:name="ethctl_test_isim_beh.wdb"/>
+      <outfile xil_pn:name="ethernet_test_isim_beh.wdb"/>
       <outfile xil_pn:name="isim.cmd"/>
       <outfile xil_pn:name="isim.log"/>
     </transform>
@@ -322,7 +320,9 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForInputs"/>
       <status xil_pn:value="OutOfDateForOutputs"/>
+      <status xil_pn:value="InputChanged"/>
       <status xil_pn:value="OutputChanged"/>
       <outfile xil_pn:name="_xmsgs/xst.xmsgs"/>
       <outfile xil_pn:name="ethernet.ngr"/>
@@ -345,6 +345,7 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForPredecessor"/>
       <outfile xil_pn:name="_ngo"/>
       <outfile xil_pn:name="_xmsgs/ngdbuild.xmsgs"/>
       <outfile xil_pn:name="fpga_main.bld"/>
@@ -355,6 +356,7 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForPredecessor"/>
       <status xil_pn:value="OutOfDateForOutputs"/>
       <status xil_pn:value="OutputChanged"/>
       <outfile xil_pn:name="_xmsgs/map.xmsgs"/>
@@ -371,6 +373,7 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForPredecessor"/>
       <outfile xil_pn:name="_xmsgs/par.xmsgs"/>
       <outfile xil_pn:name="fpga_main.ncd"/>
       <outfile xil_pn:name="fpga_main.pad"/>
@@ -386,6 +389,7 @@
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="WarningsGenerated"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForPredecessor"/>
       <outfile xil_pn:name="_xmsgs/bitgen.xmsgs"/>
       <outfile xil_pn:name="fpga_main.bgn"/>
       <outfile xil_pn:name="fpga_main.bit"/>
@@ -398,6 +402,7 @@
     <transform xil_pn:end_ts="1762646641" xil_pn:in_ck="5681687851768126323" xil_pn:name="TRAN_postRouteTrce" xil_pn:prop_ck="445577401284416184" xil_pn:start_ts="1762646633">
       <status xil_pn:value="SuccessfullyRun"/>
       <status xil_pn:value="ReadyToRun"/>
+      <status xil_pn:value="OutOfDateForPredecessor"/>
       <outfile xil_pn:name="_xmsgs/trce.xmsgs"/>
       <outfile xil_pn:name="fpga_main.twr"/>
       <outfile xil_pn:name="fpga_main.twx"/>

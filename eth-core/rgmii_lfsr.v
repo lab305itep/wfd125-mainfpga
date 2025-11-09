@@ -295,7 +295,7 @@ initial begin
             end
         end
     end else begin
-        $error("Error: unknown configuration setting!");
+//        $error("Error: unknown configuration setting!");
         $finish;
     end
 

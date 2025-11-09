@@ -94,22 +94,22 @@ module axis_async_fifo #
 // check configuration
 initial begin
     if (FRAME_FIFO && !LAST_ENABLE) begin
-        $error("Error: FRAME_FIFO set requires LAST_ENABLE set");
+//        $error("Error: FRAME_FIFO set requires LAST_ENABLE set");
         $finish;
     end
 
     if (DROP_BAD_FRAME && !FRAME_FIFO) begin
-        $error("Error: DROP_BAD_FRAME set requires FRAME_FIFO set");
+//        $error("Error: DROP_BAD_FRAME set requires FRAME_FIFO set");
         $finish;
     end
 
     if (DROP_WHEN_FULL && !FRAME_FIFO) begin
-        $error("Error: DROP_WHEN_FULL set requires FRAME_FIFO set");
+//        $error("Error: DROP_WHEN_FULL set requires FRAME_FIFO set");
         $finish;
     end
 
     if (DROP_BAD_FRAME && (USER_BAD_FRAME_MASK & {USER_WIDTH{1'b1}}) == 0) begin
-        $error("Error: Invalid USER_BAD_FRAME_MASK value");
+//        $error("Error: Invalid USER_BAD_FRAME_MASK value");
         $finish;
     end
 end
@@ -143,12 +143,12 @@ reg m_rst_sync2_reg = 1'b1;
 reg m_rst_sync3_reg = 1'b1;
 
 reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
-reg [WIDTH-1:0] mem_read_data_reg;
+reg [WIDTH-1:0] mem_read_data_reg = 0;
 reg mem_read_data_valid_reg = 1'b0, mem_read_data_valid_next;
 
 wire [WIDTH-1:0] s_axis;
 
-reg [WIDTH-1:0] m_axis_reg;
+reg [WIDTH-1:0] m_axis_reg = 0;
 reg m_axis_tvalid_reg = 1'b0, m_axis_tvalid_next;
 
 // full when first TWO MSBs do NOT match, but rest matches
