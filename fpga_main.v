@@ -257,7 +257,7 @@ module fpga_main(
 	wire eth_rcv;		// ethernet block received
 	wire [47:0] MAC;	// our ehternet MAC address
 	wire [31:0] IP;		// our ehternet IP address
-	
+	wire [13:0] mac_status;	// MAC status
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -681,7 +681,8 @@ sdram (
 		.blkcnt(eth_rcv),
 		.errcnt(eth_error),
 		.MAC(MAC),
-		.IP(IP)
+		.IP(IP),
+		.mac_status(mac_status)
 	);
 
 	assign wb_s2m_ethctl_rty = 0;
@@ -691,10 +692,11 @@ sdram (
 	// general
 		.clk125(CLK125),
 		.clk125_90(CLK125_90),
-		.reset(XRESET),
+		.reset(!PHYRST),
 		.error(eth_error),
 		.rcvcnt(eth_rcv),
 		.debug(TP),
+		.mac_status(mac_status),
 		.MAC(MAC),
 		.IP(IP),
 	// data to be sent

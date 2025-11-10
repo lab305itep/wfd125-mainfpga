@@ -46,6 +46,7 @@ module ethernet(
 	output error,
 	output rcvcnt,
 	output [4:0] debug,
+	output [13:0] mac_status,
 	input [47:0] MAC,
 	input [31:0] IP,
 	// data to be sent
@@ -68,33 +69,40 @@ module ethernet(
 	output mac_gmii_tx_en
 	);
 
-	wire [7:0] tdata;
-	wire tvalid;
+	reg [7:0] tdata = 0;
+	reg tvalid = 0;
 	wire tready;
-	wire tlast;
+	reg tlast = 0;
 	wire tuser;
 	wire [7:0] rdata;
 	wire rvalid;
-	reg rready;
+	reg rready = 1;
 	wire rlast;
 	wire ruser;
 	
-	localparam [2:0] 
-		STATE_IDLE = 3'h0,
-		STATE_RECEIVE = 3'h1,
-		STATE_ARP = 3'h2,
-		STATE_PING = 3'h3,
-		STATE_RREG = 3'h4,
-		STATE_WREG = 3'h5,
-		STATE_SDRAM = 3'h6,
-		STATE_ERROR = 3'h7;
+	localparam IPG_GAP = 8'd12;
+	
+	localparam [3:0] 
+		STATE_IDLE = 4'h0,
+		STATE_RECEIVE = 4'h1,
+		STATE_ARP = 4'h2,
+		STATE_PING = 4'h3,
+		STATE_RREG = 4'h4,
+		STATE_WREG = 4'h5,
+		STATE_SDRAM = 4'h6,
+		STATE_ERROR = 4'h7,
+		STATE_HEADER = 4'h8,
+		STATE_FILL64 = 4'h9,
+		STATE_FILLCOPY = 4'hA;
 		
-	reg [2:0] state;
+	reg [3:0] state;
+	reg [3:0] next_state;
 	reg rcv_error;
-	localparam MAXRCV = 64;
+	localparam MAXRCV = 128;
 	reg [7:0] rcv_buf [MAXRCV-1:0];
-	wire [10:0] rcv_byte_cnt;
-	wire [10:0] snd_byte_cnt;
+	reg [10:0] rcv_byte_cnt;
+	reg [10:0] snd_byte_cnt;
+	reg [15:0] ip_byte_len; 
 	wire [47:0] src_MAC;
 	wire [47:0] dst_MAC;
 	wire [31:0] src_IP;
@@ -103,6 +111,7 @@ module ethernet(
 		ETH_TYPE_IP = 16'h0800,
 		ETH_TYPE_ARP = 16'h0806;
 	wire [15:0] Eth_type;
+	wire [15:0] IP_length;
 	localparam [7:0]
 		IP_TYPE_ICMP = 8'd1,
 		IP_TYPE_UDP = 8'd17;
@@ -140,8 +149,9 @@ module ethernet(
 	assign debug[1] = rlast;
 	assign debug[2] = tready;
 	assign debug[3] = error;
-	assign debug[4] = 0;
-	assign rcvcnt = rlast;
+	assign debug[4] = rready;
+	assign rcvcnt = rvalid;
+	assign mac_status[13:10] = state;
 //	Data in received block
 	// Level 2 frame header
 	//	Receive dst_MAC, MSB first
@@ -155,13 +165,15 @@ module ethernet(
 	assign src_MAC[47:40] = rcv_buf[6]; 
 	assign src_MAC[39:32] = rcv_buf[7]; 
 	assign src_MAC[31:24] = rcv_buf[8]; 
-	assign src_MAC[23:26] = rcv_buf[9]; 
+	assign src_MAC[23:16] = rcv_buf[9]; 
 	assign src_MAC[15:8]  = rcv_buf[10]; 
 	assign src_MAC[7:0]   = rcv_buf[11];  
 	//	Receive Ethernet type
 	assign Eth_type[15:8] = rcv_buf[12]; 
 	assign Eth_type[7:0]  = rcv_buf[13]; 
 	//	IP header - we ignore most bytes so far including check sum
+	assign IP_length[15:8] = rcv_buf[16];
+	assign IP_length[7:0] = rcv_buf[17];
 	assign IP_protocol    = rcv_buf[23]; 
 	assign src_IP[31:24]  = rcv_buf[26]; 
 	assign src_IP[23:16]  = rcv_buf[27]; 
@@ -211,11 +223,16 @@ module ethernet(
 	assign ICMP_code      = rcv_buf[43];
 
 	always @(posedge clk125) begin
-		case (state)
+		// default values
+		tvalid <= 0;
+		tlast <= 0;
+		
+		if (reset) begin 
+			state <= STATE_IDLE;
+		end else case (state)
 			STATE_IDLE: begin	// Wait for request
 				rcv_byte_cnt <= 0;
 				rcv_error <= 0;
-				IP_protocol <= 0;
 				rready <= 1;
 				if (rvalid) begin	// We expect here the first byte of Layer 2 frame
 					rcv_buf[0] <= rdata;
@@ -236,9 +253,11 @@ module ethernet(
 						IP_protocol == IP_TYPE_ICMP && 
 						ICMP_type == ICMP_TYPE_REQUEST && 
 						ICMP_code == ICMP_PING_CODE) begin
-						state <= STATE_PING;
+						state <= STATE_HEADER;
+						next_state <= STATE_PING;
 						snd_byte_cnt <= 0;
 						rready <= 0;
+						ip_byte_len = (IP_length > MAXRCV-14) ? MAXRCV-14 : IP_length;
 					end else if (Eth_type == ETH_TYPE_IP && 
 						dst_MAC == MAC && dst_IP == IP &&
 						IP_protocol == IP_TYPE_UDP) begin
@@ -252,7 +271,8 @@ module ethernet(
 						rready <= 0;
 					end else if (Eth_type == ETH_TYPE_ARP &&
 						ARP_op == ARP_OP_RQST && ARP_TIP == IP) begin
-						state <= STATE_ARP;
+						state <= STATE_HEADER;
+						next_state <= STATE_ARP;
 						rready <= 0;
 						snd_byte_cnt <= 0;
 					end else begin
@@ -261,19 +281,142 @@ module ethernet(
 				end
 			end
 			STATE_ARP: begin
-				case (snd_byte_cnt) 
-				//???????????????????????????	
+				case (snd_byte_cnt)
+				14 : tdata <= 0; //	Hardware type (1 - ethernet)
+				15 : tdata <= 1;
+				16 : tdata <= 8; // 	Protocal type (0x0800 - IPv4)
+				17 : tdata <= 0;
+				18 : tdata <= 6; //	Hardware (MAC) length
+				19 : tdata <= 4; //	Protocol (IPv4) length
+				20 : tdata <= ARP_OP_RPLY[15:8];
+				21 : tdata <= ARP_OP_RPLY[7:0];
+				22 : tdata <= MAC[47:40];
+				23 : tdata <= MAC[39:32];
+				24 : tdata <= MAC[31:24];
+				25 : tdata <= MAC[23:16];
+				26 : tdata <= MAC[15:8];
+				27 : tdata <= MAC[7:0];
+				28 : tdata <= IP[31:24];
+				29 : tdata <= IP[23:16];
+				30 : tdata <= IP[15:8];
+				31 : tdata <= IP[7:0];
+				32 : tdata <= src_MAC[47:40];
+				33 : tdata <= src_MAC[39:32];
+				34 : tdata <= src_MAC[31:24];
+				35 : tdata <= src_MAC[23:16];
+				36 : tdata <= src_MAC[15:8];
+				37 : tdata <= src_MAC[7:0];
+				38 : tdata <= src_IP[31:24];
+				39 : tdata <= src_IP[23:16];
+				40 : tdata <= src_IP[15:8];
+				41 : begin
+					tdata <= src_IP[7:0];
+					state <= STATE_FILL64;
+				end
 				endcase
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;				
 			end
 			STATE_PING: begin
+				case (snd_byte_cnt)
+				14 : tdata <= 8'h45;	// Version = 4, header length = 5
+				15 : tdata <= 0;	// DSCP, ECN
+				16 : tdata <= ip_byte_len[15:8];	// Length high byte
+				17 : tdata <= ip_byte_len[7:0];	// Length low byte
+				18 : tdata <= 0;	// ID ?
+				19 : tdata <= 0;	// ID ?
+				20 : tdata <= 0;	// Offset & flags
+				21 : tdata <= 0;	// Offset
+				22 : tdata <= 8'h40;	// TTL
+				23 : tdata <= IP_TYPE_ICMP;
+				24 : tdata <= 0;	// Check sum ??? TODO
+				25 : tdata <= 0;	// Check sum ??? TODO
+				26 : tdata <= IP[31:24];
+				27 : tdata <= IP[23:16];
+				28 : tdata <= IP[15:8];
+				29 : tdata <= IP[7:0];
+				30 : tdata <= src_IP[31:24];
+				31 : tdata <= src_IP[23:16];
+				32 : tdata <= src_IP[15:8];
+				33 : tdata <= src_IP[7:0];
+				34 : tdata <= ICMP_TYPE_REPLY;
+				35 : tdata <= ICMP_PING_CODE;
+				36 : tdata <= 0;	// Check sum ??? TODO
+				37 : begin
+					tdata <= 0;	// Check sum ??? TODO
+					state <= STATE_FILLCOPY;
+				end
+				endcase
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;								
 			end
 			STATE_SDRAM: begin
+				state <= STATE_IDLE;
 			end
 			STATE_RREG: begin
+				state <= STATE_IDLE;
 			end
 			STATE_WREG: begin
+				state <= STATE_IDLE;
 			end
 			STATE_ERROR: begin
+				state <= STATE_IDLE;
+			end
+			STATE_HEADER: if (tready) begin
+				case (snd_byte_cnt) 
+				//	destination: source of the received packet
+				0  : tdata <= src_MAC[47:40];
+				1  : tdata <= src_MAC[39:32];
+				2  : tdata <= src_MAC[31:24];
+				3  : tdata <= src_MAC[23:16];
+				4  : tdata <= src_MAC[15:8];
+				5  : tdata <= src_MAC[7:0];
+				//	source: always our MAC
+				6  : tdata <= MAC[47:40];
+				7  : tdata <= MAC[39:32];
+				8  : tdata <= MAC[31:24];
+				9  : tdata <= MAC[23:16];
+				10 : tdata <= MAC[15:8];
+				11 : tdata <= MAC[7:0];
+				12 : begin 
+					if (next_state == STATE_ARP) begin
+						tdata <= ETH_TYPE_ARP[15:8];
+					end else begin
+						tdata <= ETH_TYPE_IP[15:8];
+					end
+				end
+				13 : begin 
+					if (next_state == STATE_ARP) begin
+						tdata <= ETH_TYPE_ARP[7:0];
+					end else begin
+						tdata <= ETH_TYPE_IP[7:0];
+					end
+					state <= next_state;
+				end
+				endcase				
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;
+			end
+			STATE_FILL64: begin
+				if (snd_byte_cnt == 59) begin	// Minimum packet is 64 bytes = 60 + 4(CRC)
+					state <= STATE_IDLE;
+					tlast <= 1;
+				end
+				tdata <= 0;
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;				
+			end
+			STATE_FILLCOPY: begin
+				if (snd_byte_cnt == ip_byte_len + 13) begin	// PING response - send copy of received packet
+					state <= STATE_IDLE;
+					tlast <= 1;
+				end
+				tdata <= rcv_buf[snd_byte_cnt];
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;				
+			end
+			default : begin
+				state <= STATE_IDLE;
 			end
 		endcase
 	end
@@ -316,7 +459,25 @@ module ethernet(
 		.rgmii_tx_clk(rgmii_tx_clk),
 		.rgmii_txd(rgmii_txd),
 		.rgmii_tx_ctl(rgmii_tx_ctl),
-		.mac_gmii_tx_en(mac_gmii_tx_en)
+		.mac_gmii_tx_en(mac_gmii_tx_en),		
+	/*
+	 * Status
+	 */
+		.tx_fifo_overflow(mac_status[0]),
+		.tx_fifo_bad_frame(mac_status[1]),
+		.tx_fifo_good_frame(mac_status[2]),
+		.rx_error_bad_frame(mac_status[3]),
+		.rx_error_bad_fcs(mac_status[4]),
+		.rx_fifo_overflow(mac_status[5]),
+		.rx_fifo_bad_frame(mac_status[6]),
+		.rx_fifo_good_frame(mac_status[7]),
+		.speed(mac_status[9:8]),
+		.rx_fcs_reg(),
+		.tx_fcs_reg(),
+	/*
+	 * Configuration
+	 */
+		.ifg_delay(IPG_GAP)
 	);
 
 endmodule

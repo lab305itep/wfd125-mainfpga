@@ -58,7 +58,8 @@ module ethctl #
 	input errcnt,
 //		Address parameters
 	output reg [47:0] MAC,
-	output reg [31:0] IP
+	output reg [31:0] IP,
+	input [13:0] mac_status
 );
 
 	reg [31:0] CSR;
@@ -112,7 +113,7 @@ module ethctl #
 		.oMDC(phymdc)
 	);
 
-	always @(wb_adr, CSR, MDIO, BlockCnt, ErrorCnt)
+	always @(wb_adr, CSR, MDIO, BlockCnt, ErrorCnt, MAC, IP)
 	case (wb_adr)
 		3'h0: wb_dat_o = CSR;
 		3'h1: wb_dat_o = MDIO;
@@ -138,6 +139,7 @@ module ethctl #
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 0) begin
 				CSR <= wb_dat_i;
 			end
+			CSR[13:0] <= mac_status;
 		// MDIO
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 1) begin
 				MDIO <= wb_dat_i;
@@ -188,10 +190,10 @@ module ethctl #
 		end
 	end
 
-	always @ (posedge wb_clk or posedge error) begin
+	always @ (posedge wb_clk or posedge errcnt) begin
 		if (err_pulse) begin
 			err_pulse <= 0;
-		end else if (blkcnt) begin
+		end else if (errcnt) begin
 			err_pulse <= 1;
 		end
 	end
