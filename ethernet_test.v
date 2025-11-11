@@ -50,6 +50,7 @@ module ethernet_test;
 	wire [3:0] rgmii_txd;
 	wire rgmii_tx_ctl;
 	wire mac_gmii_tx_en;
+	wire [13:0] mac_status;
 
 	// Instantiate the Unit Under Test (UUT)
 	ethernet uut (
@@ -59,7 +60,9 @@ module ethernet_test;
 		.error(error), 
 		.rcvcnt(rcvcnt), 
 		.debug(debug), 
-		.MAC(MAC),
+		.MAC(48'h12345678ABCD),
+		.IP(32'h12345678),
+		.mac_status(mac_status),
 		.txd(txd), 
 		.txvld(txvld), 
 		.txend(txend), 
@@ -81,14 +84,14 @@ module ethernet_test;
 		clk125 = 0;
 		clk125_90 = 0;
 		#2;
-		clk125 = 0;
-		clk125_90 = 1;
-		#2;
-		clk125 = 1;
-		clk125_90 = 1;
-		#2;
 		clk125 = 1;
 		clk125_90 = 0;
+		#2;
+		clk125 = 1;
+		clk125_90 = 1;
+		#2;
+		clk125 = 0;
+		clk125_90 = 1;
 		#2;
 	end
 	
@@ -119,7 +122,8 @@ module ethernet_test;
 		// Add stimulus here
 		reset = 0;
 		ready4cmd = 1;
-		#100;
+		rgmii_rxd <= 4'b1101;
+		#2000;
 		repeat (10) begin
 			d = 8'h55;
 			repeat (7) begin
@@ -197,7 +201,7 @@ module ethernet_test;
 			repeat (200) begin
 				@(negedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 0;
-					rgmii_rxd <= 0;
+					rgmii_rxd <= 4'b1101;
 				end
 			end
 		end

@@ -8,22 +8,22 @@
 <!-- Copyright (c) 1995-2013 Xilinx, Inc.  All rights reserved.    -->
 
 <messages>
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11.v&quot; into library work</arg>
 </msg>
 
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_check.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_check.v&quot; into library work</arg>
 </msg>
 
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_gen.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/frame_gen.v&quot; into library work</arg>
 </msg>
 
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/mgt_usrclk_source_pll.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/mgt_usrclk_source_pll.v&quot; into library work</arg>
 </msg>
 
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/s6_gtpwizard_v1_11_top.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11/example_design/s6_gtpwizard_v1_11_top.v&quot; into library work</arg>
 </msg>
 
-<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/wfd125/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11_tile.v&quot; into library work</arg>
+<msg type="info" file="ProjectMgmt" num="1845" ><arg fmt="%s" index="1">Analyzing Verilog file &quot;/home/igor/proj/uwfd64/wfd125-mainfpga/ipcore_dir/s6_gtpwizard_v1_11_tile.v&quot; into library work</arg>
 </msg>
 
 </messages>
