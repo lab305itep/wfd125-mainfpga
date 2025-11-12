@@ -90,7 +90,7 @@ module eth_mac_1g_rgmii #
     output wire [1:0] speed,
     output wire [31:0] rx_fcs_reg,
     output wire [31:0] tx_fcs_reg,
-
+    output wire [4:0] debug,
     /*
      * Configuration
      */
@@ -249,6 +249,7 @@ eth_mac_1g_inst (
     .rx_error_bad_fcs(rx_error_bad_fcs),
     .rx_fcs_reg(rx_fcs_reg),
     .tx_fcs_reg(tx_fcs_reg),
+    .debug(debug),
     .ifg_delay(ifg_delay)
 );
 

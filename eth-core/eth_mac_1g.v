@@ -80,11 +80,12 @@ module eth_mac_1g #
     output wire        rx_error_bad_fcs,
     output wire [31:0] rx_fcs_reg,
     output wire [31:0] tx_fcs_reg,
-
+    output wire [4:0] debug,
     /*
      * Configuration
      */
     input wire [7:0]   ifg_delay
+    
 );
 
 axis_gmii_rx
@@ -102,8 +103,8 @@ axis_gmii_rx_inst (
     .mii_select(rx_mii_select),
     .error_bad_frame(rx_error_bad_frame),
     .error_bad_fcs(rx_error_bad_fcs),
-    .fcs_reg(rx_fcs_reg)
-);
+    .fcs_reg(rx_fcs_reg),
+    .debug(debug));
 
 axis_gmii_tx #(
     .ENABLE_PADDING(ENABLE_PADDING),

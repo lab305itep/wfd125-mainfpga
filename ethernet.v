@@ -145,11 +145,11 @@ module ethernet(
 	assign address = 0;
 	assign value = 0;
 	assign cmd = 0;
-	assign debug[0] = rvalid;
+/*	assign debug[0] = rvalid;
 	assign debug[1] = rlast;
 	assign debug[2] = tready;
 	assign debug[3] = error;
-	assign debug[4] = rready;
+	assign debug[4] = rready; */
 	assign rcvcnt = rvalid;
 	assign mac_status[13:10] = state;
 //	Data in received block
@@ -474,6 +474,7 @@ module ethernet(
 		.speed(mac_status[9:8]),
 		.rx_fcs_reg(),
 		.tx_fcs_reg(),
+		.debug(debug),
 	/*
 	 * Configuration
 	 */

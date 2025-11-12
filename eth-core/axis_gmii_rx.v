@@ -68,7 +68,8 @@ module axis_gmii_rx
     output wire        error_bad_fcs,
 
     /* debug */
-    output reg [31:0]  fcs_reg
+    output reg [31:0]  fcs_reg,
+    output reg [4:0] debug
 );
 
 localparam [7:0]
@@ -168,6 +169,12 @@ always @* begin
         // MII even cycle - hold state
         state_next = state_reg;
     end else begin
+    //	debug
+	debug[1:0] <= state_reg[1:0];
+	debug[2] <= (gmii_rxd_d4 == ETH_SFD);
+	debug[3] <= gmii_rx_dv_d4;
+	debug[4] <= gmii_rx_er_d4;
+    // end debug
         case (state_reg)
             STATE_IDLE: begin
                 // idle state - wait for packet
