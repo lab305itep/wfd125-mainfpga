@@ -128,7 +128,7 @@ always @(posedge rx_clk) begin
 end
 
 // PHY speed detection
-reg [2:0] rx_prescale;
+reg [2:0] rx_prescale = 0;
 
 always @(posedge rx_clk) begin
     rx_prescale <= rx_prescale + 3'd1;
