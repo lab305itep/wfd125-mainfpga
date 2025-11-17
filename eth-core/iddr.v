@@ -89,8 +89,8 @@ if (TARGET == "XILINX") begin
             iddr_inst (
                 .Q0(q1[n]),
                 .Q1(q2[n]),
-                .C0(clk),
-                .C1(clk180),
+                .C0(clk180),
+                .C1(clk),
                 .CE(1'b1),
                 .D(d[n]),
                 .R(1'b0),

@@ -127,61 +127,61 @@ module ethernet_test;
 		repeat (10) begin
 			d = 8'h55;
 			repeat (7) begin
-				@(negedge rgmii_rx_clk) begin 
+				@(posedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[3:0];
 				end
-				@(posedge rgmii_rx_clk) begin 
+				@(negedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[7:4];
 				end
 			end
 			d = 8'hD5;
-			@(negedge rgmii_rx_clk) begin 
+			@(posedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[3:0];
 			end
-			@(posedge rgmii_rx_clk) begin 
+			@(negedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[7:4];
 			end
 			d = 128;
 			repeat (12) begin
-				@(negedge rgmii_rx_clk) begin 
+				@(posedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[3:0];
 				end
-				@(posedge rgmii_rx_clk) begin 
+				@(negedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[7:4];
 				end
 				d = d + 1;
 			end
 			d = 8'h8;
-			@(negedge rgmii_rx_clk) begin 
+			@(posedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[3:0];
 			end
-			@(posedge rgmii_rx_clk) begin 
+			@(negedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[7:4];
 			end
 			d = 8'h0;
-			@(negedge rgmii_rx_clk) begin 
+			@(posedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[3:0];
 			end
-			@(posedge rgmii_rx_clk) begin 
+			@(negedge rgmii_rx_clk) begin 
 				rgmii_rx_ctl = 1;
 				rgmii_rxd <= d[7:4];
 			end
 			d = 0;
 			repeat (100) begin
-				@(negedge rgmii_rx_clk) begin 
+				@(posedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[3:0];
 				end
-				@(posedge rgmii_rx_clk) begin 
+				@(negedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 1;
 					rgmii_rxd <= d[7:4];
 				end
@@ -189,17 +189,17 @@ module ethernet_test;
 			end
 			d = 8'hFF;
 			repeat (12) begin
-				@(negedge rgmii_rx_clk) begin 
+				@(posedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 0;
 					rgmii_rxd <= d[3:0];
 				end
-				@(posedge rgmii_rx_clk) begin 
+				@(negedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 0;
 					rgmii_rxd <= d[7:4];
 				end
 			end
 			repeat (200) begin
-				@(negedge rgmii_rx_clk) begin 
+				@(posedge rgmii_rx_clk) begin 
 					rgmii_rx_ctl = 0;
 					rgmii_rxd <= 4'b1101;
 				end
