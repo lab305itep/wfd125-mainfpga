@@ -177,6 +177,7 @@ iddr #(
 data_iddr_inst (
     .clk(clk_io),
     .clk180(clk_io_180),
+    .clk_int(output_clk),
     .d(input_d),
     .q1(output_q1),
     .q2(output_q2)
