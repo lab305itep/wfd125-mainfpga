@@ -41,6 +41,7 @@ module iddr #
 (
     input  wire clk,
     input  wire clk180,
+    input  wire clk_int,
 
     input  wire [WIDTH-1:0] d,
 
@@ -83,19 +84,27 @@ if (TARGET == "XILINX") begin
                 .S(1'b0)
             );
         end else if (IODDR_STYLE == "IODDR2") begin
+	    wire tmp;
             IDDR2 #(
                 .DDR_ALIGNMENT("C0")
             )
             iddr_inst (
-                .Q0(q1[n]),
+                .Q0(tmp),
                 .Q1(q2[n]),
-                .C0(clk180),
-                .C1(clk),
+                .C0(clk),
+                .C1(clk180),
                 .CE(1'b1),
                 .D(d[n]),
                 .R(1'b0),
                 .S(1'b0)
             );
+	    FDRE fdre_inst (
+		.Q(q1[n]),
+		.D(tmp),
+		.C(clk_int),
+		.CE(1'b1),
+		.R(1'b0)
+	    );
         end
     end
 end else if (TARGET == "ALTERA") begin

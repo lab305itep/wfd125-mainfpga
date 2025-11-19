@@ -308,11 +308,11 @@ module ethernet(
 				35 : tdata <= src_MAC[23:16];
 				36 : tdata <= src_MAC[15:8];
 				37 : tdata <= src_MAC[7:0];
-				38 : tdata <= src_IP[31:24];
-				39 : tdata <= src_IP[23:16];
-				40 : tdata <= src_IP[15:8];
+				38 : tdata <= ARP_SIP[31:24];
+				39 : tdata <= ARP_SIP[23:16];
+				40 : tdata <= ARP_SIP[15:8];
 				41 : begin
-					tdata <= src_IP[7:0];
+					tdata <= ARP_SIP[7:0];
 					state <= STATE_FILL64;
 				end
 				endcase
