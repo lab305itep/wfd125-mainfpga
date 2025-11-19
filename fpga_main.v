@@ -255,6 +255,7 @@ module fpga_main(
 	wire auxtrig;		// front panel aux trigger single CLK pulse
 	wire eth_error;		// ethernet error flag
 	wire eth_rcv;		// ethernet block received
+	wire eth_send;		// ethernet block send
 	wire [47:0] MAC;	// our ehternet MAC address
 	wire [31:0] IP;		// our ehternet IP address
 	wire [13:0] mac_status;	// MAC status
@@ -678,7 +679,8 @@ sdram (
 		.phymdc(PHYMDC),
 		.phyint(PHYINT),
 		.phyrst(PHYRST),
-		.blkcnt(eth_rcv),
+		.rcvcnt(eth_rcv),
+		.trcnt(eth_send),
 		.errcnt(eth_error),
 		.MAC(MAC),
 		.IP(IP),
@@ -695,6 +697,7 @@ sdram (
 		.reset(!PHYRST),
 		.error(eth_error),
 		.rcvcnt(eth_rcv),
+		.trcnt(eth_send),
 		.debug(TP),
 		.mac_status(mac_status),
 		.MAC(MAC),

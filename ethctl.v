@@ -24,6 +24,7 @@
 // 16   MAC[31:0]
 // 20   MAC[47:32]
 // 24   IP
+// 28	transmit block counter
 //	CSR bits:
 // 31	- enable PHY (clear reset)
 //      MDIO bits:
@@ -54,8 +55,9 @@ module ethctl #
 	input phyint,
 	output phyrst,
 //		Counter pulses
-	input blkcnt,
+	input rcvcnt,
 	input errcnt,
+	input trcnt,
 //		Address parameters
 	output reg [47:0] MAC,
 	output reg [31:0] IP,
@@ -64,8 +66,9 @@ module ethctl #
 
 	reg [31:0] CSR;
 	reg [31:0] MDIO;
-	reg [31:0] BlockCnt;
+	reg [31:0] ReceiveCnt;
 	reg [31:0] ErrorCnt;
+	reg [31:0] TransmitCnt;
 	reg mdio_read;
 	reg mdio_write;
 	wire start_of_read;
@@ -76,8 +79,9 @@ module ethctl #
 	wire mdio_hz;
 	wire mdio_in;
 	wire mdio_out;
-	reg err_pulse;
-	reg blk_pulse;
+	reg [1:0] errcnt_d;
+	reg [1:0] rcvcnt_d;
+	reg [1:0] trcnt_d;
 	
 	assign phymdio = (mdio_hz) ? 1'bz : mdio_out;
 	assign mdio_in = phymdio;
@@ -113,15 +117,16 @@ module ethctl #
 		.oMDC(phymdc)
 	);
 
-	always @(wb_adr, CSR, MDIO, BlockCnt, ErrorCnt, MAC, IP)
+	always @(wb_adr, CSR, MDIO, ReceiveCnt, ErrorCnt, MAC, IP, TransmitCnt)
 	case (wb_adr)
 		3'h0: wb_dat_o = CSR;
 		3'h1: wb_dat_o = MDIO;
-		3'h2: wb_dat_o = BlockCnt;
+		3'h2: wb_dat_o = ReceiveCnt;
 		3'h3: wb_dat_o = ErrorCnt;
 		3'h4: wb_dat_o = MAC[31:0];
 		3'h5: wb_dat_o = {MAC[47:32], 16'd0};
 		3'h6: wb_dat_o = IP;
+		3'h7: wb_dat_o = TransmitCnt;
 		default: wb_dat_o = 0;
 	endcase
 	
@@ -132,8 +137,9 @@ module ethctl #
 		if (wb_rst) begin
 			CSR <= 0;
 			MDIO <= 0;
-			BlockCnt <= 0;
+			ReceiveCnt <= 0;
 			ErrorCnt <= 0;
+			TransmitCnt <= 0;
 		end else begin
 		// CSR
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 0) begin
@@ -157,16 +163,16 @@ module ethctl #
 			if (start_of_read || start_of_write) begin
 				MDIO[22:21] <= 0;
 			end
-		// Block counter
+		// Receive block counter
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 2) begin
-				BlockCnt <= 0;					// reset on write
-			end else if (blk_pulse) begin
-				BlockCnt <= BlockCnt + 1;
+				ReceiveCnt <= 0;					// reset on write
+			end else if (rcvcnt_d == 2'b01) begin
+				ReceiveCnt <= ReceiveCnt + 1;
 			end
 		// Error counter
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 3) begin
 				ErrorCnt <= 0;					// reset on write
-			end else if (err_pulse) begin
+			end else if (errcnt_d == 2'b01) begin
 				ErrorCnt <= ErrorCnt + 1;
 			end
 		// MAC & IP
@@ -179,23 +185,16 @@ module ethctl #
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 6) begin
 				IP <= wb_dat_i;
 			end
+		// Transmit block counter
+			if (wb_cyc & wb_stb & wb_we & wb_adr == 7) begin
+				TransmitCnt <= 0;					// reset on write
+			end else if (trcnt_d == 2'b01) begin
+				TransmitCnt <= TransmitCnt + 1;
+			end
 		end
-	end
-	
-	always @ (posedge wb_clk or posedge blkcnt) begin
-		if (blk_pulse) begin
-			blk_pulse <= 0;
-		end else if (blkcnt) begin
-			blk_pulse <= 1;
-		end
-	end
-
-	always @ (posedge wb_clk or posedge errcnt) begin
-		if (err_pulse) begin
-			err_pulse <= 0;
-		end else if (errcnt) begin
-			err_pulse <= 1;
-		end
+		rcvcnt_d <= {rcvcnt, rcvcnt_d[0]};
+		errcnt_d <= {errcnt, errcnt_d[0]};
+		trcnt_d <= {trcnt, trcnt_d[0]};
 	end
 	
 endmodule

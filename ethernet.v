@@ -45,6 +45,7 @@ module ethernet(
 	input reset,
 	output error,
 	output rcvcnt,
+	output trcnt,
 	output [4:0] debug,
 	output [13:0] mac_status,
 	input [47:0] MAC,
@@ -151,6 +152,7 @@ module ethernet(
 	assign debug[3] = error;
 	assign debug[4] = rready; */
 	assign rcvcnt = rvalid;
+	assign trcnt = tvalid;
 	assign mac_status[13:10] = state;
 //	Data in received block
 	// Level 2 frame header
