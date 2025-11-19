@@ -146,11 +146,11 @@ module ethernet(
 	assign address = 0;
 	assign value = 0;
 	assign cmd = 0;
-/*	assign debug[0] = rvalid;
-	assign debug[1] = rlast;
-	assign debug[2] = tready;
-	assign debug[3] = error;
-	assign debug[4] = rready; */
+	assign debug[0] = rvalid;
+	assign debug[1] = tvalid;
+	assign debug[2] = (state == STATE_HEADER);
+	assign debug[3] = (next_state == STATE_ARP);
+	assign debug[4] = (next_state == STATE_PING);
 	assign rcvcnt = rvalid;
 	assign trcnt = tvalid;
 	assign mac_status[13:10] = state;
@@ -221,8 +221,8 @@ module ethernet(
 	assign ARP_TIP[15:8]  = rcv_buf[40]; 
 	assign ARP_TIP[7:0]   = rcv_buf[41]; 
 	//	ICMP - we support ping only
-	assign ICMP_type      = rcv_buf[42];
-	assign ICMP_code      = rcv_buf[43];
+	assign ICMP_type      = rcv_buf[34];
+	assign ICMP_code      = rcv_buf[35];
 
 	always @(posedge clk125) begin
 		// default values
@@ -476,7 +476,7 @@ module ethernet(
 		.speed(mac_status[9:8]),
 		.rx_fcs_reg(),
 		.tx_fcs_reg(),
-		.debug(debug),
+		.debug(),
 	/*
 	 * Configuration
 	 */

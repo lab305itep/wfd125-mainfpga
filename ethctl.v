@@ -79,9 +79,9 @@ module ethctl #
 	wire mdio_hz;
 	wire mdio_in;
 	wire mdio_out;
-	reg [1:0] errcnt_d;
-	reg [1:0] rcvcnt_d;
-	reg [1:0] trcnt_d;
+	reg [1:0] errcnt_d = 0;
+	reg [1:0] rcvcnt_d = 0;
+	reg [1:0] trcnt_d = 0;
 	
 	assign phymdio = (mdio_hz) ? 1'bz : mdio_out;
 	assign mdio_in = phymdio;
@@ -192,9 +192,9 @@ module ethctl #
 				TransmitCnt <= TransmitCnt + 1;
 			end
 		end
-		rcvcnt_d <= {rcvcnt, rcvcnt_d[0]};
-		errcnt_d <= {errcnt, errcnt_d[0]};
-		trcnt_d <= {trcnt, trcnt_d[0]};
+		rcvcnt_d <= {rcvcnt_d[0], rcvcnt};
+		errcnt_d <= {errcnt_d[0], errcnt};
+		trcnt_d <= {trcnt_d[0], trcnt};
 	end
 	
 endmodule

@@ -34,6 +34,7 @@ module ethctl_test;
 	reg wb_rst;
 	reg phyint;
 	reg blkcnt;
+	reg sendcnt;
 	reg errcnt;
 
 	// Outputs
@@ -60,7 +61,8 @@ module ethctl_test;
 		.phymdc(phymdc), 
 		.phyint(phyint), 
 		.phyrst(phyrst), 
-		.blkcnt(blkcnt), 
+		.rcvcnt(blkcnt), 
+		.trcnt(sendcnt),
 		.errcnt(errcnt)
 	);
 
@@ -81,6 +83,7 @@ module ethctl_test;
 		wb_rst = 1;
 		phyint = 0;
 		blkcnt = 0;
+		sendcnt = 0;
 		errcnt = 0;
 
 		// Wait 100 ns for global reset to finish
@@ -108,6 +111,13 @@ module ethctl_test;
 		wb_we = 0;
 		wb_cyc = 0;
 		wb_stb = 0;
+		
+		repeat (200) begin
+			#200
+			blkcnt = 1;
+			#200
+			blkcnt = 0;
+		end
 		
 		forever #100;
 
