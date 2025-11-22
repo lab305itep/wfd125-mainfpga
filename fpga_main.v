@@ -258,6 +258,7 @@ module fpga_main(
 	wire eth_send;		// ethernet block send
 	wire [47:0] MAC;	// our ehternet MAC address
 	wire [31:0] IP;		// our ehternet IP address
+	wire [15:0] PORT;	// port to send data at server
 	wire [13:0] mac_status;	// MAC status
 
 	always @ (posedge CLK125) begin
@@ -684,6 +685,7 @@ sdram (
 		.errcnt(eth_error),
 		.MAC(MAC),
 		.IP(IP),
+		.PORT(PORT),
 		.mac_status(mac_status)
 	);
 
@@ -702,6 +704,7 @@ sdram (
 		.mac_status(mac_status),
 		.MAC(MAC),
 		.IP(IP),
+		.PORT(PORT),
 	// data to be sent
 		.txd(0),
 		.txvld(0),
@@ -710,8 +713,10 @@ sdram (
 	// request received
 		.address(),
 		.value(),
-		.cmd(),
-		.ready4cmd(0),
+		.reg_write(),
+		.sdram_read(),
+		.data(32'h87654321),
+		.dvalid(1'b1),
 	// PHY interface
 		.rgmii_rx_clk(PHYRXCLK),
 		.rgmii_rxd(PHYRXD),

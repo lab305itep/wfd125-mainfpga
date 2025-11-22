@@ -114,7 +114,7 @@ module ethernet_test;
 		ready4cmd = 0;
 		rgmii_rxd = 0;
 		rgmii_rx_ctl = 0;
-		MAC = 48'h803755004318;
+		MAC = {1'd0, 3'd7, 4'hD, 8'h12, 32'h12345678};//48'h803755004318;
 
 		// Wait 100 ns for global reset to finish
 		#100;

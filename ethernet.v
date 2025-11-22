@@ -31,12 +31,13 @@
 // 2 - value for register write or length for SDRAM read. Long reads are divided not to 
 // overflow ethernet packet maximum. We don't send splitted UDP packets
 //	UDP replies:
-// 0 - repeat the command, Set bit 31 if address or resulting address range are not valid.
+// 0 - repeat the command, Set bit 31 if error
 // 1 - repeat the address
 // 2 - read SDRAM : repeat the length
 //     read register : the value read
 //     write register : repeat the value
-// 3.. SDRAM data. No data for wrong address(es)
+//     error : error code (1 - unknown command ...)
+// 3.. SDRAM data. No data for wrong address or other error
 //////////////////////////////////////////////////////////////////////////////////
 module ethernet(
 	// general
@@ -44,22 +45,25 @@ module ethernet(
 	input clk125_90,
 	input reset,
 	output error,
-	output rcvcnt,
-	output trcnt,
+	output reg rcvcnt,
+	output reg trcnt,
 	output [4:0] debug,
 	output [13:0] mac_status,
 	input [47:0] MAC,
 	input [31:0] IP,
+	input [15:0] PORT,
 	// data to be sent
 	input [31:0] txd,
 	input txvld,
 	input txend,
 	output txready,
 	// request received
-	output [31:0] address,
-	output [31:0] value,
-	output [2:0] cmd,
-	input ready4cmd,
+	output reg [31:0] address,
+	output reg [31:0] value,
+	input  [31:0] data,
+	input dvalid,
+	output reg reg_write,
+	output reg sdram_read,	
 	// PHY interface
 	input rgmii_rx_clk,
 	input [3:0] rgmii_rxd,
@@ -91,6 +95,8 @@ module ethernet(
 	wire ruser;
 	
 	localparam IPG_GAP = 8'd12;
+	localparam UDP_PORT = 16'd6629;	// not nessesary, but...
+	localparam UDP_MAX_DATA = 1024;	// could be upto 1500 (MTU) - 20 (IP header) - 8 (UDP header) - 12 (our header) = 1460
 	
 	localparam [3:0] 
 		STATE_IDLE = 4'h0,
@@ -105,7 +111,10 @@ module ethernet(
 		STATE_FILL64 = 4'h9,
 		STATE_FILLCOPY = 4'hA,
 		STATE_IPHEADER = 4'hB,
-		STATE_IPSENDHDR = 4'hC;
+		STATE_IPSENDHDR = 4'hC,
+		STATE_PINGCSUM = 4'hD,
+		STATE_UDPHEADER = 4'hE,
+		STATE_SDRAMDATA = 4'hF;
 		
 	reg [3:0] state;
 	reg [3:0] next_state;
@@ -115,8 +124,15 @@ module ethernet(
 	reg [10:0] rcv_byte_cnt;
 	reg [10:0] snd_byte_cnt;
 	reg [15:0] ip_byte_len;
+	wire [15:0] sdram_len;
+	reg [15:0] sdram_cnt;
+	reg sdram_wait;
+	reg [31:0] sdram_data;
+	reg [31:0] sdram_data_copy;
 	reg [15:0] ip_header_buf [9:0];
 	reg [16:0] ip_check_sum;
+	reg [15:0] IP_IDcnt = 0;
+	reg [31:0] sdram_send_cnt = 0;
 	wire [47:0] src_MAC;
 	wire [47:0] dst_MAC;
 	wire [31:0] src_IP;
@@ -156,16 +172,8 @@ module ethernet(
 	assign error = rcv_error;
 	assign txready = 1;
 	assign tuser = 0;
-	assign address = 0;
-	assign value = 0;
-	assign cmd = 0;
-	assign debug[0] = rvalid;
-	assign debug[1] = tvalid;
-	assign debug[2] = (state == STATE_HEADER);
-	assign debug[3] = (next_state == STATE_ARP);
-	assign debug[4] = (next_state == STATE_PING);
-	assign rcvcnt = rvalid;
-	assign trcnt = tvalid;
+	assign debug[0] = tvalid;
+	assign debug[4:1] = state;
 	assign mac_status[13:10] = state;
 //	Data in received block
 	// Level 2 frame header
@@ -236,11 +244,14 @@ module ethernet(
 	//	ICMP - we support ping only
 	assign ICMP_type      = rcv_buf[34];
 	assign ICMP_code      = rcv_buf[35];
+	assign sdram_len = ip_byte_len - 40;
 
 	always @(posedge clk125) begin
 		// default values
 		tvalid <= 0;
 		tlast <= 0;
+		reg_write <= 0;
+		sdram_read <= 0;
 		
 		if (reset) begin 
 			state <= STATE_IDLE;
@@ -272,16 +283,40 @@ module ethernet(
 						next_state <= STATE_PING;
 						snd_byte_cnt <= 0;
 						rready <= 0;
-						ip_byte_len = (IP_length > MAXRCV-14) ? MAXRCV-14 : IP_length;
+						ip_byte_len <= (IP_length > MAXRCV-14) ? MAXRCV-14 : IP_length;
 					end else if (Eth_type == ETH_TYPE_IP && 
 						dst_MAC == MAC && dst_IP == IP &&
 						IP_protocol == IP_TYPE_UDP) begin
 						case (CMD_cmd) 
-							CMD_READ_SDRAM: next_state <= STATE_SDRAM;
-							CMD_READ_REG: next_state <= STATE_RREG;
-							CMD_WRITE_REG: next_state <= STATE_WREG;
-							default: next_state <= STATE_ERROR;
+							CMD_READ_SDRAM: begin
+								if (CMD_len == 0) begin
+									ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+									state <= STATE_IPHEADER;
+									next_state <= STATE_ERROR;	// nothing to do
+								end else begin
+									sdram_send_cnt <= 0;
+									ip_byte_len <= ((CMD_len > UDP_MAX_DATA) ? UDP_MAX_DATA : CMD_len) + 40;
+									sdram_read <= 1;
+									sdram_wait <= 1;
+									next_state <= STATE_SDRAM;
+								end
+							end
+							CMD_READ_REG: begin
+								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								next_state <= STATE_RREG;
+							end
+							CMD_WRITE_REG: begin
+								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								next_state <= STATE_WREG;
+								value <= CMD_len;
+								reg_write <= 1;
+							end
+							default: begin 
+								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								next_state <= STATE_ERROR;
+							end
 						endcase
+						address <= CMD_adr;
 						state <= STATE_IPHEADER;
 						snd_byte_cnt <= 0;
 						rready <= 0;
@@ -330,33 +365,119 @@ module ethernet(
 					state <= STATE_FILL64;
 				end
 				endcase
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;				
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_PING: begin
 				case (snd_byte_cnt)
 				34 : tdata <= ICMP_TYPE_REPLY;
 				35 : tdata <= ICMP_PING_CODE;
-				36 : tdata <= 0;	// Check sum ??? TODO
+				36 : tdata <= ip_check_sum[15:8];	// Check sum
 				37 : begin
-					tdata <= 0;	// Check sum ??? TODO
+					tdata <= ip_check_sum[7:0];	// Check sum
 					state <= STATE_FILLCOPY;
 				end
 				endcase
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;								
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_SDRAM: begin
-				state <= STATE_IDLE;
+				case (snd_byte_cnt)
+				42 : tdata <= CMD_cmd[31:24];	// repeat cmd
+				43 : tdata <= CMD_cmd[23:16];
+				44 : tdata <= CMD_cmd[15:8];
+				45 : tdata <= CMD_cmd[7:0];
+				46 : tdata <= address[31:24];	// actual address
+				47 : tdata <= address[23:16];
+				48 : tdata <= address[15:8];
+				49 : tdata <= address[7:0];
+				50 : tdata <= 0;	// actual length
+				51 : tdata <= 0;
+				52 : tdata <= sdram_len[15:8];
+				53 : begin
+					tdata <= sdram_len[7:0];
+					state <= STATE_SDRAMDATA;
+					sdram_cnt <= 0;
+				end
+				endcase
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
+
 			end
 			STATE_RREG: begin
-				state <= STATE_IDLE;
+				case (snd_byte_cnt)
+				42 : tdata <= CMD_cmd[31:24];	// repeat cmd
+				43 : tdata <= CMD_cmd[23:16];
+				44 : tdata <= CMD_cmd[15:8];
+				45 : tdata <= CMD_cmd[7:0];
+				46 : tdata <= CMD_adr[31:24];	// repeat addr
+				47 : tdata <= CMD_adr[23:16];
+				48 : tdata <= CMD_adr[15:8];
+				49 : tdata <= CMD_adr[7:0];
+				50 : tdata <= data[31:24];	// read result itself
+				51 : tdata <= data[23:16];
+				52 : tdata <= data[15:8];
+				53 : begin
+					tdata <= data[7:0];
+					state <= STATE_FILL64;
+				end
+				endcase
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_WREG: begin
-				state <= STATE_IDLE;
+				case (snd_byte_cnt)
+				42 : tdata <= CMD_cmd[31:24];	// repeat cmd
+				43 : tdata <= CMD_cmd[23:16];
+				44 : tdata <= CMD_cmd[15:8];
+				45 : tdata <= CMD_cmd[7:0];
+				46 : tdata <= CMD_adr[31:24];	// repeat addr
+				47 : tdata <= CMD_adr[23:16];
+				48 : tdata <= CMD_adr[15:8];
+				49 : tdata <= CMD_adr[7:0];
+				50 : tdata <= CMD_len[31:24];	// data copy
+				51 : tdata <= CMD_len[23:16];
+				52 : tdata <= CMD_len[15:8];
+				53 : begin
+					tdata <= CMD_len[7:0];
+					state <= STATE_FILL64;
+				end
+				endcase
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_ERROR: begin
-				state <= STATE_IDLE;
+				case (snd_byte_cnt)
+				42 : tdata <= CMD_cmd[31:24] | 8'h80;	// repeat cmd with error bit set
+				43 : tdata <= CMD_cmd[23:16];
+				44 : tdata <= CMD_cmd[15:8];
+				45 : tdata <= CMD_cmd[7:0];
+				46 : tdata <= CMD_adr[31:24];	// repeat addr
+				47 : tdata <= CMD_adr[23:16];
+				48 : tdata <= CMD_adr[15:8];
+				49 : tdata <= CMD_adr[7:0];
+				50 : tdata <= 0;		// error code
+				51 : tdata <= 0;
+				52 : tdata <= 0;
+				53 : begin
+					tdata <= 8'd1;
+					state <= STATE_FILL64;
+				end
+				endcase
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_HEADER: if (tready) begin
 				case (snd_byte_cnt) 
@@ -390,9 +511,11 @@ module ethernet(
 						state <= STATE_IPSENDHDR;
 					end
 				end
-				endcase				
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;
+				endcase	
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_FILL64: begin
 				if (snd_byte_cnt == 59) begin	// Minimum packet is 64 bytes = 60 + 4(CRC)
@@ -400,8 +523,10 @@ module ethernet(
 					tlast <= 1;
 				end
 				tdata <= 0;
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;				
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_FILLCOPY: begin
 				if (snd_byte_cnt == ip_byte_len + 13) begin	// PING response - send copy of received packet
@@ -409,14 +534,17 @@ module ethernet(
 					tlast <= 1;
 				end
 				tdata <= rcv_buf[snd_byte_cnt];
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;				
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
 			STATE_IPHEADER: begin	// make IP header including checksum
 				if (snd_byte_cnt == 0) begin	// we will use it here not to produce more counters
 					ip_header_buf[0] <= 16'h4500;		// Version = 4, header length = 5, DSCP, ECN
 					ip_header_buf[1] <= ip_byte_len;	// packet length
-					ip_header_buf[2] <= 0;			// ID - we don't use it
+					ip_header_buf[2] <= IP_IDcnt;		// ID
+					IP_IDcnt <= IP_IDcnt + 1;
 					ip_header_buf[3] <= 0;			// Offset & flags
 					ip_header_buf[4][15:8] <= 8'h40;	// TTL
 					if (next_state == STATE_PING) begin
@@ -436,22 +564,79 @@ module ethernet(
 					snd_byte_cnt <= snd_byte_cnt + 1;
 				end else begin
 					ip_header_buf[5] <= 16'hFFFF - ip_check_sum[15:0];
-					state <= STATE_HEADER;
 					snd_byte_cnt <= 0;
+					if (next_state == STATE_PING) begin
+						state <= STATE_PINGCSUM;
+					end else begin
+						state <= STATE_HEADER;
+					end
 				end
 			end
 			STATE_IPSENDHDR: begin	// send IP header - just 5 32-bit words
 				if (snd_byte_cnt == 33) begin
-					state <= next_state;
+					if (next_state == STATE_PING) begin
+						state <= STATE_PING;
+					end else begin
+						state <= STATE_UDPHEADER;
+					end
 				end
 				tdata <= (snd_byte_cnt[0]) ? ip_header_buf[(snd_byte_cnt - 14)/2][7:0] : ip_header_buf[(snd_byte_cnt - 14)/2][15:8];
-				tvalid <= 1;
-				snd_byte_cnt <= snd_byte_cnt + 1;								
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
 			end
+			STATE_PINGCSUM: begin	// calculate control sum for PING packet
+				if (snd_byte_cnt == 0) begin	// we will use it here not to produce more counters
+					ip_check_sum <= {1'b0, ICMP_TYPE_REPLY, ICMP_PING_CODE};
+					snd_byte_cnt <= 2;
+				end else if (snd_byte_cnt < (ip_byte_len - 20) / 2) begin
+					ip_check_sum <= IPCHECKSUM(ip_check_sum[15:0], {rcv_buf[2*snd_byte_cnt+34], rcv_buf[2*snd_byte_cnt+35]});
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end else begin
+					ip_check_sum[15:0] <= 16'hFFFF - ip_check_sum[15:0];
+					state <= STATE_HEADER;
+					snd_byte_cnt <= 0;					
+				end
+			end
+			STATE_UDPHEADER: begin
+				case (snd_byte_cnt)
+				34: tdata <= UDP_PORT[15:8];
+				35: tdata <= UDP_PORT[7:0];
+				36: tdata <= PORT[15:8];
+				37: tdata <= PORT[7:0];
+				38: tdata <= 0;			// Length = 20 = 8+12
+				39: tdata <= 8'd20;
+				40: tdata <= 0;			// csum =0 - we can ignore this field
+				41: begin
+					tdata <= 0;
+					state <= next_state;
+				end
+				endcase	
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end
+			end
+			STATE_SDRAMDATA: begin
+				///////// ?????????????
+				if (tready) begin
+					tvalid <= 1;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+					sdram_cnt <= sdram_cnt + 1;
+				end
+			end			
 			default : begin
 				state <= STATE_IDLE;
 			end
 		endcase
+
+		if (dvalid) begin
+			sdram_data <= data;
+			sdram_wait <= 0;
+		end
+		rcvcnt <= rvalid & rlast;
+		trcnt <= tvalid & tlast;
 	end
 	
 	

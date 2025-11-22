@@ -59,8 +59,9 @@ module ethctl #
 	input errcnt,
 	input trcnt,
 //		Address parameters
-	output reg [47:0] MAC,
-	output reg [31:0] IP,
+	output reg [47:0] MAC,	// our mac-address
+	output reg [31:0] IP,	// our IP-address
+	output reg [15:0] PORT,	// UDP port at server to send data
 	input [13:0] mac_status
 );
 
@@ -124,7 +125,7 @@ module ethctl #
 		3'h2: wb_dat_o = ReceiveCnt;
 		3'h3: wb_dat_o = ErrorCnt;
 		3'h4: wb_dat_o = MAC[31:0];
-		3'h5: wb_dat_o = {MAC[47:32], 16'd0};
+		3'h5: wb_dat_o = {MAC[47:32], PORT};
 		3'h6: wb_dat_o = IP;
 		3'h7: wb_dat_o = TransmitCnt;
 		default: wb_dat_o = 0;
@@ -180,7 +181,8 @@ module ethctl #
 				MAC[31:0] <= wb_dat_i;
 			end
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 5) begin
-				MAC[47:32] <= wb_dat_i[15:0];
+				MAC[47:32] <= wb_dat_i[31:16];
+				PORT <= wb_dat_i[15:0];
 			end
 			if (wb_cyc & wb_stb & wb_we & wb_adr == 6) begin
 				IP <= wb_dat_i;
