@@ -70,6 +70,15 @@ module ethernet(
 	output mac_gmii_tx_en
 	);
 
+	function [16:0] IPCHECKSUM;	// addition for IP checksum calculation
+	input [15:0] termA;
+	input [15:0] termB;
+	begin
+		IPCHECKSUM = termA + termB;
+		if (IPCHECKSUM[16]) IPCHECKSUM = IPCHECKSUM + 1;
+	end
+	endfunction
+
 	reg [7:0] tdata = 0;
 	reg tvalid = 0;
 	wire tready;
@@ -94,7 +103,9 @@ module ethernet(
 		STATE_ERROR = 4'h7,
 		STATE_HEADER = 4'h8,
 		STATE_FILL64 = 4'h9,
-		STATE_FILLCOPY = 4'hA;
+		STATE_FILLCOPY = 4'hA,
+		STATE_IPHEADER = 4'hB,
+		STATE_IPSENDHDR = 4'hC;
 		
 	reg [3:0] state;
 	reg [3:0] next_state;
@@ -103,7 +114,9 @@ module ethernet(
 	reg [7:0] rcv_buf [MAXRCV-1:0];
 	reg [10:0] rcv_byte_cnt;
 	reg [10:0] snd_byte_cnt;
-	reg [15:0] ip_byte_len; 
+	reg [15:0] ip_byte_len;
+	reg [15:0] ip_header_buf [9:0];
+	reg [16:0] ip_check_sum;
 	wire [47:0] src_MAC;
 	wire [47:0] dst_MAC;
 	wire [31:0] src_IP;
@@ -255,7 +268,7 @@ module ethernet(
 						IP_protocol == IP_TYPE_ICMP && 
 						ICMP_type == ICMP_TYPE_REQUEST && 
 						ICMP_code == ICMP_PING_CODE) begin
-						state <= STATE_HEADER;
+						state <= STATE_IPHEADER;
 						next_state <= STATE_PING;
 						snd_byte_cnt <= 0;
 						rready <= 0;
@@ -264,11 +277,12 @@ module ethernet(
 						dst_MAC == MAC && dst_IP == IP &&
 						IP_protocol == IP_TYPE_UDP) begin
 						case (CMD_cmd) 
-							CMD_READ_SDRAM: state <= STATE_SDRAM;
-							CMD_READ_REG: state <= STATE_RREG;
-							CMD_WRITE_REG: state <= STATE_WREG;
-							default: state <= STATE_ERROR;
+							CMD_READ_SDRAM: next_state <= STATE_SDRAM;
+							CMD_READ_REG: next_state <= STATE_RREG;
+							CMD_WRITE_REG: next_state <= STATE_WREG;
+							default: next_state <= STATE_ERROR;
 						endcase
+						state <= STATE_IPHEADER;
 						snd_byte_cnt <= 0;
 						rready <= 0;
 					end else if (Eth_type == ETH_TYPE_ARP &&
@@ -321,26 +335,6 @@ module ethernet(
 			end
 			STATE_PING: begin
 				case (snd_byte_cnt)
-				14 : tdata <= 8'h45;	// Version = 4, header length = 5
-				15 : tdata <= 0;	// DSCP, ECN
-				16 : tdata <= ip_byte_len[15:8];	// Length high byte
-				17 : tdata <= ip_byte_len[7:0];	// Length low byte
-				18 : tdata <= 0;	// ID ?
-				19 : tdata <= 0;	// ID ?
-				20 : tdata <= 0;	// Offset & flags
-				21 : tdata <= 0;	// Offset
-				22 : tdata <= 8'h40;	// TTL
-				23 : tdata <= IP_TYPE_ICMP;
-				24 : tdata <= 0;	// Check sum ??? TODO
-				25 : tdata <= 0;	// Check sum ??? TODO
-				26 : tdata <= IP[31:24];
-				27 : tdata <= IP[23:16];
-				28 : tdata <= IP[15:8];
-				29 : tdata <= IP[7:0];
-				30 : tdata <= src_IP[31:24];
-				31 : tdata <= src_IP[23:16];
-				32 : tdata <= src_IP[15:8];
-				33 : tdata <= src_IP[7:0];
 				34 : tdata <= ICMP_TYPE_REPLY;
 				35 : tdata <= ICMP_PING_CODE;
 				36 : tdata <= 0;	// Check sum ??? TODO
@@ -390,10 +384,11 @@ module ethernet(
 				13 : begin 
 					if (next_state == STATE_ARP) begin
 						tdata <= ETH_TYPE_ARP[7:0];
+						state <= STATE_ARP;
 					end else begin
 						tdata <= ETH_TYPE_IP[7:0];
+						state <= STATE_IPSENDHDR;
 					end
-					state <= next_state;
 				end
 				endcase				
 				tvalid <= 1;
@@ -416,6 +411,42 @@ module ethernet(
 				tdata <= rcv_buf[snd_byte_cnt];
 				tvalid <= 1;
 				snd_byte_cnt <= snd_byte_cnt + 1;				
+			end
+			STATE_IPHEADER: begin	// make IP header including checksum
+				if (snd_byte_cnt == 0) begin	// we will use it here not to produce more counters
+					ip_header_buf[0] <= 16'h4500;		// Version = 4, header length = 5, DSCP, ECN
+					ip_header_buf[1] <= ip_byte_len;	// packet length
+					ip_header_buf[2] <= 0;			// ID - we don't use it
+					ip_header_buf[3] <= 0;			// Offset & flags
+					ip_header_buf[4][15:8] <= 8'h40;	// TTL
+					if (next_state == STATE_PING) begin
+						ip_header_buf[4][7:0] <= IP_TYPE_ICMP;	
+					end else begin
+						ip_header_buf[4][7:0] <= IP_TYPE_UDP;	
+					end
+					ip_header_buf[5] <= 0;			// future place for the checksum
+					ip_header_buf[6] <= IP[31:16];
+					ip_header_buf[7] <= IP[15:0];
+					ip_header_buf[8] <= src_IP[31:16];
+					ip_header_buf[9] <= src_IP[15:0];
+					ip_check_sum <= 0;
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end else if (snd_byte_cnt < 11) begin
+					ip_check_sum <= IPCHECKSUM(ip_check_sum[15:0], ip_header_buf[snd_byte_cnt - 1]);
+					snd_byte_cnt <= snd_byte_cnt + 1;
+				end else begin
+					ip_header_buf[5] <= 16'hFFFF - ip_check_sum[15:0];
+					state <= STATE_HEADER;
+					snd_byte_cnt <= 0;
+				end
+			end
+			STATE_IPSENDHDR: begin	// send IP header - just 5 32-bit words
+				if (snd_byte_cnt == 33) begin
+					state <= next_state;
+				end
+				tdata <= (snd_byte_cnt[0]) ? ip_header_buf[(snd_byte_cnt - 14)/2][7:0] : ip_header_buf[(snd_byte_cnt - 14)/2][15:8];
+				tvalid <= 1;
+				snd_byte_cnt <= snd_byte_cnt + 1;								
 			end
 			default : begin
 				state <= STATE_IDLE;
