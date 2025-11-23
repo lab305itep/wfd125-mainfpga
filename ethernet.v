@@ -60,10 +60,11 @@ module ethernet(
 	// request received
 	output reg [31:0] address,
 	output reg [31:0] value,
-	input  [31:0] data,
+	input [31:0] reg_data,
+	input [31:0] data,
 	input dvalid,
-	output reg reg_write,
-	output reg sdram_read,	
+	output reg reg_write = 0,
+	output reg sdram_read = 0,	
 	// PHY interface
 	input rgmii_rx_clk,
 	input [3:0] rgmii_rxd,
@@ -96,7 +97,8 @@ module ethernet(
 	
 	localparam IPG_GAP = 8'd12;
 	localparam UDP_PORT = 16'd6629;	// not nessesary, but...
-	localparam UDP_MAX_DATA = 1024;	// could be upto 1500 (MTU) - 20 (IP header) - 8 (UDP header) - 12 (our header) = 1460
+	localparam UDP_MAX_DATA = 1280;	// could be upto 1500 (MTU) - 20 (IP header) - 8 (UDP header) - 12 (our header) = 1460
+	localparam DUMMY_DELAY = 32;	// It shouldn't be, but we need it
 	
 	localparam [3:0] 
 		STATE_IDLE = 4'h0,
@@ -108,7 +110,7 @@ module ethernet(
 		STATE_SDRAM = 4'h6,
 		STATE_ERROR = 4'h7,
 		STATE_HEADER = 4'h8,
-		STATE_FILL64 = 4'h9,
+		STATE_DELAY = 4'h9,
 		STATE_FILLCOPY = 4'hA,
 		STATE_IPHEADER = 4'hB,
 		STATE_IPSENDHDR = 4'hC,
@@ -124,7 +126,7 @@ module ethernet(
 	reg [10:0] rcv_byte_cnt;
 	reg [10:0] snd_byte_cnt;
 	reg [15:0] ip_byte_len;
-	wire [15:0] sdram_len;
+	reg [15:0] sdram_len;
 	reg [15:0] sdram_cnt;
 	reg sdram_wait;
 	reg [31:0] sdram_data;
@@ -133,6 +135,8 @@ module ethernet(
 	reg [16:0] ip_check_sum;
 	reg [15:0] IP_IDcnt = 0;
 	reg [31:0] sdram_send_cnt = 0;
+	reg [31:0] sdram_next_cnt = 0;
+	reg [15:0] udp_length = 0;
 	wire [47:0] src_MAC;
 	wire [47:0] dst_MAC;
 	wire [31:0] src_IP;
@@ -168,6 +172,7 @@ module ethernet(
 	wire [7:0]  ICMP_type;
 	localparam ICMP_PING_CODE = 0;
 	wire [7:0]  ICMP_code;
+	reg [31:0] delaycnt = 0;
 	
 	assign error = rcv_error;
 	assign txready = 1;
@@ -244,7 +249,6 @@ module ethernet(
 	//	ICMP - we support ping only
 	assign ICMP_type      = rcv_buf[34];
 	assign ICMP_code      = rcv_buf[35];
-	assign sdram_len = ip_byte_len - 40;
 
 	always @(posedge clk125) begin
 		// default values
@@ -287,32 +291,41 @@ module ethernet(
 					end else if (Eth_type == ETH_TYPE_IP && 
 						dst_MAC == MAC && dst_IP == IP &&
 						IP_protocol == IP_TYPE_UDP) begin
-						case (CMD_cmd) 
+							case (CMD_cmd) 
 							CMD_READ_SDRAM: begin
 								if (CMD_len == 0) begin
 									ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
-									state <= STATE_IPHEADER;
+									udp_length <= 20;
 									next_state <= STATE_ERROR;	// nothing to do
 								end else begin
 									sdram_send_cnt <= 0;
-									ip_byte_len <= ((CMD_len > UDP_MAX_DATA) ? UDP_MAX_DATA : CMD_len) + 40;
-									sdram_read <= 1;
-									sdram_wait <= 1;
+									if (CMD_len > UDP_MAX_DATA) begin
+										ip_byte_len <= UDP_MAX_DATA + 40;
+										udp_length <= UDP_MAX_DATA + 20;
+										sdram_len <= UDP_MAX_DATA;
+									end else begin
+										ip_byte_len <= CMD_len + 40;
+										udp_length <= CMD_len + 20;										
+										sdram_len <= CMD_len;
+									end
 									next_state <= STATE_SDRAM;
 								end
 							end
 							CMD_READ_REG: begin
 								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								udp_length <= 20;
 								next_state <= STATE_RREG;
 							end
 							CMD_WRITE_REG: begin
 								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								udp_length <= 20;
 								next_state <= STATE_WREG;
 								value <= CMD_len;
 								reg_write <= 1;
 							end
 							default: begin 
 								ip_byte_len <= 40;	// 20(IP_HEAD) + 8(UDP_HEAD) + 12(RESPONSE)
+								udp_length <= 20;
 								next_state <= STATE_ERROR;
 							end
 						endcase
@@ -362,7 +375,8 @@ module ethernet(
 				40 : tdata <= ARP_SIP[15:8];
 				41 : begin
 					tdata <= ARP_SIP[7:0];
-					state <= STATE_FILL64;
+					state <= STATE_IDLE;
+					tlast <= 1;
 				end
 				endcase
 				if (tready) begin
@@ -387,7 +401,11 @@ module ethernet(
 			end
 			STATE_SDRAM: begin
 				case (snd_byte_cnt)
-				42 : tdata <= CMD_cmd[31:24];	// repeat cmd
+				42 : begin 
+					tdata <= CMD_cmd[31:24];	// repeat cmd
+					sdram_read <= 1;		// read the first block word from sdram
+					sdram_wait <= 1;
+				end
 				43 : tdata <= CMD_cmd[23:16];
 				44 : tdata <= CMD_cmd[15:8];
 				45 : tdata <= CMD_cmd[7:0];
@@ -420,12 +438,13 @@ module ethernet(
 				47 : tdata <= CMD_adr[23:16];
 				48 : tdata <= CMD_adr[15:8];
 				49 : tdata <= CMD_adr[7:0];
-				50 : tdata <= data[31:24];	// read result itself
-				51 : tdata <= data[23:16];
-				52 : tdata <= data[15:8];
+				50 : tdata <= reg_data[31:24];	// read result itself
+				51 : tdata <= reg_data[23:16];
+				52 : tdata <= reg_data[15:8];
 				53 : begin
-					tdata <= data[7:0];
-					state <= STATE_FILL64;
+					tdata <= reg_data[7:0];
+					state <= STATE_IDLE;
+					tlast <= 1;
 				end
 				endcase
 				if (tready) begin
@@ -448,7 +467,8 @@ module ethernet(
 				52 : tdata <= CMD_len[15:8];
 				53 : begin
 					tdata <= CMD_len[7:0];
-					state <= STATE_FILL64;
+					state <= STATE_IDLE;
+					tlast <= 1;
 				end
 				endcase
 				if (tready) begin
@@ -471,7 +491,8 @@ module ethernet(
 				52 : tdata <= 0;
 				53 : begin
 					tdata <= 8'd1;
-					state <= STATE_FILL64;
+					state <= STATE_IDLE;
+					tlast <= 1;
 				end
 				endcase
 				if (tready) begin
@@ -479,7 +500,7 @@ module ethernet(
 					snd_byte_cnt <= snd_byte_cnt + 1;
 				end
 			end
-			STATE_HEADER: if (tready) begin
+			STATE_HEADER: begin
 				case (snd_byte_cnt) 
 				//	destination: source of the received packet
 				0  : tdata <= src_MAC[47:40];
@@ -517,15 +538,11 @@ module ethernet(
 					snd_byte_cnt <= snd_byte_cnt + 1;
 				end
 			end
-			STATE_FILL64: begin
-				if (snd_byte_cnt == 59) begin	// Minimum packet is 64 bytes = 60 + 4(CRC)
-					state <= STATE_IDLE;
-					tlast <= 1;
-				end
-				tdata <= 0;
-				if (tready) begin
-					tvalid <= 1;
-					snd_byte_cnt <= snd_byte_cnt + 1;
+			STATE_DELAY: begin
+				if (delaycnt == 0) begin
+					state <= STATE_IPHEADER;
+				end else begin
+					delaycnt <= delaycnt - 1;
 				end
 			end
 			STATE_FILLCOPY: begin
@@ -605,12 +622,13 @@ module ethernet(
 				35: tdata <= UDP_PORT[7:0];
 				36: tdata <= PORT[15:8];
 				37: tdata <= PORT[7:0];
-				38: tdata <= 0;			// Length = 20 = 8+12
-				39: tdata <= 8'd20;
+				38: tdata <= udp_length[15:8];
+				39: tdata <= udp_length[7:0];
 				40: tdata <= 0;			// csum =0 - we can ignore this field
 				41: begin
 					tdata <= 0;
 					state <= next_state;
+					sdram_cnt <= 0;
 				end
 				endcase	
 				if (tready) begin
@@ -619,11 +637,56 @@ module ethernet(
 				end
 			end
 			STATE_SDRAMDATA: begin
-				///////// ?????????????
 				if (tready) begin
-					tvalid <= 1;
-					snd_byte_cnt <= snd_byte_cnt + 1;
-					sdram_cnt <= sdram_cnt + 1;
+					case (sdram_cnt[1:0]) 
+					2'd0: begin
+						if (!sdram_wait) begin
+							tdata <= sdram_data[31:24];
+							sdram_data_copy <= sdram_data;
+							tvalid <= 1;
+							address <= address + 4;
+							if (sdram_cnt + 4 < sdram_len) begin
+								sdram_read <= 1;
+								sdram_wait <= 1;
+							end
+							sdram_cnt <= sdram_cnt + 1;
+						end
+					end
+					2'd1: begin
+						tdata <= sdram_data_copy[23:16];
+						tvalid <= 1;
+						sdram_cnt <= sdram_cnt + 1;
+					end
+					2'd2: begin
+						tdata <= sdram_data_copy[15:8];
+						tvalid <= 1;
+						sdram_cnt <= sdram_cnt + 1;
+					end
+					2'd3: begin
+						if (sdram_cnt + 1 >= sdram_len) begin
+							tlast <= 1;
+							if (sdram_send_cnt + sdram_len >= CMD_len) begin
+								state <= STATE_IDLE;
+							end else begin
+								snd_byte_cnt <= 0;
+								sdram_send_cnt <= sdram_send_cnt + sdram_len;
+								if (sdram_next_cnt > UDP_MAX_DATA) begin
+									ip_byte_len <= UDP_MAX_DATA + 40;
+									udp_length <= UDP_MAX_DATA + 20;
+								end else begin
+									ip_byte_len <= sdram_next_cnt + 40;
+									udp_length <= sdram_next_cnt + 20;
+								end
+								state <= STATE_DELAY;
+								delaycnt <= DUMMY_DELAY;
+								next_state <= STATE_SDRAM;
+							end
+						end
+						tdata <= sdram_data_copy[7:0];
+						tvalid <= 1;
+						sdram_cnt <= sdram_cnt + 1;
+					end
+					endcase
 				end
 			end			
 			default : begin
@@ -631,10 +694,11 @@ module ethernet(
 			end
 		endcase
 
-		if (dvalid) begin
+		if (dvalid && sdram_wait) begin
 			sdram_data <= data;
 			sdram_wait <= 0;
 		end
+		sdram_next_cnt <= CMD_len - sdram_send_cnt - sdram_len;
 		rcvcnt <= rvalid & rlast;
 		trcnt <= tvalid & tlast;
 	end

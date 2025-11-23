@@ -231,21 +231,21 @@ module fpga_main(
 	wire [7:0]   debug;
 	wire [1:0]   dummy_vme_addr;
 	wire         CBUFSDA_o;
-	wire			 CBUFSCL_o;
+	wire	     CBUFSCL_o;
 	wire         CBUFSDA_en;
-	wire			 CBUFSCL_en;
+	wire	     CBUFSCL_en;
 	
 	wire [63:0]  gtp_data_o;	// data from GTP reciever
 	wire [3:0]   gtp_kchar_o;	// k-char signature from GTP reciever
 	wire [15:0]  gtp_token;		// token data and status to channels
-	wire [15:0]	 trg_data;		// data from triggen to trigger block fifo in memory
-	wire			 trg_valid;		// valid accompanying the above
-	wire [15:0]	 tok_data;		// data from token synchro module
-	wire			 tok_valid;		// valid accompanying the above
+	wire [15:0]  trg_data;		// data from triggen to trigger block fifo in memory
+	wire	     trg_valid;		// valid accompanying the above
+	wire [15:0]  tok_data;		// data from token synchro module
+	wire	     tok_valid;		// valid accompanying the above
 	wire [14:0]  usr_word;		// user word from CSR to be put to trigger block in memory
-	wire	 trigger;		// master trigger from triggen to commutation in csreg
-	wire	 inhibit;		// inhibit from triggen to commutation in csreg
-	wire [9:0]	 token;		// 10 bit token of recieved trigger
+	wire	     trigger;		// master trigger from triggen to commutation in csreg
+	wire	     inhibit;		// inhibit from triggen to commutation in csreg
+	wire [9:0]   token;		// 10 bit token of recieved trigger
 	wire	 tok_rdy;		// token recieved
 	wire	 tok_err;		// token error
 	wire	 mem_status;		// memory errors
@@ -260,6 +260,10 @@ module fpga_main(
 	wire [31:0] IP;		// our ehternet IP address
 	wire [15:0] PORT;	// port to send data at server
 	wire [13:0] mac_status;	// MAC status
+	reg [31:0] sdram_emulation = 0;
+	wire sdram_emu_valid;
+	reg sdram_emu_valid_d = 0;
+	wire [31:0] sdram_address;
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -710,13 +714,14 @@ sdram (
 		.txvld(0),
 		.txend(0),
 		.txready(),
-	// request received
-		.address(),
+	// registers and sdram interface
+		.address(sdram_address),
 		.value(),
 		.reg_write(),
-		.sdram_read(),
-		.data(32'h87654321),
-		.dvalid(1'b1),
+		.reg_data(32'h98765432),
+		.sdram_read(sdram_emu_valid),
+		.data(sdram_emulation),
+		.dvalid(sdram_emu_valid_d),
 	// PHY interface
 		.rgmii_rx_clk(PHYRXCLK),
 		.rgmii_rxd(PHYRXD),
@@ -726,5 +731,10 @@ sdram (
 		.rgmii_tx_ctl(PHYTXENB),
 		.mac_gmii_tx_en()
 	);
+
+	always @ (posedge CLK125) begin
+		if (sdram_emu_valid) sdram_emulation <= sdram_address;
+		sdram_emu_valid_d <= sdram_emu_valid;
+	end
 
 endmodule
