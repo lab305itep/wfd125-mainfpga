@@ -59,91 +59,95 @@ module rcv_arb #(
 	 parameter NFIFO = 5
 )
 (
-	 input					wb_clk,
-    input					wb_rst,
-   // Register WishBone
-    input         		wbr_cyc,
-    input         		wbr_stb,
-    input         		wbr_we,
-    input [1:0]   		wbr_addr,
-    input [31:0]  		wbr_dat_i,
-    output reg    		wbr_ack,
-    output reg [31:0]	wbr_dat_o,
-    output reg			inv_cache,
-     // 	trace back a few bits from csr
-    output reg			fifo_rst,
-    output reg			mcb_rst,
-    output 				en_debug,
-	output reg			a32_fifo_adr_wr,	// write strob for A32 space FIFO address
+	input			wb_clk,
+	input			wb_rst,
+	// Register WishBone
+	input         		wbr_cyc,
+	input         		wbr_stb,
+	input         		wbr_we,
+	input [1:0]   		wbr_addr,
+	input [31:0]  		wbr_dat_i,
+	output reg    		wbr_ack,
+	output reg [31:0]	wbr_dat_o,
+	output reg			inv_cache,
+	// 	trace back a few bits from csr
+	output reg		fifo_rst,
+	output reg		mcb_rst,
+	output 			en_debug,
+	output reg		a32_fifo_adr_wr,	// write strob for A32 space FIFO address
 	 // interface with recieving FIFOs
-	 input				gtp_clk,			// all arbitration and MIG writes are on this clock
-	 output [NFIFO-1:0]	want,
-	 input [31:0]		datfromfifo,	// common "tri-state"
-	 input [NFIFO-1:0]	have,
-	 input [NFIFO-1:0]	fifo_empty,
-	 input [NFIFO-1:0]	fifo_ovr,
-	 input [NFIFO-1:0]	fifo_undr,
-	 input [NFIFO-1:0]	fifo_missed,
-	 // inteface with MIG
-	 output reg				cmd_enable,		// MIG port cmd fifo enable
-	 input					cmd_full,		// MIG port cmd fifo full
-	 input					cmd_empty,		// MIG port cmd fifo empty
-	 output [5:0]			blen,				// MIG port current burst length
-	 output					wr_enable,		// MIG port write fifo enable
-	 input					wr_full,			// MIG port write fifo full
-	 input					wr_empty,		// MIG port write fifo empty
-	 output reg [28:0]	adr_rcv,			// MIG address within recieving area
-	 output [31:0]			dattomcb,		// MIG port write data
-	 // total error or full
-	 output 					status
-    );
+	input			gtp_clk,	// all arbitration and MIG writes are on this clock
+	output [NFIFO-1:0]	want,
+	input [31:0]		datfromfifo,	// common "tri-state"
+	input [NFIFO-1:0]	have,
+	input [NFIFO-1:0]	fifo_empty,
+	input [NFIFO-1:0]	fifo_ovr,
+	input [NFIFO-1:0]	fifo_undr,
+	input [NFIFO-1:0]	fifo_missed,
+	// inteface with MIG
+	output reg		cmd_enable,	// MIG port cmd fifo enable
+	input			cmd_full,	// MIG port cmd fifo full
+	input			cmd_empty,	// MIG port cmd fifo empty
+	output [5:0]		blen,		// MIG port current burst length
+	output			wr_enable,	// MIG port write fifo enable
+	input			wr_full,	// MIG port write fifo full
+	input			wr_empty,	// MIG port write fifo empty
+	output reg [28:0]	adr_rcv,	// MIG address within recieving area
+	output [31:0]		dattomcb,	// MIG port write data
+	// register interface to ethernet
+	input			reg_write,	// Write raddr
+	input [31:0]		radr_value,	// new value for raddr
+	input			reg_selector,	// 0 - radr, 1 - wadr - select register for readout
+	output reg [31:0]	reg_read,	// read register value
+	// total error or full
+	output			status
+);
 
 	// arbitration
-	reg [3:0]			rr_cnt = 0;			// counter for Round Robbin arbitration
-	wire 					fifohave;			// OR of dvalids from gtpfifos, actually have from currently selected fifo
-	wire 					pause;				// pause gtpfifo readout
-	wire					nextf;				// force increment of RR counter (after block is fully read)
+	reg [3:0]		rr_cnt = 0;	// counter for Round Robbin arbitration
+	wire 			fifohave;	// OR of dvalids from gtpfifos, actually have from currently selected fifo
+	wire 			pause;		// pause gtpfifo readout
+	wire			nextf;		// force increment of RR counter (after block is fully read)
 	// intermediate fifo
-	reg [31:0] 			afifo [2**MBITS-1:0];
-	reg [31:0]			af_data;				// intermediate fifo output data
-	reg [MBITS-1:0] 	af_waddr = 0;		// current fifo write pointer
+	reg [31:0] 		afifo [2**MBITS-1:0];
+	reg [31:0]		af_data;	// intermediate fifo output data
+	reg [MBITS-1:0] 	af_waddr = 0;	// current fifo write pointer
 	reg [MBITS-1:0] 	af_waddr_b = 0;	// end of block fifo write pointer
-	reg [MBITS-1:0] 	af_raddr = 0;		// current fifo read pointer
-	wire [MBITS-1:0]	af_graddr;			// fifo read addr for get operation for MIG
-	reg  [7:0]			af_towrite = 0;	// number of Dwords to write - 1
-	reg 					af_full;				// intermediate fifo full
-	wire 					af_empty;			// intermediate fifo empty
-	wire					af_have;				// immediate answer to af_give
-	reg 					af_undr = 0;		// underrun error
-	reg 					af_ovr = 0;			// overrun error
+	reg [MBITS-1:0] 	af_raddr = 0;	// current fifo read pointer
+	wire [MBITS-1:0]	af_graddr;	// fifo read addr for get operation for MIG
+	reg  [7:0]		af_towrite = 0;	// number of Dwords to write - 1
+	reg 			af_full;	// intermediate fifo full
+	wire 			af_empty;	// intermediate fifo empty
+	wire			af_have;	// immediate answer to af_give
+	reg 			af_undr = 0;	// underrun error
+	reg 			af_ovr = 0;	// overrun error
 	// MIG interface
-	wire					mem_give;			// request for data from memory
-	reg					mem_full;			// recieving area of memory is full
-	wire					mem_empty;			// recieving area of memory is empty
-	reg					radr_invalid;		// reading process provided radr beyond boundaries
-	reg [28:0] 			waddr;				// current address for MIG write
-	reg [5:0] 			blen_c;				//	counter for burst length
-	reg					wr_empty_d	= 1;	// delayed empty from wr fifo
+	wire			mem_give;	// request for data from memory
+	reg			mem_full;	// recieving area of memory is full
+	wire			mem_empty;	// recieving area of memory is empty
+	reg			radr_invalid;	// reading process provided radr beyond boundaries
+	reg [28:0] 		waddr;		// current address for MIG write
+	reg [5:0] 		blen_c;		//	counter for burst length
+	reg			wr_empty_d = 1;	// delayed empty from wr fifo
 	
 
 	// registers
-	reg [31:0]	csr = 0;					// control and status
-	reg [31:0]	radr = 0;				// last read by readout procedure
+	reg [31:0]	csr = 0;		// control and status
+	reg [31:0]	radr = 0;		// last read by readout procedure
 	reg [31:0]	limr = 32'h00010000;	// limits of the recieving area, def. 8k starting @0
-	reg [31:0]	wadr = 0;				// write address as diplayed to the user
-	reg [5:0]	rst_cnt = 0;			// autoclear counter
+	reg [31:0]	wadr = 0;		// write address as diplayed to the user
+	reg [5:0]	rst_cnt = 0;		// autoclear counter
 	
 	integer j;
 
 	assign status = (|(csr & 32'h00EEEEE0)) | radr_invalid | af_undr | af_ovr | mem_full; // full, missed, undr, ovr or "radr invalid"	
 
 	genvar i;
-   generate
-      for (i=0; i<NFIFO; i=i+1) 
-      begin: gwant
-         assign want[i] = ((rr_cnt == i) & ~pause);
-      end
-   endgenerate
+	generate
+		for (i=0; i<NFIFO; i=i+1) begin: gwant
+			assign want[i] = ((rr_cnt == i) & ~pause);
+		end
+	endgenerate
 	
 	// RR arbitration and intermediate fifo
 	assign	fifohave = |have;
@@ -314,6 +318,14 @@ module rcv_arb #(
 					inv_cache <= 1;
 				end
 			endcase
+		end
+		// register read to ethernet
+		reg_read <= (reg_selector) ? wadr : radr;
+		// radr write from ethernet
+		if (reg_write && !reg_selector) begin
+			radr[28:2] <= radr_value[28:2];
+			// check raddr is within limits
+			radr_invalid <= (radr_value[28:13] < limr[15:0]) || (radr_value[28:13] >= limr[31:16]);
 		end
 		// autoclear reset bits
 		if ( |rst_cnt ) begin

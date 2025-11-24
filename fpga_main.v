@@ -260,10 +260,13 @@ module fpga_main(
 	wire [31:0] IP;		// our ehternet IP address
 	wire [15:0] PORT;	// port to send data at server
 	wire [13:0] mac_status;	// MAC status
-	reg [31:0] sdram_emulation = 0;
-	wire sdram_emu_valid;
-	reg sdram_emu_valid_d = 0;
-	wire [31:0] sdram_address;
+	wire [31:0] sdram_address;	// address in SDRAM or register to read/write
+	wire [31:0] sdram_value;	// value for SDRAM control register write
+	wire sdram_reg_write;	// one tact strob to write SDRAM control register
+	wire [31:0] sdram_reg_data;	// SDRAM control register read value
+	wire sdram_read;	// read one 32-bit word from SDRAM
+	wire [31:0] sdram_data;	// SDRAM data read
+	wire sdram_dvalid;	// SDRAM data valid
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -585,48 +588,56 @@ sdram (
     .wbr_dat_i	(wb_m2s_reg_fifo_dat),
     .wbr_ack	(wb_s2m_reg_fifo_ack),
     .wbr_dat_o	(wb_s2m_reg_fifo_dat),
+   // Ethernet
+    .eth_addr   (sdram_address),
+    .eth_dat_i  (sdram_value),
+    .eth_wr_reg (sdram_reg_write),
+    .eth_rd_sdram (sdram_read),
+    .eth_reg_data (sdram_reg_data),
+    .eth_sdram_data (sdram_data),
+    .eth_sdram_vld (sdram_dvalid),
    // GTP data
 	// reciever clock 125 MHz
-	 .gtp_clk	(CLK125),
+    .gtp_clk	(CLK125),
 	// recied data from 4 recievers
     .gtp_dat	(gtp_data_o),
 	// recieved data valid (not a comma)
     .gtp_vld	(~gtp_kchar_o),
 	// trigger data from triggen module
-	 .trg_dat	(trg_data),
+    .trg_dat	(trg_data),
 	// trigger data valid
-	 .trg_vld	(trg_valid),
+    .trg_vld	(trg_valid),
 	// token synchronization
-	 .tok_dat	(tok_data),
+    .tok_dat	(tok_data),
 	// trigger data valid
-	 .tok_vld	(tok_valid),
+    .tok_vld	(tok_valid),
 	// SDRAM interface
-	 .mcb_clk		(CLKMCB),
+    .mcb_clk	(CLKMCB),
 	// Address
-    .MEMA			(MEMA),
+    .MEMA	(MEMA),
 	// Bank addr
-    .MEMBA			(MEMBA),
+    .MEMBA	(MEMBA),
 	// Data
-    .MEMD			(MEMD),
+    .MEMD	(MEMD),
 	// Other single ended
-    .MEMRST			(MEMRST),
-    .MEMCKE			(MEMCKE),
-    .MEMWE			(MEMWE),
-    .MEMODT			(MEMODT),
-    .MEMRAS			(MEMRAS),
-    .MEMCAS			(MEMCAS),
-    .MEMUDM			(MEMUDM),
-    .MEMLDM			(MEMLDM),
+    .MEMRST	(MEMRST),
+    .MEMCKE	(MEMCKE),
+    .MEMWE	(MEMWE),
+    .MEMODT	(MEMODT),
+    .MEMRAS	(MEMRAS),
+    .MEMCAS	(MEMCAS),
+    .MEMUDM	(MEMUDM),
+    .MEMLDM	(MEMLDM),
 	// Pairs
-    .MEMCK			(MEMCK),
-    .MEMUDQS		(MEMUDQS),
-    .MEMLDQS		(MEMLDQS),
+    .MEMCK	(MEMCK),
+    .MEMUDQS	(MEMUDQS),
+    .MEMLDQS	(MEMLDQS),
 	// Impedance matching
-    .MEMZIO			(MEMZIO),
-    .MEMRZQ			(MEMRZQ),
+    .MEMZIO	(MEMZIO),
+    .MEMRZQ	(MEMRZQ),
 	// current status
-    .status			(mem_status),
-	 .tp				()
+    .status	(mem_status),
+    .tp		()
     );
 	
 	assign	wb_s2m_sdram_err = 0;
@@ -709,19 +720,14 @@ sdram (
 		.MAC(MAC),
 		.IP(IP),
 		.PORT(PORT),
-	// data to be sent
-		.txd(0),
-		.txvld(0),
-		.txend(0),
-		.txready(),
 	// registers and sdram interface
 		.address(sdram_address),
-		.value(),
-		.reg_write(),
-		.reg_data(32'h98765432),
-		.sdram_read(sdram_emu_valid),
-		.data(sdram_emulation),
-		.dvalid(sdram_emu_valid_d),
+		.value(sdram_value),
+		.reg_write(sdram_reg_write),
+		.reg_data(sdram_reg_data),
+		.sdram_read(sdram_read),
+		.data(sdram_data),
+		.dvalid(sdram_dvalid),
 	// PHY interface
 		.rgmii_rx_clk(PHYRXCLK),
 		.rgmii_rxd(PHYRXD),
@@ -731,10 +737,5 @@ sdram (
 		.rgmii_tx_ctl(PHYTXENB),
 		.mac_gmii_tx_en()
 	);
-
-	always @ (posedge CLK125) begin
-		if (sdram_emu_valid) sdram_emulation <= sdram_address;
-		sdram_emu_valid_d <= sdram_emu_valid;
-	end
 
 endmodule

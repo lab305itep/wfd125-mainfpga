@@ -52,12 +52,7 @@ module ethernet(
 	input [47:0] MAC,
 	input [31:0] IP,
 	input [15:0] PORT,
-	// data to be sent
-	input [31:0] txd,
-	input txvld,
-	input txend,
-	output txready,
-	// request received
+	// interface to SDRAM
 	output reg [31:0] address,
 	output reg [31:0] value,
 	input [31:0] reg_data,

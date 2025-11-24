@@ -101,7 +101,7 @@ module memcntr #
 )	
 
 (
-
+//	Memory physical interface
    inout  [C1_NUM_DQ_PINS-1:0]                      mcb1_dram_dq,
    output [C1_MEM_ADDR_WIDTH-1:0]                   mcb1_dram_a,
    output [C1_MEM_BANKADDR_WIDTH-1:0]               mcb1_dram_ba,
@@ -117,15 +117,17 @@ module memcntr #
    inout                                            mcb1_rzq,
    inout                                            mcb1_zio,
    output                                           mcb1_dram_udm,
+   inout                                            mcb1_dram_dqs,
+   inout                                            mcb1_dram_dqs_n,
+   output                                           mcb1_dram_ck,
+   output                                           mcb1_dram_ck_n,
+//	system clock and reset
    input                                            c1_sys_clk,
    input                                            c1_sys_rst_i,
    output                                           c1_calib_done,
    output                                           c1_clk0,
    output                                           c1_rst0,
-   inout                                            mcb1_dram_dqs,
-   inout                                            mcb1_dram_dqs_n,
-   output                                           mcb1_dram_ck,
-   output                                           mcb1_dram_ck_n,
+//	Port 0 (bidir)
       input		c1_p0_cmd_clk,
       input		c1_p0_cmd_en,
       input [2:0]	c1_p0_cmd_instr,
@@ -150,6 +152,7 @@ module memcntr #
       output [6:0]	c1_p0_rd_count,
       output		c1_p0_rd_overflow,
       output		c1_p0_rd_error,
+//	Port 1 (bidir)
       input		c1_p1_cmd_clk,
       input		c1_p1_cmd_en,
       input [2:0]	c1_p1_cmd_instr,
@@ -174,6 +177,7 @@ module memcntr #
       output [6:0]	c1_p1_rd_count,
       output		c1_p1_rd_overflow,
       output		c1_p1_rd_error,
+//	Port 2 (write)
       input		c1_p2_cmd_clk,
       input		c1_p2_cmd_en,
       input [2:0]	c1_p2_cmd_instr,
@@ -190,6 +194,7 @@ module memcntr #
       output [6:0]	c1_p2_wr_count,
       output		c1_p2_wr_underrun,
       output		c1_p2_wr_error,
+//	Port 3 (read)
       input		c1_p3_cmd_clk,
       input		c1_p3_cmd_en,
       input [2:0]	c1_p3_cmd_instr,
@@ -197,15 +202,14 @@ module memcntr #
       input [29:0]	c1_p3_cmd_byte_addr,
       output		c1_p3_cmd_empty,
       output		c1_p3_cmd_full,
-      input		c1_p3_wr_clk,
-      input		c1_p3_wr_en,
-      input [3:0]	c1_p3_wr_mask,
-      input [31:0]	c1_p3_wr_data,
-      output		c1_p3_wr_full,
-      output		c1_p3_wr_empty,
-      output [6:0]	c1_p3_wr_count,
-      output		c1_p3_wr_underrun,
-      output		c1_p3_wr_error,
+      input		c1_p3_rd_clk,
+      input		c1_p3_rd_en,
+      output [31:0]	c1_p3_rd_data,
+      output		c1_p3_rd_full,
+      output		c1_p3_rd_empty,
+      output[6:0]	c1_p3_rd_count,
+      output		c1_p3_rd_overflow,
+      output		c1_p3_rd_error,
       input		c1_p4_cmd_clk,
       input		c1_p4_cmd_en,
       input [2:0]	c1_p4_cmd_instr,
@@ -248,8 +252,8 @@ module memcntr #
 // port-5 in Config-4: Two 64-bit bi-directional ports. Please look into the 
 // Chapter-2 of ug388.pdf in the /docs directory for further details.
 //   localparam C1_PORT_ENABLE              = 6'b111111;
-   localparam C1_PORT_ENABLE              = 6'b000111;
-   localparam C1_PORT_CONFIG             =  "B32_B32_W32_W32_W32_W32";
+   localparam C1_PORT_ENABLE          = 6'b001111;
+   localparam C1_PORT_CONFIG          =  "B32_B32_W32_R32_W32_W32";
    localparam C1_CLKOUT0_DIVIDE       = 1;   // CLK2x =500 MHz    
    localparam C1_CLKOUT1_DIVIDE       = 1;   // !CLK2x =500 MHz    
    localparam C1_CLKOUT2_DIVIDE       = 16;  // userclk not used     
@@ -394,6 +398,8 @@ module memcntr #
   wire  [2:0]                      c1_vio_data_mode_value;
   wire  [2:0]                      c1_vio_addr_mode_value;
   wire  [31:0]                      c1_cmp_data;
+
+//	Unused in ports
 wire				c1_p2_rd_clk;
 wire				c1_p2_rd_en;
 wire[31:0]			c1_p2_rd_data;
@@ -402,14 +408,15 @@ wire				c1_p2_rd_empty;
 wire[6:0]			c1_p2_rd_count;
 wire				c1_p2_rd_overflow;
 wire				c1_p2_rd_error;
-wire				c1_p3_rd_clk;
-wire				c1_p3_rd_en;
-wire[31:0]			c1_p3_rd_data;
-wire				c1_p3_rd_full;
-wire				c1_p3_rd_empty;
-wire[6:0]			c1_p3_rd_count;
-wire				c1_p3_rd_overflow;
-wire				c1_p3_rd_error;
+wire				c1_p3_wr_clk;
+wire				c1_p3_wr_en;
+wire [3:0]			c1_p3_wr_mask;
+wire [31:0]			c1_p3_wr_data;
+wire				c1_p3_wr_full;
+wire				c1_p3_wr_empty;
+wire [6:0]			c1_p3_wr_count;
+wire				c1_p3_wr_underrun;
+wire				c1_p3_wr_error;
 wire				c1_p4_rd_clk;
 wire				c1_p4_rd_en;
 wire[31:0]			c1_p4_rd_data;

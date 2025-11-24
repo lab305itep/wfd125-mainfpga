@@ -55,6 +55,14 @@ module memory # (
     input [31:0]  wbr_dat_i,
     output        wbr_ack,
     output [31:0] wbr_dat_o,
+   // Ethernet interface
+    input [31:0]  eth_addr,
+    input [31:0]  eth_dat_i,
+    input	  eth_wr_reg,
+    input         eth_rd_sdram,
+    output [31:0] eth_reg_data,
+    output [31:0] eth_sdram_data,
+    output        eth_sdram_vld,
    // GTP data
 	// reciever clock 125 MHz
     input         gtp_clk,
@@ -63,9 +71,9 @@ module memory # (
 	// recieved data valid (not a comma) from 4 recievers
     input [3:0]   gtp_vld,
 	// trigger data from triggen module
-    input [15:0]	trg_dat,
+    input [15:0]  trg_dat,
 	// trigger data valid
-    input			trg_vld,
+    input	  trg_vld,
 	//		token synchronization
     input [15:0]  tok_dat,
     input         tok_vld,
@@ -88,14 +96,14 @@ module memory # (
     output        MEMLDM,
 	// Pairs
     output [1:0]  MEMCK,
-    inout [1:0]  MEMUDQS,
-    inout [1:0]  MEMLDQS,
+    inout [1:0]   MEMUDQS,
+    inout [1:0]   MEMLDQS,
 	// Impedance matching
-    inout        MEMZIO,
-    inout        MEMRZQ,
+    inout         MEMZIO,
+    inout         MEMRZQ,
 	// current status
-    output  		status,
-	 output	[4:0]	tp
+    output  	  status,
+    output [4:0]  tp
     );
 
 //======= SIGNALS ==============
@@ -573,7 +581,7 @@ u_memcntr (
    .c1_p1_rd_full                          (),
    .c1_p1_rd_empty                         (r1_empty),
    .c1_p1_rd_count                         (r1_cnt),
-   .c1_p1_rd_overflow                      (),
+   .c1_p1_rd_overflow                       (),
    .c1_p1_rd_error                         (),
 // port 2 write only	!!! on gtp_clk
    .c1_p2_cmd_clk                          (gtp_clk),
@@ -592,7 +600,7 @@ u_memcntr (
    .c1_p2_wr_count                         (),
    .c1_p2_wr_underrun                      (),
    .c1_p2_wr_error                         (),
-// ports 3-5 unused
+// port 3 - ethernet interface (read only)
    .c1_p3_cmd_clk                          (1'b0),
    .c1_p3_cmd_en                           (1'b0),
    .c1_p3_cmd_instr                        (3'b000),
@@ -600,15 +608,15 @@ u_memcntr (
    .c1_p3_cmd_byte_addr                    (30'h00000000),
    .c1_p3_cmd_empty                        (),
    .c1_p3_cmd_full                         (),
-   .c1_p3_wr_clk                           (1'b0),
-   .c1_p3_wr_en                            (1'b0),
-   .c1_p3_wr_mask                          (4'b1111),
-   .c1_p3_wr_data                          (32'h00000000),
-   .c1_p3_wr_full                          (),
-   .c1_p3_wr_empty                         (),
-   .c1_p3_wr_count                         (),
-   .c1_p3_wr_underrun                      (),
-   .c1_p3_wr_error                         (),
+   .c1_p3_rd_clk                           (gtp_clk),		// we use this clock for ethernet
+   .c1_p3_rd_en                            (1'b0),
+   .c1_p3_rd_data                          (),
+   .c1_p3_rd_full                          (),
+   .c1_p3_rd_empty                         (),
+   .c1_p3_rd_count                         (),
+   .c1_p3_rd_overflow                       (),
+   .c1_p3_rd_error                         (),
+ // ports 4-5 - unused
    .c1_p4_cmd_clk                          (1'b0),
    .c1_p4_cmd_en                           (1'b0),
    .c1_p4_cmd_instr                        (3'b000),
@@ -745,8 +753,13 @@ arbitter (
     .wr_empty		(w2_empty),		// MIG port write fifo empty
     .adr_rcv		(adr_rcv),		// MIG address within recieving area
     .dattomcb		(datfromarb),		// MIG port write data
+	// register interface to ethernet
+    .reg_write          (eth_wr_reg),		// register write strob
+    .radr_value		(eth_dat_i),		// data to be written to register
+    .reg_selector	(eth_addr[2]),		// select the register
+    .reg_read		(eth_reg_data),		// data read from register
 	// error
-    .status			(status)
+    .status		(status)
 );
 
 

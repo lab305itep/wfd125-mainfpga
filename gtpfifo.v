@@ -25,38 +25,38 @@
 //		
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 module gtpfifo # (
-		parameter MBITS = 13
-	)
-	(
-		input 			gtp_clk,
-		input [15:0] 	gtp_dat,
-		input 			gtp_vld,
-		input				rst,
-		input 			give,
-		output[31:0]	data,
-		output 	 		have,
-		output			empty,
-		output reg		err_ovr,
-		output reg		err_undr,
-		output reg 		missed	
-   );
+	parameter MBITS = 13
+)
+(
+	input 		gtp_clk,
+	input [15:0] 	gtp_dat,
+	input 		gtp_vld,
+	input		rst,
+	input 		give,
+	output[31:0]	data,
+	output 		have,
+	output		empty,
+	output reg	err_ovr,
+	output reg	err_undr,
+	output reg 	missed	
+);
 
-	reg [31:0] 			fifo [2**MBITS-1:0];
-	reg [MBITS-1:0] 	waddr = 0;		// current fifo write pointer
-	reg [MBITS-1:0] 	waddrb = 0;		// pointer to the end of full written block
-	reg [MBITS-1:0] 	raddr = 0;		// current fifo read pointer
-	wire [MBITS-1:0]	graddr;			// fifo read addr for get operation from arb
-	wire [MBITS-1:0]	len;				// block length in Dwords directly from CW field
-	reg  [7:0]			towrite;			// number of Dwords to write - 1
-	reg					writing = 0;	// if we are now writing the body of a block
-	reg					align = 0;		// if we need to add filler after the odd number of words
-	reg 					odd = 0;			// next word is odd
-	reg 					first = 0;		// 1 when we expect to find CW
-	reg [15:0] 			evendat = 0;	// holder for even words
-	reg [31:0] 			rdata = 0;		// read fifo output
-	wire [15:0]			gtp_dat_tr;		// reciever data with no high bit
+	reg [31:0] 	fifo [2**MBITS-1:0];
+	reg [MBITS-1:0] waddr = 0;	// current fifo write pointer
+	reg [MBITS-1:0] waddrb = 0;	// pointer to the end of full written block
+	reg [MBITS-1:0] raddr = 0;	// current fifo read pointer
+	wire [MBITS-1:0] graddr;	// fifo read addr for get operation from arb
+	wire [MBITS-1:0] len;		// block length in Dwords directly from CW field
+	reg [7:0]	towrite;	// number of Dwords to write - 1
+	reg		writing = 0;	// if we are now writing the body of a block
+	reg		align = 0;	// if we need to add filler after the odd number of words
+	reg 		odd = 0;	// next word is odd
+	reg 		first = 0;	// 1 when we expect to find CW
+	reg [15:0] 	evendat = 0;	// holder for even words
+	reg [31:0] 	rdata = 0;	// read fifo output
+	wire [15:0]	gtp_dat_tr;	// reciever data with no high bit
 
-	assign len = gtp_dat[8:1] + 1;		// total number of 32-bit words to write (from CW)	
+	assign len = gtp_dat[8:1] + 1;	// total number of 32-bit words to write (from CW)	
 	assign graddr = (have) ? (raddr + 1) : raddr;
 	assign have = give & (raddr != waddrb);
 	assign empty = (raddr == waddr);
