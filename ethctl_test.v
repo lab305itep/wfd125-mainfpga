@@ -46,6 +46,10 @@ module ethctl_test;
 	// Bidirs
 	wire phymdio;
 
+	wire eth_write_radr;
+	wire eth_write_radrA;
+	reg reg_write;
+
 	// Instantiate the Unit Under Test (UUT)
 	ethctl uut (
 		.wb_dat_i(wb_dat_i), 
@@ -64,6 +68,22 @@ module ethctl_test;
 		.rcvcnt(blkcnt), 
 		.trcnt(sendcnt),
 		.errcnt(errcnt)
+	);
+
+	
+	FDCE FDCE_instA (
+		.Q(eth_write_radrA),	// 1-bit Data output
+		.C(reg_write),		// 1-bit Clock input
+		.CE(1'b1),	// 1-bit Clock enable input
+		.CLR(eth_write_radr),  	// 1-bit Asynchronous preset input
+		.D(1'b1)       		// 1-bit Data input
+	);
+	FDCE FDCE_instB (
+		.Q(eth_write_radr),	// 1-bit Data output
+		.C(wb_clk),		// 1-bit Clock input
+		.CE(1'b1),		// 1-bit Clock enable input
+		.CLR(1'b0),	  	// 1-bit Asynchronous preset input
+		.D(eth_write_radrA)     // 1-bit Data input
 	);
 
 	always begin
@@ -85,10 +105,20 @@ module ethctl_test;
 		blkcnt = 0;
 		sendcnt = 0;
 		errcnt = 0;
+		reg_write = 0;
 
 		// Wait 100 ns for global reset to finish
 		#100;
         
+		# 1.1;
+		reg_write = 1;
+		#4.0;
+		reg_write = 0;
+		#50;
+		reg_write = 1;
+		#20;
+		reg_write = 0;
+	
 		// Add stimulus here
 		wb_rst = 0;
 		wb_dat_i = 32'h80000000;

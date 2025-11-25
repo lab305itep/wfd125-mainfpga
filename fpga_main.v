@@ -595,7 +595,7 @@ sdram (
     .eth_rd_sdram (sdram_read),
     .eth_reg_data (sdram_reg_data),
     .eth_sdram_data (sdram_data),
-    .eth_sdram_vld (sdram_dvalid),
+    .eth_sdram_valid (sdram_dvalid),
    // GTP data
 	// reciever clock 125 MHz
     .gtp_clk	(CLK125),

@@ -129,7 +129,8 @@ module rcv_arb #(
 	reg [28:0] 		waddr;		// current address for MIG write
 	reg [5:0] 		blen_c;		//	counter for burst length
 	reg			wr_empty_d = 1;	// delayed empty from wr fifo
-	
+	wire 			eth_write_radr;	// we need to reclock to wb_clk
+	wire 			eth_write_radrA;	// we need to reclock to wb_clk
 
 	// registers
 	reg [31:0]	csr = 0;		// control and status
@@ -239,8 +240,8 @@ module rcv_arb #(
 				end
 				// forecast full condition for the next cycle
 				mem_full <=  (radr[28:0]  == (waddr + 8)) | 
-								((radr[28:0] == {limr[15:0], 13'h0004}) & ((waddr + 4) == {limr[31:16], 13'h0000})) |
-								((radr[28:0] == {limr[15:0], 13'h0000}) & ((waddr + 8) == {limr[31:16], 13'h0000}));
+					((radr[28:0] == {limr[15:0], 13'h0004}) & ((waddr + 4) == {limr[31:16], 13'h0000})) |
+					((radr[28:0] == {limr[15:0], 13'h0000}) & ((waddr + 8) == {limr[31:16], 13'h0000}));
 				// increment current burst length
 				blen_c <= blen_c + 1;						// default behavior
 				// issue command if: blen=32 or last waddress before wrap
@@ -322,7 +323,7 @@ module rcv_arb #(
 		// register read to ethernet
 		reg_read <= (reg_selector) ? wadr : radr;
 		// radr write from ethernet
-		if (reg_write && !reg_selector) begin
+		if (eth_write_radr && !reg_selector) begin
 			radr[28:2] <= radr_value[28:2];
 			// check raddr is within limits
 			radr_invalid <= (radr_value[28:13] < limr[15:0]) || (radr_value[28:13] >= limr[31:16]);
@@ -343,5 +344,20 @@ module rcv_arb #(
 		mcb_rst <= csr[29] | csr[30];
 
 	end		// posedge wb_clk
+	
+	FDCE FDCE_instA (
+		.Q(eth_write_radrA),	// 1-bit Data output
+		.C(reg_write),		// 1-bit Clock input
+		.CE(1'b1),	// 1-bit Clock enable input
+		.CLR(eth_write_radr),  	// 1-bit Asynchronous preset input
+		.D(1'b1)       		// 1-bit Data input
+	);
+	FDCE FDCE_instB (
+		.Q(eth_write_radr),	// 1-bit Data output
+		.C(wb_clk),		// 1-bit Clock input
+		.CE(1'b1),		// 1-bit Clock enable input
+		.CLR(1'b0),	  	// 1-bit Asynchronous preset input
+		.D(eth_write_radrA)     // 1-bit Data input
+	);
 
 endmodule

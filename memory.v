@@ -22,8 +22,9 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
-	 parameter FIFO_MBITS = 13,
-    parameter READ_BURST_LEN = 8
+	parameter FIFO_MBITS = 13,
+	parameter READ_BURST_LEN = 8,
+	parameter ETH_BURST_LEN = 64	// maximum
 )
 (
     input         wb_clk,
@@ -61,8 +62,8 @@ module memory # (
     input	  eth_wr_reg,
     input         eth_rd_sdram,
     output [31:0] eth_reg_data,
-    output [31:0] eth_sdram_data,
-    output        eth_sdram_vld,
+    output reg [31:0] eth_sdram_data,
+    output reg	  eth_sdram_valid,
    // GTP data
 	// reciever clock 125 MHz
     input         gtp_clk,
@@ -117,8 +118,8 @@ module memory # (
 	wire  		w0_full;			// port 0 write fifo full
 	wire  		w0_enable;			// port 0 write fifo enable
 	wire  		p0_full;			// port 0 cmd fifo full
-	reg   		p0_enable = 0;		// port 0 cmd fifo enable
-	reg   		r0_enable = 0;		// port 0 read fifo enable
+	reg   		p0_enable = 0;			// port 0 cmd fifo enable
+	reg   		r0_enable = 0;			// port 0 read fifo enable
 	wire		r0_empty;			// port 0 read fifo empty
 	wire [6:0]	r0_cnt;				// port 0 read fifo current data counter
 	reg [5:0] 	p0_blen;			// port 0 current burst length
@@ -133,7 +134,7 @@ module memory # (
 	reg		inv_nz_d = 0;			// nonzero inv_cnt delayed
 	wire		invld;				// fifo under invalidation
 
-	// Port 1
+	// Port 1 : Another WB interface for A32 FIFO
 	wire  		w1_full;			// port 1 write fifo full
 	wire  		w1_enable;			// port 1 write fifo enable
 	wire  		p1_full;			// port 1 cmd fifo full
@@ -151,7 +152,7 @@ module memory # (
 	reg [6:0] 	ack_cnt_a;			// read wbm_ack counter for one block transfer
 	reg [6:0]	rd_left_a;			// number of dwords in fifo (after burst execution)
 	reg [6:0]	inv_cnt_a = 0;			// number of dwords to take  out from fifo for invalidation
-	reg			inv_nz_d_a = 0;		// nonzero inv_cnt delayed
+	reg		inv_nz_d_a = 0;			// nonzero inv_cnt delayed
 	wire		invld_a;			// fifo under invalidation
 
 	// gtp recievers and arbitter
@@ -175,8 +176,16 @@ module memory # (
 	wire			w2_empty;		// port 2 write fifo empty
 	wire [28:0]		adr_rcv;		// port 2 address within recieving area
 	wire [31:0]		datfromarb;		// port 2 write data from arbitter
-
 	wire [31:0] wbr_dat_a;				// register data from arbitter
+
+	// port 3 : ethernet - read only
+	reg			p3_enable;		// port 3 cmd fifo enable
+	reg [28:0]		p3_adr;			// read address
+	reg			r3_enable;		// read fifo enable
+	wire [31:0]		r3_data;		// the data read from fifo
+	wire			r3_empty;		// port 3 fifo empty
+	reg [28:0]		eth_expected_adr;	// addres of data in fifo
+	reg			eth_wait;		// we are processing eth request
 
 	// debug lines
 	// 31        28  X X 25  24     23  22  21  20   X 18  12     11  10   9   8   X 6    0
@@ -185,7 +194,6 @@ module memory # (
 	wire [31:0] debug;
 
 	assign wbr_dat_o = (en_debug) ? debug : wbr_dat_a;
-
 	assign debug[7] = 0;
 	assign debug[18:12] = r0_cnt;
 	assign debug[19] = 0;
@@ -212,8 +220,9 @@ module memory # (
 	assign invld_a = inv_nz_d_a | (|inv_cnt_a);
 
 // MIG to WB state machine
-	reg [2:0] state;
-	reg [2:0] state_a;
+	reg [2:0] state;	// port 0	
+	reg [2:0] state_a;	// port 1
+	reg [2:0] state_b;	// port 3
 	localparam ST_RST 	= 0;
 	localparam ST_IDLE	= 1;
 	localparam ST_WR_FIFO 	= 2;
@@ -432,7 +441,7 @@ module memory # (
 				if (w1_full | ~wba_cyc) begin
 					// wr_fifo full or write cycle ended
 					p1_blen <= stb_cnt_a - 1;
-					p1_cmd <= 3'b010;			// write with autoprecharge
+					p1_cmd <= 3'b010;		// write with autoprecharge
 					inv_cnt_a <= rd_left_a;		// invalidate read fifo (always on writes)
 					rd_left_a <= 0;
 					if (p1_full) begin
@@ -455,8 +464,8 @@ module memory # (
 				if (wba_cyc & ((ack_cnt_a < stb_cnt_a) | wba_stb)) begin
 					if (|rd_left_a) begin 
 						if (~invld_a & ~r1_empty) begin
-						// we have data to read and junk already removed -- send
-						r1_enable <= 1;
+							// we have data to read and junk already removed -- send
+							r1_enable <= 1;
 							rd_left_a <= rd_left_a - 1;
 							wba_ack <= 1;
 							wba_dat_o <= r1_data;
@@ -488,8 +497,58 @@ module memory # (
 		end
 	end
 
+/****************************************
+ * Ethernet interface on port 3		*
+ ****************************************/
+ 	always @(posedge gtp_clk) begin	// we use gtp clock = 125 MHz
+		eth_sdram_valid <= 0;	// default
+		r3_enable <= 0;
+		p3_enable <= 0;
+
+		if (mem_rst) begin
+			state_b <= ST_IDLE;
+			eth_expected_adr <= 0;
+			eth_wait <= 0;
+		end else begin
+			case (state_b)
+			ST_IDLE: begin
+				if (eth_rd_sdram) begin					// first read SDRAM
+					eth_wait <= 1;
+					p3_adr <= eth_addr[28:0];
+					p3_enable <= 1;
+					eth_expected_adr <= eth_addr[28:0];
+					state_b <= ST_RD_FIFO;
+				end
+			end
+			ST_RD_FIFO: begin
+				if (eth_rd_sdram || eth_wait) begin
+					if (!r3_empty) begin
+						if (eth_expected_adr == eth_addr) begin	// give data
+							eth_sdram_data <= r3_data;
+							eth_sdram_valid <= 1;
+							eth_expected_adr <= eth_expected_adr + 4;
+							r3_enable <= 1;
+							eth_wait <= 0;
+						end else begin				// empty trash
+							eth_wait <= 1;
+							eth_expected_adr <= eth_expected_adr + 4;
+							r3_enable <= 1;							
+						end
+					end else begin					// read SDRAM
+						eth_wait <= 1;
+						p3_adr <= eth_addr[28:0];
+						p3_enable <= 1;
+						eth_expected_adr <= eth_addr[28:0];
+					end
+				end
+			end
+			endcase
+		end
+	end
+	
 // MIG DDR3 SDRAM controller
-// we only use port 0 and 1 for Wishbone transfers and port 2 for GTP data writing
+// we use ports 0 and 1 for Wishbone transfers, port 2 for GTP data writing
+// and port 3 for ethernet access. Ports 4 and 5 unused.
  memcntr # (
     .C1_P0_MASK_SIZE(4),
     .C1_P0_DATA_PORT_SIZE(32),
@@ -556,7 +615,7 @@ u_memcntr (
    .c1_p0_rd_full                          (debug[21]),
    .c1_p0_rd_empty                         (r0_empty),
    .c1_p0_rd_count                         (r0_cnt),
-   .c1_p0_rd_overflow                      (debug[22]),
+   .c1_p0_rd_overflow                       (debug[22]),
    .c1_p0_rd_error                         (debug[23]),
 // port1 bidirectional
    .c1_p1_cmd_clk                          (wb_clk),
@@ -601,18 +660,18 @@ u_memcntr (
    .c1_p2_wr_underrun                      (),
    .c1_p2_wr_error                         (),
 // port 3 - ethernet interface (read only)
-   .c1_p3_cmd_clk                          (1'b0),
-   .c1_p3_cmd_en                           (1'b0),
-   .c1_p3_cmd_instr                        (3'b000),
-   .c1_p3_cmd_bl                           (6'b000000),
-   .c1_p3_cmd_byte_addr                    (30'h00000000),
+   .c1_p3_cmd_clk                          (gtp_clk),
+   .c1_p3_cmd_en                           (p3_enable),
+   .c1_p3_cmd_instr                        (3'b011),		// always read with autoprecharge
+   .c1_p3_cmd_bl                           (ETH_BURST_LEN - 1),
+   .c1_p3_cmd_byte_addr                    ({1'b0, p3_adr}),
    .c1_p3_cmd_empty                        (),
    .c1_p3_cmd_full                         (),
    .c1_p3_rd_clk                           (gtp_clk),		// we use this clock for ethernet
-   .c1_p3_rd_en                            (1'b0),
-   .c1_p3_rd_data                          (),
+   .c1_p3_rd_en                            (r3_enable),
+   .c1_p3_rd_data                          (r3_data),
    .c1_p3_rd_full                          (),
-   .c1_p3_rd_empty                         (),
+   .c1_p3_rd_empty                         (r3_empty),
    .c1_p3_rd_count                         (),
    .c1_p3_rd_overflow                       (),
    .c1_p3_rd_error                         (),
@@ -652,64 +711,60 @@ u_memcntr (
 );
 
 // these FIFO's recieve blocks of data from GTP and interface to arbitter
-   genvar i;
-   generate
-      for (i=0; i < 4; i=i+1) 
-      begin : gfifo
-			gtpfifo # (
-				.MBITS(FIFO_MBITS)
-			) 
-			rcvfifo(
-				.gtp_clk		(gtp_clk),
-				.gtp_dat    (gtp_dat[i*16+15:i*16]),
-				.gtp_vld		(gtp_vld[i]),
-				.rst			(fifo_rst),
-				.give			(arb_wants[i]),
-				.data			(dattoarb),
-				.have			(fifo_have[i]),
-				.empty		(fifo_empty[i]),
-				.err_ovr		(fifo_ovr[i]),
-				.err_undr	(fifo_undr[i]),
-				.missed		(fifo_missed[i])
-			);
-      end
-   endgenerate
+genvar i;
+generate
+	for (i=0; i < 4; i=i+1) begin : gfifo
+	gtpfifo #(
+		.MBITS(FIFO_MBITS)
+	) rcvfifo (
+		.gtp_clk	(gtp_clk),
+		.gtp_dat	(gtp_dat[i*16+15:i*16]),
+		.gtp_vld	(gtp_vld[i]),
+		.rst		(fifo_rst),
+		.give		(arb_wants[i]),
+		.data		(dattoarb),
+		.have		(fifo_have[i]),
+		.empty		(fifo_empty[i]),
+		.err_ovr	(fifo_ovr[i]),
+		.err_undr	(fifo_undr[i]),
+		.missed		(fifo_missed[i])
+	);
+	end
+endgenerate
 
 //	fifth fifo keeps information for triggers, generated in this wfd
-			gtpfifo # (
-				.MBITS(FIFO_MBITS)
-			) 
-			trgfifo(
-				.gtp_clk		(gtp_clk),
-				.gtp_dat    (trg_dat),
-				.gtp_vld		(trg_vld),
-				.rst			(fifo_rst),
-				.give			(arb_wants[4]),
-				.data			(dattoarb),
-				.have			(fifo_have[4]),
-				.empty		(fifo_empty[4]),
-				.err_ovr		(fifo_ovr[4]),
-				.err_undr	(fifo_undr[4]),
-				.missed		(fifo_missed[4])
-			);
+gtpfifo # (
+	.MBITS(FIFO_MBITS)
+) trgfifo (
+	.gtp_clk	(gtp_clk),
+	.gtp_dat	(trg_dat),
+	.gtp_vld	(trg_vld),
+	.rst		(fifo_rst),
+	.give		(arb_wants[4]),
+	.data		(dattoarb),
+	.have		(fifo_have[4]),
+	.empty		(fifo_empty[4]),
+	.err_ovr	(fifo_ovr[4]),
+	.err_undr	(fifo_undr[4]),
+	.missed		(fifo_missed[4])
+);
 
 //	sixth fifo keeps timing information for tokens 0, 256, 512 and 768
-			gtpfifo # (
-				.MBITS(FIFO_MBITS)
-			) 
-			tokfifo(
-				.gtp_clk		(gtp_clk),
-				.gtp_dat    (tok_dat),
-				.gtp_vld		(tok_vld),
-				.rst			(fifo_rst),
-				.give			(arb_wants[5]),
-				.data			(dattoarb),
-				.have			(fifo_have[5]),
-				.empty		(fifo_empty[5]),
-				.err_ovr		(fifo_ovr[5]),
-				.err_undr	(fifo_undr[5]),
-				.missed		(fifo_missed[5])
-			);
+gtpfifo # (
+	.MBITS(FIFO_MBITS)
+) tokfifo (
+	.gtp_clk	(gtp_clk),
+	.gtp_dat	(tok_dat),
+	.gtp_vld	(tok_vld),
+	.rst		(fifo_rst),
+	.give		(arb_wants[5]),
+	.data		(dattoarb),
+	.have		(fifo_have[5]),
+	.empty		(fifo_empty[5]),
+	.err_ovr	(fifo_ovr[5]),
+	.err_undr	(fifo_undr[5]),
+	.missed		(fifo_missed[5])
+);
 	
 // arbitter
 	
@@ -761,6 +816,5 @@ arbitter (
 	// error
     .status		(status)
 );
-
 
 endmodule
