@@ -92,7 +92,7 @@ module ethernet(
 	
 	localparam IPG_GAP = 8'd12;
 	localparam UDP_PORT = 16'd6629;	// not nessesary, but...
-	localparam UDP_MAX_DATA = 1280;	// could be upto 1500 (MTU) - 20 (IP header) - 8 (UDP header) - 12 (our header) = 1460
+	localparam UDP_MAX_DATA = 1024;	// could be upto 1500 (MTU) - 20 (IP header) - 8 (UDP header) - 12 (our header) = 1460
 	localparam DUMMY_DELAY = 32;	// It shouldn't be, but we need it
 	
 	localparam [3:0] 
@@ -668,9 +668,11 @@ module ethernet(
 								if (sdram_next_cnt > UDP_MAX_DATA) begin
 									ip_byte_len <= UDP_MAX_DATA + 40;
 									udp_length <= UDP_MAX_DATA + 20;
+									sdram_len <= UDP_MAX_DATA;
 								end else begin
 									ip_byte_len <= sdram_next_cnt + 40;
 									udp_length <= sdram_next_cnt + 20;
+									sdram_len <= sdram_next_cnt;
 								end
 								state <= STATE_DELAY;
 								delaycnt <= DUMMY_DELAY;
