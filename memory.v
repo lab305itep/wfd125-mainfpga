@@ -180,12 +180,12 @@ module memory # (
 
 	// port 3 : ethernet - read only
 	reg			p3_enable;		// port 3 cmd fifo enable
-	reg [28:0]		p3_adr;			// read address
 	reg			r3_enable;		// read fifo enable
 	wire [31:0]		r3_data;		// the data read from fifo
-	wire			r3_empty;		// port 3 fifo empty
 	reg [28:0]		eth_expected_adr;	// addres of data in fifo
 	reg			eth_wait;		// we are processing eth request
+	wire			r3_empty;		// fifo is empty
+	reg			r3_armed;		// command sent we wait for nonempty FIFO
 
 	// debug lines
 	// 31        28  X X 25  24     23  22  21  20   X 18  12     11  10   9   8   X 6    0
@@ -220,15 +220,16 @@ module memory # (
 	assign invld_a = inv_nz_d_a | (|inv_cnt_a);
 
 // MIG to WB state machine
-	reg [2:0] state;	// port 0	
-	reg [2:0] state_a;	// port 1
-	reg [2:0] state_b;	// port 3
+	reg [2:0] state = ST_IDLE;	// port 0	
+	reg [2:0] state_a = ST_IDLE;	// port 1
+	reg [2:0] state_b = ST_IDLE;	// port 3
 	localparam ST_RST 	= 0;
 	localparam ST_IDLE	= 1;
 	localparam ST_WR_FIFO 	= 2;
 	localparam ST_WR_CMD	= 3;
 	localparam ST_RD_FIFO 	= 4;
 	localparam ST_RD_CMD	= 5;
+	localparam ST_RD_EMPTY  = 6;
 	
 	always @(posedge wb_clk) begin
 		// Defaults
@@ -509,37 +510,52 @@ module memory # (
 			state_b <= ST_IDLE;
 			eth_expected_adr <= 0;
 			eth_wait <= 0;
+			r3_armed <= 0;
 		end else begin
 			case (state_b)
 			ST_IDLE: begin
 				if (eth_rd_sdram) begin					// first read SDRAM
 					eth_wait <= 1;
-					p3_adr <= eth_addr[28:0];
 					p3_enable <= 1;
 					eth_expected_adr <= eth_addr[28:0];
 					state_b <= ST_RD_FIFO;
 				end
 			end
 			ST_RD_FIFO: begin
+				if (r3_armed && !r3_empty) begin
+					r3_armed <= 0;
+				end
 				if (eth_rd_sdram || eth_wait) begin
 					if (!r3_empty) begin
-						if (eth_expected_adr == eth_addr) begin	// give data
+						if (eth_expected_adr == eth_addr[28:0]) begin	// give data
 							eth_sdram_data <= r3_data;
+//							eth_sdram_data <= eth_addr;
 							eth_sdram_valid <= 1;
 							eth_expected_adr <= eth_expected_adr + 4;
 							r3_enable <= 1;
 							eth_wait <= 0;
 						end else begin				// empty trash
 							eth_wait <= 1;
-							eth_expected_adr <= eth_expected_adr + 4;
-							r3_enable <= 1;							
+							r3_enable <= 1;	
+							state_b <= ST_RD_EMPTY;
 						end
 					end else begin					// read SDRAM
 						eth_wait <= 1;
-						p3_adr <= eth_addr[28:0];
-						p3_enable <= 1;
-						eth_expected_adr <= eth_addr[28:0];
+						if (!r3_armed) begin
+							p3_enable <= 1;
+							eth_expected_adr <= eth_addr[28:0];
+							r3_armed <= 1;
+						end
 					end
+				end
+			end
+			ST_RD_EMPTY: begin
+				if (r3_empty) begin
+					p3_enable <= 1;
+					eth_expected_adr <= eth_addr[28:0];
+					state_b <= ST_RD_FIFO;
+				end else begin
+					r3_enable <= 1;
 				end
 			end
 			endcase
@@ -664,7 +680,7 @@ u_memcntr (
    .c1_p3_cmd_en                           (p3_enable),
    .c1_p3_cmd_instr                        (3'b011),		// always read with autoprecharge
    .c1_p3_cmd_bl                           (ETH_BURST_LEN - 1),
-   .c1_p3_cmd_byte_addr                    ({1'b0, p3_adr}),
+   .c1_p3_cmd_byte_addr                    ({1'b0, eth_addr[28:2], 2'b00}),
    .c1_p3_cmd_empty                        (),
    .c1_p3_cmd_full                         (),
    .c1_p3_rd_clk                           (gtp_clk),		// we use this clock for ethernet
