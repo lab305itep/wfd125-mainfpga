@@ -55,10 +55,12 @@ module gtpfifo # (
 	reg [15:0] 	evendat = 0;	// holder for even words
 	reg [31:0] 	rdata = 0;	// read fifo output
 	wire [15:0]	gtp_dat_tr;	// reciever data with no high bit
+	reg		next_empty = 1;	// will be empty after this read
 
 	assign len = gtp_dat[8:1] + 1;	// total number of 32-bit words to write (from CW)	
 	assign graddr = (have) ? (raddr + 1) : raddr;
-	assign have = give & (raddr != waddrb);
+//	assign have = give & (raddr != waddrb);
+	assign have = give && !next_empty;
 	assign empty = (raddr == waddr);
 	assign data = (have) ? rdata : 32'hZZZZZZZZ;
 	assign gtp_dat_tr = {1'b0, gtp_dat[14:0]};
@@ -75,6 +77,7 @@ module gtpfifo # (
 			odd <= 0;
 			writing <= 0;
 			first <= 0;
+			next_empty <= 1;
 		end else begin
 			// write fifo
 			if (gtp_vld) begin
@@ -150,6 +153,7 @@ module gtpfifo # (
 			if (have) begin
 				raddr <= raddr + 1;
 			end	// read fifo
+			next_empty <= (raddr == waddrb) || (have && raddr+1 == waddrb);
 			
 		end	// not reset
 	end	// posedge CLK

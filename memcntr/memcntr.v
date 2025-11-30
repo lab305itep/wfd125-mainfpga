@@ -210,6 +210,7 @@ module memcntr #
       output[6:0]	c1_p3_rd_count,
       output		c1_p3_rd_overflow,
       output		c1_p3_rd_error,
+//	Ports 4, 5 unused
       input		c1_p4_cmd_clk,
       input		c1_p4_cmd_en,
       input [2:0]	c1_p4_cmd_instr,
@@ -287,18 +288,32 @@ module memcntr #
 //   localparam C1_ARB_TIME_SLOT_10     = 6'o02;       
 //   localparam C1_ARB_TIME_SLOT_11     = 6'o20;       
 //	Lex 01.09.2020
-   localparam C1_ARB_TIME_SLOT_0      = 9'o012;       
-   localparam C1_ARB_TIME_SLOT_1      = 9'o120;       
-   localparam C1_ARB_TIME_SLOT_2      = 9'o201;       
-   localparam C1_ARB_TIME_SLOT_3      = 9'o012;       
-   localparam C1_ARB_TIME_SLOT_4      = 9'o120;       
-   localparam C1_ARB_TIME_SLOT_5      = 9'o201;       
-   localparam C1_ARB_TIME_SLOT_6      = 9'o012;       
-   localparam C1_ARB_TIME_SLOT_7      = 9'o120;       
-   localparam C1_ARB_TIME_SLOT_8      = 9'o201;       
-   localparam C1_ARB_TIME_SLOT_9      = 9'o012;       
-   localparam C1_ARB_TIME_SLOT_10     = 9'o120;       
-   localparam C1_ARB_TIME_SLOT_11     = 9'o201;       
+//   localparam C1_ARB_TIME_SLOT_0      = 9'o012;       
+//   localparam C1_ARB_TIME_SLOT_1      = 9'o120;       
+//   localparam C1_ARB_TIME_SLOT_2      = 9'o201;       
+//   localparam C1_ARB_TIME_SLOT_3      = 9'o012;       
+//   localparam C1_ARB_TIME_SLOT_4      = 9'o120;       
+//   localparam C1_ARB_TIME_SLOT_5      = 9'o201;       
+//   localparam C1_ARB_TIME_SLOT_6      = 9'o012;       
+//   localparam C1_ARB_TIME_SLOT_7      = 9'o120;       
+//   localparam C1_ARB_TIME_SLOT_8      = 9'o201;       
+//   localparam C1_ARB_TIME_SLOT_9      = 9'o012;       
+//   localparam C1_ARB_TIME_SLOT_10     = 9'o120;       
+//   localparam C1_ARB_TIME_SLOT_11     = 9'o201;
+//	Lex 30.11.2025
+   localparam C1_ARB_TIME_SLOT_0      = 12'o0123;
+   localparam C1_ARB_TIME_SLOT_1      = 12'o1230;       
+   localparam C1_ARB_TIME_SLOT_2      = 12'o2301;       
+   localparam C1_ARB_TIME_SLOT_3      = 12'o3012;       
+   localparam C1_ARB_TIME_SLOT_4      = 12'o0123;       
+   localparam C1_ARB_TIME_SLOT_5      = 12'o1230;       
+   localparam C1_ARB_TIME_SLOT_6      = 12'o2301;       
+   localparam C1_ARB_TIME_SLOT_7      = 12'o3012;       
+   localparam C1_ARB_TIME_SLOT_8      = 12'o0123;       
+   localparam C1_ARB_TIME_SLOT_9      = 12'o1230;       
+   localparam C1_ARB_TIME_SLOT_10     = 12'o2301;       
+   localparam C1_ARB_TIME_SLOT_11     = 12'o3012;
+
    localparam C1_MEM_TRAS             = 35000;       
    localparam C1_MEM_TRCD             = 13750;       
    localparam C1_MEM_TREFI            = 7800000;       
@@ -358,18 +373,18 @@ module memcntr #
    localparam C1_INCLK_PERIOD         = ((C1_MEMCLK_PERIOD * C1_CLKFBOUT_MULT) / (C1_DIVCLK_DIVIDE * C1_CLKOUT0_DIVIDE * 2));       
    localparam DBG_WR_STS_WIDTH        = 32;
    localparam DBG_RD_STS_WIDTH        = 32;
-   localparam C1_ARB_TIME0_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_0[8:6], C1_ARB_TIME_SLOT_0[5:3], C1_ARB_TIME_SLOT_0[2:0]};
-   localparam C1_ARB_TIME1_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_1[8:6], C1_ARB_TIME_SLOT_1[5:3], C1_ARB_TIME_SLOT_1[2:0]};
-   localparam C1_ARB_TIME2_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_2[8:6], C1_ARB_TIME_SLOT_2[5:3], C1_ARB_TIME_SLOT_2[2:0]};
-   localparam C1_ARB_TIME3_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_3[8:6], C1_ARB_TIME_SLOT_3[5:3], C1_ARB_TIME_SLOT_3[2:0]};
-   localparam C1_ARB_TIME4_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_4[8:6], C1_ARB_TIME_SLOT_4[5:3], C1_ARB_TIME_SLOT_4[2:0]};
-   localparam C1_ARB_TIME5_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_5[8:6], C1_ARB_TIME_SLOT_5[5:3], C1_ARB_TIME_SLOT_5[2:0]};
-   localparam C1_ARB_TIME6_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_6[8:6], C1_ARB_TIME_SLOT_6[5:3], C1_ARB_TIME_SLOT_6[2:0]};
-   localparam C1_ARB_TIME7_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_7[8:6], C1_ARB_TIME_SLOT_7[5:3], C1_ARB_TIME_SLOT_7[2:0]};
-   localparam C1_ARB_TIME8_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_8[8:6], C1_ARB_TIME_SLOT_8[5:3], C1_ARB_TIME_SLOT_8[2:0]};
-   localparam C1_ARB_TIME9_SLOT  =  {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_9[8:6], C1_ARB_TIME_SLOT_9[5:3], C1_ARB_TIME_SLOT_9[2:0]};
-   localparam C1_ARB_TIME10_SLOT  = {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_10[8:6], C1_ARB_TIME_SLOT_10[5:3], C1_ARB_TIME_SLOT_10[2:0]};
-   localparam C1_ARB_TIME11_SLOT  = {3'b000, 3'b000, 3'b000, C1_ARB_TIME_SLOT_11[8:6], C1_ARB_TIME_SLOT_11[5:3], C1_ARB_TIME_SLOT_11[2:0]};
+   localparam C1_ARB_TIME0_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_0[11:9], C1_ARB_TIME_SLOT_0[8:6], C1_ARB_TIME_SLOT_0[5:3], C1_ARB_TIME_SLOT_0[2:0]};
+   localparam C1_ARB_TIME1_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_1[11:9], C1_ARB_TIME_SLOT_1[8:6], C1_ARB_TIME_SLOT_1[5:3], C1_ARB_TIME_SLOT_1[2:0]};
+   localparam C1_ARB_TIME2_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_2[11:9], C1_ARB_TIME_SLOT_2[8:6], C1_ARB_TIME_SLOT_2[5:3], C1_ARB_TIME_SLOT_2[2:0]};
+   localparam C1_ARB_TIME3_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_3[11:9], C1_ARB_TIME_SLOT_3[8:6], C1_ARB_TIME_SLOT_3[5:3], C1_ARB_TIME_SLOT_3[2:0]};
+   localparam C1_ARB_TIME4_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_4[11:9], C1_ARB_TIME_SLOT_4[8:6], C1_ARB_TIME_SLOT_4[5:3], C1_ARB_TIME_SLOT_4[2:0]};
+   localparam C1_ARB_TIME5_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_5[11:9], C1_ARB_TIME_SLOT_5[8:6], C1_ARB_TIME_SLOT_5[5:3], C1_ARB_TIME_SLOT_5[2:0]};
+   localparam C1_ARB_TIME6_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_6[11:9], C1_ARB_TIME_SLOT_6[8:6], C1_ARB_TIME_SLOT_6[5:3], C1_ARB_TIME_SLOT_6[2:0]};
+   localparam C1_ARB_TIME7_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_7[11:9], C1_ARB_TIME_SLOT_7[8:6], C1_ARB_TIME_SLOT_7[5:3], C1_ARB_TIME_SLOT_7[2:0]};
+   localparam C1_ARB_TIME8_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_8[11:9], C1_ARB_TIME_SLOT_8[8:6], C1_ARB_TIME_SLOT_8[5:3], C1_ARB_TIME_SLOT_8[2:0]};
+   localparam C1_ARB_TIME9_SLOT  =  {3'b000, 3'b000, C1_ARB_TIME_SLOT_9[11:9], C1_ARB_TIME_SLOT_9[8:6], C1_ARB_TIME_SLOT_9[5:3], C1_ARB_TIME_SLOT_9[2:0]};
+   localparam C1_ARB_TIME10_SLOT  = {3'b000, 3'b000, C1_ARB_TIME_SLOT_10[11:9], C1_ARB_TIME_SLOT_10[8:6], C1_ARB_TIME_SLOT_10[5:3], C1_ARB_TIME_SLOT_10[2:0]};
+   localparam C1_ARB_TIME11_SLOT  = {3'b000, 3'b000, C1_ARB_TIME_SLOT_11[11:9], C1_ARB_TIME_SLOT_11[8:6], C1_ARB_TIME_SLOT_11[5:3], C1_ARB_TIME_SLOT_11[2:0]};
 //   localparam C1_ARB_TIME0_SLOT  = {C1_ARB_TIME_SLOT_0[17:15], C1_ARB_TIME_SLOT_0[14:12], C1_ARB_TIME_SLOT_0[11:9], C1_ARB_TIME_SLOT_0[8:6], C1_ARB_TIME_SLOT_0[5:3], C1_ARB_TIME_SLOT_0[2:0]};
 //   localparam C1_ARB_TIME1_SLOT  = {C1_ARB_TIME_SLOT_1[17:15], C1_ARB_TIME_SLOT_1[14:12], C1_ARB_TIME_SLOT_1[11:9], C1_ARB_TIME_SLOT_1[8:6], C1_ARB_TIME_SLOT_1[5:3], C1_ARB_TIME_SLOT_1[2:0]};
 //   localparam C1_ARB_TIME2_SLOT  = {C1_ARB_TIME_SLOT_2[17:15], C1_ARB_TIME_SLOT_2[14:12], C1_ARB_TIME_SLOT_2[11:9], C1_ARB_TIME_SLOT_2[8:6], C1_ARB_TIME_SLOT_2[5:3], C1_ARB_TIME_SLOT_2[2:0]};
@@ -435,10 +450,10 @@ wire				c1_p5_rd_overflow;
 wire				c1_p5_rd_error;
 
 
-   reg   c1_aresetn;
-   reg   c3_aresetn;
-   reg   c4_aresetn;
-   reg   c5_aresetn;
+//   reg   c1_aresetn;
+//   reg   c3_aresetn;
+//   reg   c4_aresetn;
+//   reg   c5_aresetn;
 
 
 
@@ -635,7 +650,7 @@ assign  c1_sys_clk_n = 1'b0;
          .p0_rd_empty                    (c1_p0_rd_empty),
          .p0_rd_count                    (c1_p0_rd_count),
          .p0_rd_full                     (c1_p0_rd_full),
-         .p0_rd_overflow                 (c1_p0_rd_overflow),
+         .p0_rd_overflow                  (c1_p0_rd_overflow),
          .p0_rd_error                    (c1_p0_rd_error),
       
          // User Port-1 command interface will be active only when the port is enabled in 
@@ -697,7 +712,7 @@ assign  c1_sys_clk_n = 1'b0;
          .p2_rd_empty                    (c1_p2_rd_empty),
          .p2_rd_count                    (c1_p2_rd_count),
          .p2_rd_full                     (c1_p2_rd_full),
-         .p2_rd_overflow                 (c1_p2_rd_overflow),
+         .p2_rd_overflow                  (c1_p2_rd_overflow),
          .p2_rd_error                    (c1_p2_rd_error),
       
          // User Port-3 command interface will be active only when the port is enabled in 
@@ -728,7 +743,7 @@ assign  c1_sys_clk_n = 1'b0;
          .p3_rd_empty                    (c1_p3_rd_empty),
          .p3_rd_count                    (c1_p3_rd_count),
          .p3_rd_full                     (c1_p3_rd_full),
-         .p3_rd_overflow                 (c1_p3_rd_overflow),
+         .p3_rd_overflow                  (c1_p3_rd_overflow),
          .p3_rd_error                    (c1_p3_rd_error),
       
          // User Port-4 command interface will be active only when the port is enabled in 
@@ -759,7 +774,7 @@ assign  c1_sys_clk_n = 1'b0;
          .p4_rd_empty                    (c1_p4_rd_empty),
          .p4_rd_count                    (c1_p4_rd_count),
          .p4_rd_full                     (c1_p4_rd_full),
-         .p4_rd_overflow                 (c1_p4_rd_overflow),
+         .p4_rd_overflow                  (c1_p4_rd_overflow),
          .p4_rd_error                    (c1_p4_rd_error),
       
          // User Port-5 command interface will be active only when the port is enabled in 
@@ -790,19 +805,13 @@ assign  c1_sys_clk_n = 1'b0;
          .p5_rd_empty                    (c1_p5_rd_empty),
          .p5_rd_count                    (c1_p5_rd_count),
          .p5_rd_full                     (c1_p5_rd_full),
-         .p5_rd_overflow                 (c1_p5_rd_overflow),
+         .p5_rd_overflow                  (c1_p5_rd_overflow),
          .p5_rd_error                    (c1_p5_rd_error),
 
          .selfrefresh_enter              (1'b0), 
          .selfrefresh_mode               (c1_selfrefresh_mode)
       );
    
-
-
-
-
-
-
 endmodule   
 
  

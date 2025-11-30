@@ -42,6 +42,8 @@ module testmemory;
 	reg [63:0] gtp_dat;
 	reg gtp_vld;
 	reg mcb_clk;
+	reg [31:0] eth_addr;
+	reg eth_read;
 
 	// Outputs
 	wire wbm_ack;
@@ -65,12 +67,15 @@ module testmemory;
 	wire MEMZIO;
 	wire MEMRZQ;
 	wire [31:0] status;
+	wire [31:0] eth_data;
+	wire eth_valid;
 
 	// Bidirs
-	wire [15:0] MEMD;
+	tri1 [15:0] MEMD;
 	
 	// other
 	reg [31:0] cnt;
+	reg eth_done = 0;
 
 	// Instantiate the Unit Under Test (UUT)
 	memory uut (
@@ -96,6 +101,14 @@ module testmemory;
 		.gtp_dat(gtp_dat), 
 		.gtp_vld(gtp_vld), 
 		.mcb_clk(mcb_clk), 
+		   // Ethernet interface
+		.eth_addr(eth_addr),
+		.eth_dat_i(0),
+		.eth_wr_reg(0),
+		.eth_rd_sdram(eth_read),
+		.eth_reg_data(),
+		.eth_sdram_data(eth_data),
+		.eth_sdram_valid(eth_valid),
 		.MEMA(MEMA), 
 		.MEMBA(MEMBA), 
 		.MEMD(MEMD), 
@@ -136,7 +149,9 @@ module testmemory;
 		mcb_clk = 0;
 		
 		cnt = 0;
-
+		eth_read <= 0;
+		eth_addr <= 0;
+		eth_done <= 1;
 
 		// Wait 100 ns for global reset to finish
 		#100;
@@ -148,6 +163,7 @@ module testmemory;
 
 	always @ (*) #4 wb_clk <= !wb_clk;
 	always @ (*) #4 mcb_clk <= !mcb_clk;
+	always @ (*) #4 gtp_clk <= !gtp_clk;
 	
 	always @ (posedge wb_clk) begin
 //		if (!wbm_stall) cnt <= cnt + 1;
@@ -155,19 +171,29 @@ module testmemory;
 		wbm_dat_i <= cnt;
 		wbm_stb <= 0;
 		case (cnt)
-			4:	wb_rst <= 1;
+			4: wb_rst <= 1;
 			8: wb_rst <= 0;
-			32: begin
-				wbm_cyc <= 1;
-				wbm_we <= 1;
-				wbm_stb <= 1;
-				wbm_addr <= wbm_addr + 1;
-			end
+//			32: begin
+//				wbm_cyc <= 1;
+//				wbm_we <= 1;
+//				wbm_stb <= 1;
+//				wbm_addr <= wbm_addr + 1;
+//			end
 		endcase
 
 		if (wbm_ack) wbm_cyc <= 0;
 	
+		if (cnt > 50 && cnt[3:0] == 0 && eth_done) begin
+			eth_addr <= eth_addr + 4;
+			eth_read <= 1;
+			eth_done <= 0;
+		end else begin
+			eth_read <= 0;
+		end
+		if (eth_valid) eth_done <= 1;
+	
 	end
+	
 	
       
 endmodule

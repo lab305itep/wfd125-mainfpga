@@ -13,18 +13,19 @@
 //	in blocks with round-robbin arbitration
 //	Supports full pipelined block transfer interface for Wishbone
 //	assumes only sequential addresses in a single block transfers
-//	3 memory controller ports are used:
+//	4 memory controller ports are used:
 //		Port 0 - read/write data bridge to Wishbone for A64/D32/D64 (MBLT) access, 512 M address space, VME address is used
 //		Port 1 - read/write data bridge to Wishbone for A32/D32/D64 (MBLT) access, 32 k address space, 
 //			VME address is ignored and address written to wadr register is used, address autoincrement
 //		Port 2 - write input data to SDRAM
+//		Port 3 - read data to ethernet
 //	with CSR28=1, WADR reads debug lines as indicated below
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 module memory # (
 	parameter FIFO_MBITS = 13,
 	parameter READ_BURST_LEN = 8,
-	parameter ETH_BURST_LEN = 64	// maximum
+	parameter ETH_BURST_LEN = 64	// maximum = 64
 )
 (
     input         wb_clk,
@@ -180,6 +181,7 @@ module memory # (
 
 	// port 3 : ethernet - read only
 	reg			p3_enable;		// port 3 cmd fifo enable
+	wire			p3_empty;		// port 3 cmd fifo is empty
 	reg			r3_enable;		// read fifo enable
 	wire [31:0]		r3_data;		// the data read from fifo
 	reg [28:0]		eth_expected_adr;	// addres of data in fifo
@@ -516,9 +518,14 @@ module memory # (
 			ST_IDLE: begin
 				if (eth_rd_sdram) begin					// first read SDRAM
 					eth_wait <= 1;
-					p3_enable <= 1;
-					eth_expected_adr <= eth_addr[28:0];
-					state_b <= ST_RD_FIFO;
+					if (p3_empty) begin
+						p3_enable <= 1;
+						r3_armed <= 1;
+						eth_expected_adr <= eth_addr[28:0];
+						state_b <= ST_RD_FIFO;
+					end else begin
+						state_b <= ST_RD_CMD;
+					end
 				end
 			end
 			ST_RD_FIFO: begin
@@ -542,20 +549,37 @@ module memory # (
 					end else begin					// read SDRAM
 						eth_wait <= 1;
 						if (!r3_armed) begin
-							p3_enable <= 1;
-							eth_expected_adr <= eth_addr[28:0];
-							r3_armed <= 1;
+							if (p3_empty) begin
+								p3_enable <= 1;
+								eth_expected_adr <= eth_addr[28:0];
+								r3_armed <= 1;
+							end else begin
+								state_b <= ST_RD_CMD;
+							end
 						end
 					end
 				end
 			end
 			ST_RD_EMPTY: begin
 				if (r3_empty) begin
-					p3_enable <= 1;
-					eth_expected_adr <= eth_addr[28:0];
-					state_b <= ST_RD_FIFO;
+					if (p3_empty) begin
+						p3_enable <= 1;
+						r3_armed <= 1;
+						eth_expected_adr <= eth_addr[28:0];
+						state_b <= ST_RD_FIFO;
+					end else begin
+						state_b <= ST_RD_CMD;
+					end
 				end else begin
 					r3_enable <= 1;
+				end
+			end
+			ST_RD_CMD: begin
+				if (p3_empty) begin
+					p3_enable <= 1;
+					r3_armed <= 1;
+					eth_expected_adr <= eth_addr[28:0];
+					state_b <= ST_RD_FIFO;
 				end
 			end
 			endcase
@@ -681,7 +705,7 @@ u_memcntr (
    .c1_p3_cmd_instr                        (3'b011),		// always read with autoprecharge
    .c1_p3_cmd_bl                           (ETH_BURST_LEN - 1),
    .c1_p3_cmd_byte_addr                    ({1'b0, eth_addr[28:2], 2'b00}),
-   .c1_p3_cmd_empty                        (),
+   .c1_p3_cmd_empty                        (p3_empty),
    .c1_p3_cmd_full                         (),
    .c1_p3_rd_clk                           (gtp_clk),		// we use this clock for ethernet
    .c1_p3_rd_en                            (r3_enable),
