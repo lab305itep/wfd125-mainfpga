@@ -188,6 +188,9 @@ module memory # (
 	reg			eth_wait;		// we are processing eth request
 	wire			r3_empty;		// fifo is empty
 	reg			r3_armed;		// command sent we wait for nonempty FIFO
+	reg [6:0]		r3_cnt;			// port 3 word counter
+	reg			r3_empty_d;		// delay non-empty condtion recognition
+	wire [6:0]		r3_count;		// SDRAM fifo counter
 
 	// debug lines
 	// 31        28  X X 25  24     23  22  21  20   X 18  12     11  10   9   8   X 6    0
@@ -507,12 +510,14 @@ module memory # (
 		eth_sdram_valid <= 0;	// default
 		r3_enable <= 0;
 		p3_enable <= 0;
+		r3_empty_d <= r3_empty;
 
 		if (mem_rst) begin
 			state_b <= ST_IDLE;
 			eth_expected_adr <= 0;
 			eth_wait <= 0;
 			r3_armed <= 0;
+			r3_cnt <= 0;
 		end else begin
 			case (state_b)
 			ST_IDLE: begin
@@ -529,21 +534,24 @@ module memory # (
 				end
 			end
 			ST_RD_FIFO: begin
-				if (r3_armed && !r3_empty) begin
+				if (r3_armed && (r3_count == ETH_BURST_LEN)) begin
 					r3_armed <= 0;
+					r3_cnt <= ETH_BURST_LEN;
 				end
 				if (eth_rd_sdram || eth_wait) begin
-					if (!r3_empty) begin
+					if (r3_cnt > 0) begin
 						if (eth_expected_adr == eth_addr[28:0]) begin	// give data
 							eth_sdram_data <= r3_data;
 //							eth_sdram_data <= eth_addr;
 							eth_sdram_valid <= 1;
 							eth_expected_adr <= eth_expected_adr + 4;
 							r3_enable <= 1;
+							r3_cnt <= r3_cnt - 1;
 							eth_wait <= 0;
 						end else begin				// empty trash
 							eth_wait <= 1;
 							r3_enable <= 1;	
+							r3_cnt <= r3_cnt - 1;
 							state_b <= ST_RD_EMPTY;
 						end
 					end else begin					// read SDRAM
@@ -561,7 +569,7 @@ module memory # (
 				end
 			end
 			ST_RD_EMPTY: begin
-				if (r3_empty) begin
+				if (r3_cnt == 0) begin
 					if (p3_empty) begin
 						p3_enable <= 1;
 						r3_armed <= 1;
@@ -572,6 +580,7 @@ module memory # (
 					end
 				end else begin
 					r3_enable <= 1;
+					r3_cnt <= r3_cnt - 1;
 				end
 			end
 			ST_RD_CMD: begin
@@ -585,7 +594,7 @@ module memory # (
 			endcase
 		end
 	end
-	
+
 // MIG DDR3 SDRAM controller
 // we use ports 0 and 1 for Wishbone transfers, port 2 for GTP data writing
 // and port 3 for ethernet access. Ports 4 and 5 unused.
@@ -712,7 +721,7 @@ u_memcntr (
    .c1_p3_rd_data                          (r3_data),
    .c1_p3_rd_full                          (),
    .c1_p3_rd_empty                         (r3_empty),
-   .c1_p3_rd_count                         (),
+   .c1_p3_rd_count                         (r3_count),
    .c1_p3_rd_overflow                       (),
    .c1_p3_rd_error                         (),
  // ports 4-5 - unused
