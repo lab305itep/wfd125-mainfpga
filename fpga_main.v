@@ -267,6 +267,7 @@ module fpga_main(
 	wire sdram_read;	// read one 32-bit word from SDRAM
 	wire [31:0] sdram_data;	// SDRAM data read
 	wire sdram_dvalid;	// SDRAM data valid
+	wire [15:0] token_timer;	// maximum time between token records
 
 	always @ (posedge CLK125) begin
 		tpdebug[5] <= 0;
@@ -278,9 +279,9 @@ module fpga_main(
 	end
 
 	assign IACKPASS = 1'bz;
-   assign BDACC = 1'bz;
-   assign BDACD = 1'bz;
-   assign BDACCS = 1'bz;
+	assign BDACC = 1'bz;
+	assign BDACD = 1'bz;
+	assign BDACCS = 1'bz;
 
 	csreg reg_csr (
 		.wb_clk (wb_clk), 
@@ -292,32 +293,33 @@ module fpga_main(
 		.wb_dat_o (wb_s2m_reg_csr_dat), 
 		.wb_ack (wb_s2m_reg_csr_ack),
 		//
-		.gen_o   (CSR_BITS),
-		.gen_i	({22'h0, token}),
+		.gen_o (CSR_BITS),
+		.gen_i ({22'h0, token}),
 		// assigned outputs
-		.pwb_rst	(ICX[5]),		// peripheral wishbone reset
-	 	.usr_word	(usr_word),	// user word to be put to trigger memory block
+		.pwb_rst (ICX[5]),		// peripheral wishbone reset
+	 	.usr_word (usr_word),	// user word to be put to trigger memory block
 		// inputs from triggen
-		.trig		(trigger),
-		.inh		(inhibit),
+		.trig (trigger),
+		.inh (inhibit),
 		.auxtrig (auxtrig),
 		// front panel signals
-		.trig_FP	(FP[1:0]),
+		.trig_FP (FP[1:0]),
 		.inh_FP	(FP[3:2]),
 		.trig1_FP (FP[5:4]),
 		// back panel signals
-		.trig_BP	({USRDEF[5], USRDEF[6]}),
+		.trig_BP ({USRDEF[5], USRDEF[6]}),
 		.inh_BP	({USRDEF[2], USRDEF[0]}),
 		// signals to peripheral X's
-		.trig_ICX	(ICX[1:0]),
-		.inh_ICX		(ICX[6]),
+		.trig_ICX (ICX[1:0]),
+		.inh_ICX (ICX[6]),
 		// outputs to drive CLK muxes
-		.ECLKSEL		(ECLKSEL),
-		.OCLKSEL		(OCLKSEL),
-		.CLKENFP		(CLKENFP),
-		.CLKENBP		(CLKENBP),
-		.CLKENBFP	(CLKENBFP),
-		.testpulse	(ICX[7])
+		.ECLKSEL (ECLKSEL),
+		.OCLKSEL (OCLKSEL),
+		.CLKENFP (CLKENFP),
+		.CLKENBP (CLKENBP),
+		.CLKENBFP (CLKENBFP),
+		.token_timer (token_timer),
+		.testpulse (ICX[7])
 	);
 	
 	assign wb_s2m_reg_csr_rty = 0;
@@ -437,7 +439,7 @@ vme (
 	assign wb_m2s_VME64xCore_Top_bte = 0;
 
 //		clock buffer control
-   i2c_master_slave UI2C (
+	i2c_master_slave UI2C (
 		.wb_clk_i  (wb_clk), 
 		.wb_rst_i  (wb_rst),		// active high 
 		.arst_i    (1'b0), 		// active high
@@ -457,21 +459,21 @@ vme (
 		.sda_padoen_o (CBUFSDA_en)		// active low ?
 	);
 
-   assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
-   assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
+	assign CBUFSCL = (!CBUFSCL_en) ? (CBUFSCL_o) : 1'bz;
+	assign CBUFSDA = (!CBUFSDA_en) ? (CBUFSDA_o) : 1'bz;
 	assign wb_s2m_i2c_ms_cbuf_dat[31:8] = 0;		// pad high data with zeroes
 	assign wb_s2m_i2c_ms_cbuf_err = 0;
 	assign wb_s2m_i2c_ms_cbuf_rty = 0;
 	
-   gentrig UTRIG (
+	gentrig UTRIG (
 		// GTP reciever data and k-char info
-		.gtp_clk		(CLK125),
-		.gtp_dat		(gtp_data_o),
+		.gtp_clk	(CLK125),
+		.gtp_dat	(gtp_data_o),
 		.kchar		(gtp_kchar_o),
-		.auxtrig    (auxtrig),
+		.auxtrig	(auxtrig),
 		// intrface to memory fifo
-		.trg_dat		(trg_data),
-		.trg_vld		(trg_valid),
+		.trg_dat	(trg_data),
+		.trg_vld	(trg_valid),
 		// user word from CSR
 		.usr_word	(usr_word),
 		// WB
@@ -485,21 +487,22 @@ vme (
 		.wb_dat_i  	(wb_m2s_triggen_dat), 
 		.wb_dat_o  	(wb_s2m_triggen_dat),
 		// trigger and inhibit
-		.trigger		(trigger),
-		.inhibit		(inhibit)
+		.trigger	(trigger),
+		.inhibit	(inhibit)
 	);
 
 	assign wb_s2m_triggen_err = 0;
 	assign wb_s2m_triggen_rty = 0;
 
 	toksync UTOKSYNC(
-		.clk		(CLK125),	// gtp clock
-		.token 	(token),		// token
+		.clk	(CLK125),	// gtp clock
+		.token 	(token),	// token
 		.tok_rdy (tok_rdy),	// token strob
 		.tok_dat (tok_data),	// data to FIFO
 		.tok_vld (tok_valid),	// valid to FIFO
-		.inhibit (ICX[6]),		// global inhibit
-		.enable	(CSR_BITS[13])	// enable these blocks
+		.inhibit (ICX[6]),	// global inhibit
+		.enable	(CSR_BITS[13]),	// enable these blocks
+		.token_timer	(token_timer)	// maximum time between tokens
     );
 
 // assign TP[1] = tok_rdy;

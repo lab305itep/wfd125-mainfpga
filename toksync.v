@@ -18,67 +18,91 @@
 // Additional Comments: 
 //
 //		Block sent to memory fifo
-//		0	1000 000L LLLL LLLL - L=4 - data length in 16-bit words not including CW 
+//	0	1000 000L LLLL LLLL - L=4 - data length in 16-bit words not including CW 
 // 	1	0ttt p0nn nnnn nnnn - ttt - trigger block type (3'b101 = 5 - token synchronization block)
-//										 n - 10-bit trigger token,	 p - block sequential number LSB
-//		2	0 GTIME[14:0]		  - lower GTIME
-//		3	0 GTIME[29:15]		  - middle GTIME
-//		4	0 GTIME[44:30]		  - high GTIME
+//					    n - 10-bit trigger token, p - block sequential number LSB
+//	2	0 GTIME[14:0]		  - lower GTIME
+//	3	0 GTIME[29:15]		  - middle GTIME
+//	4	0 GTIME[44:30]		  - high GTIME
 //////////////////////////////////////////////////////////////////////////////////
 module toksync(
-    input clk,				// gtp clock
-    input [9:0] token,	// token
-    input tok_rdy,		// token strob
-    output reg [15:0] tok_dat,	// data to FIFO
-    output reg tok_vld,	// valid to FIFO
-    input inhibit,		// global inhibit
-	 input enable			// enable these blocks
-    );
+	input clk,		// gtp clock
+	input [9:0] token,	// token
+	input tok_rdy,		// token strob
+	output reg [15:0] tok_dat,	// data to FIFO
+	output reg tok_vld,		// valid to FIFO
+	input inhibit,		// global inhibit
+	input enable,		// enable these blocks
+	input [15:0] token_timer
+	);
 
+	localparam TENMS = 1249;	// 1250 clk pulses for 10 ms
 	reg [44:0] GTIME = 0;
 	reg [44:0] GTIMES = 0;
 	reg [2:0] send_cnt = 0;
 	reg blk_par = 0;
+	reg [10:0] tenMS_div = 0;
+	reg tenMS_pulse = 0;
+	reg [15:0] token_cnt = 0;
+	reg tokenwr = 0;
 
 	always @ (posedge clk) begin
 		tok_vld <= 0;
+		if (tenMS_pulse) begin
+			if (token_cnt == 0) begin
+				tokenwr <= 1;
+			end else begin
+				token_cnt <= token_cnt - 1;
+			end
+		end
 		if (inhibit) begin
 			GTIME <= 0;
 			blk_par <= 0;
+			tokenwr <= 0;
+			token_cnt <= token_timer;
 		end else begin
 			GTIME <= GTIME + 1;
 			case (send_cnt) 
 			0 : begin
-						if (enable && tok_rdy && (token[7:0] == 0)) begin
-							GTIMES <= GTIME;
-							tok_dat <= 16'h8004;
-							tok_vld <= 1;
-							send_cnt <= 1;
-						end
+				if (enable && tok_rdy && ((token[7:0] == 0) || tokenwr)) begin
+					GTIMES <= GTIME;
+					tok_dat <= 16'h8004;
+					tok_vld <= 1;
+					send_cnt <= 1;
+					tokenwr <= 0;
+					token_cnt <= token_timer;
 				end
+			end
 			1 : begin
-					tok_dat <= {4'b0101, blk_par, 1'b0, token};
-					tok_vld <= 1;
-					send_cnt <= 2;
-				end
+				tok_dat <= {4'b0101, blk_par, 1'b0, token};
+				tok_vld <= 1;
+				send_cnt <= 2;
+			end
 			2 : begin
-					tok_dat <= {1'b0, GTIMES[14:0]};
-					tok_vld <= 1;
-					send_cnt <= 3;
-					blk_par <= !blk_par;					
-				end
+				tok_dat <= {1'b0, GTIMES[14:0]};
+				tok_vld <= 1;
+				send_cnt <= 3;
+				blk_par <= !blk_par;					
+			end
 			3 : begin
-					tok_dat <= {1'b0, GTIMES[29:15]};
-					tok_vld <= 1;
-					send_cnt <= 4;					
-				end
+				tok_dat <= {1'b0, GTIMES[29:15]};
+				tok_vld <= 1;
+				send_cnt <= 4;					
+			end
 			4 : begin
-					tok_dat <= {1'b0, GTIMES[44:30]};
-					tok_vld <= 1;
-					send_cnt <= 0;	
-				end
+				tok_dat <= {1'b0, GTIMES[44:30]};
+				tok_vld <= 1;
+				send_cnt <= 0;	
+			end
 			default : send_cnt <= 0;
 			endcase 
+		end
+		if (tenMS_div == TENMS) begin
+			tenMS_div <= 0;
+			tenMS_pulse <= 1;
+		end else begin
+			tenMS_div <= tenMS_div + 1;
+			tenMS_pulse <= 0;
 		end
 	end
 endmodule

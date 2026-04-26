@@ -37,42 +37,43 @@
 //////////////////////////////////////////////////////////////////////////////////
 module csreg(
 	// WB signals
-    input [31:0] wb_dat_i,
-    output [31:0] wb_dat_o,
-    input wb_we,
-    input wb_clk,
-    input wb_cyc,
-    output reg wb_ack,
-    input wb_stb,
-	 input wb_adr,
+	input [31:0] wb_dat_i,
+	output [31:0] wb_dat_o,
+	input wb_we,
+	input wb_clk,
+	input wb_cyc,
+	output reg wb_ack,
+	input wb_stb,
+	input wb_adr,
 	 // reg outputs/inputs for general purposes
-    output [2:0]		gen_o,
-    input [31:0] 		gen_i,
+	output [2:0] gen_o,
+	input [31:0] gen_i,
 	 // assigned outputs
-	 output				pwb_rst,		// peripheral wishbone reset
-	 output [14:0]		usr_word,	// user word to be put to trigger memory block
-	 // inputs from triggen
-	 input				trig,
-	 input				inh,
-	 output           auxtrig,		// translated from FP trig1 trigger
+	output pwb_rst,		// peripheral wishbone reset
+	output [14:0] usr_word,	// user word to be put to trigger memory block
+	// inputs from triggen
+	input trig,
+	input inh,
+	output auxtrig,		// translated from FP trig1 trigger
 	 // front panel signals
-	 inout [1:0] 		trig_FP,
-	 inout [1:0] 		inh_FP,
-	 inout [1:0]		trig1_FP,
+	 inout [1:0] trig_FP,
+	 inout [1:0] inh_FP,
+	 inout [1:0] trig1_FP,
 	 // back panel signals
-	 inout [1:0] 		trig_BP,
-	 inout [1:0]		inh_BP,
+	 inout [1:0] trig_BP,
+	 inout [1:0] inh_BP,
 	 // signals to peripheral X's
-	 output [1:0]		trig_ICX,
-	 output				inh_ICX,
+	 output [1:0] trig_ICX,
+	 output	inh_ICX,
 	 // outputs to drive CLK muxes
-    output reg			ECLKSEL,
-    output reg			OCLKSEL,
-    output reg			CLKENFP,
-    output reg			CLKENBP,
-    output reg			CLKENBFP,
-	 output reg			testpulse
-    );
+	output reg ECLKSEL,
+	output reg OCLKSEL,
+	output reg CLKENFP,
+	output reg CLKENBP,
+	output reg CLKENBFP,
+	output reg [15:0] token_timer, 
+	output reg testpulse
+	);
 	 
 	reg [31:0] csr;
 	reg [31:0] reg_i;
@@ -87,7 +88,7 @@ module csreg(
 	reg	trig_en_BP = 0;
 	reg	trig_BP_sel = 0;
 	wire	trig_to_ICX;
-	reg  [1:0] trig_ICX_sel;
+	reg [1:0] trig_ICX_sel;
 	reg 	trig1_to_FP;
 	wire 	trig1_from_FP;
 	
@@ -122,8 +123,10 @@ module csreg(
 	always @ (posedge wb_clk) begin
 		wb_ack <= wb_cyc & wb_stb;
 		if (wb_cyc & wb_stb & wb_we & (~wb_adr)) csr <= wb_dat_i;
-		reg_i <= {2'b00, inh_ICX_sel, inh_FP_sel, inh_BP_sel, inh_en_FP, inh_en_BP,
-			2'b00, trig_ICX_sel, trig_FP_sel, trig_BP_sel, trig_en_FP, trig_en_BP, gen_i[15:0]};
+		if (wb_cyc & wb_stb & wb_we & wb_adr) token_timer <= wb_dat_i[31:16];
+//		reg_i <= {2'b00, inh_ICX_sel, inh_FP_sel, inh_BP_sel, inh_en_FP, inh_en_BP,
+//			2'b00, trig_ICX_sel, trig_FP_sel, trig_BP_sel, trig_en_FP, trig_en_BP, gen_i[15:0]};
+		reg_i <= {token_timer, gen_i[15:0]};
 	end
 
 	// Clock control
